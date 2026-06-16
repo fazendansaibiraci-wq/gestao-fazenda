@@ -153,47 +153,107 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE: Desativar usuário
+// DELETE: Desativar ou deletar permanentemente usuário
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Apenas GESTOR pode desativar usuários
+    // Apenas GESTOR pode desativar/deletar usuários
     const userRole = (session.user as any)?.role
     if (userRole !== 'GESTOR') {
-      return NextResponse.json({ error: 'Apenas GESTOR pode desativar usuários' }, { status: 403 })
+      return NextResponse.json({ error: 'Apenas GESTOR pode gerenciar usuários' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('id')
+    const action = searchParams.get('action')
 
     if (!userId) {
       return NextResponse.json({ error: 'ID do usuário é obrigatório' }, { status: 400 })
     }
 
-    // Não permitir desativar a si mesmo
+    // Não permitir desativar/deletar a si mesmo
     if (userId === session.user?.id) {
-      return NextResponse.json({ error: 'Você não pode desativar sua própria conta' }, { status: 400 })
+      return NextResponse.json({ error: 'Você não pode desativar/deletar sua própria conta' }, { status: 400 })
     }
 
-    // Desativar usuário
-    const deactivatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { active: false },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        active: true,
-        createdAt: true,
-      },
-    })
-
-    return NextResponse.json({ success: true, data: deactivatedUser })
+    if (action === 'delete') {
+      // Deletar permanentemente
+      const deletedUser = await prisma.user.delete({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          active: true,
+          createdAt: true,
+        },
+      })
+      return NextResponse.json({ success: true, data: deletedUser })
+    } else {
+      // Desativar usuário (padrão)
+      const deactivatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { active: false },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          active: true,
+          createdAt: true,
+        },
+      })
+      return NextResponse.json({ success: true, data: deactivatedUser })
+    }
   } catch (error) {
     console.error('DELETE /api/users:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+// PATCH: Reativar usuário
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Apenas GESTOR pode reativar usuários
+    const userRole = (session.user as any)?.role
+    if (userRole !== 'GESTOR') {
+      return NextResponse.json({ error: 'Apenas GESTOR pode reativar usuários' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('id')
+    const action = searchParams.get('action')
+
+    if (!userId) {
+      return NextResponse.json({ error: 'ID do usuário é obrigatório' }, { status: 400 })
+    }
+
+    if (action === 'reactivate') {
+      // Reativar usuário
+      const reactivatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { active: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          active: true,
+          createdAt: true,
+        },
+      })
+      return NextResponse.json({ success: true, data: reactivatedUser })
+    }
+
+    return NextResponse.json({ error: 'Ação inválida' }, { status: 400 })
+  } catch (error) {
+    console.error('PATCH /api/users:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

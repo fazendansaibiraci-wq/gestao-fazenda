@@ -146,6 +146,38 @@ export default function SettingsPage() {
     }
   }
 
+  const handleReactivate = async (userId: string) => {
+    if (!confirm('Reativar este usuário?')) return
+
+    try {
+      const res = await fetch(`/api/users?id=${userId}&action=reactivate`, { method: 'PATCH' })
+      if (res.ok) {
+        setSuccess('Usuário reativado com sucesso')
+        loadUsers()
+      } else {
+        setError('Erro ao reativar usuário')
+      }
+    } catch (err) {
+      setError('Erro ao reativar usuário')
+    }
+  }
+
+  const handleDeletePermanently = async (userId: string) => {
+    if (!confirm('Tem certeza? Esta ação é irreversível e o usuário será removido permanentemente.')) return
+
+    try {
+      const res = await fetch(`/api/users?id=${userId}&action=delete`, { method: 'DELETE' })
+      if (res.ok) {
+        setSuccess('Usuário deletado permanentemente')
+        loadUsers()
+      } else {
+        setError('Erro ao deletar usuário')
+      }
+    } catch (err) {
+      setError('Erro ao deletar usuário')
+    }
+  }
+
   const handleCancel = () => {
     setFormData({ name: '', email: '', password: '', role: 'FUNCIONARIO' })
     setEditingId(null)
@@ -340,10 +372,28 @@ export default function SettingsPage() {
                         {isGestor && user.active && (
                           <button
                             onClick={() => handleDeactivate(user.id)}
-                            className="p-2 hover:bg-red-50 rounded transition"
+                            className="p-2 hover:bg-orange-50 rounded transition"
                             title="Desativar"
                           >
-                            <Trash2 className="w-4 h-4 text-red-600" />
+                            <Trash2 className="w-4 h-4 text-orange-600" />
+                          </button>
+                        )}
+                        {isGestor && !user.active && (
+                          <button
+                            onClick={() => handleReactivate(user.id)}
+                            className="p-2 hover:bg-green-50 rounded transition"
+                            title="Reativar"
+                          >
+                            <Check className="w-4 h-4 text-green-600" />
+                          </button>
+                        )}
+                        {isGestor && (
+                          <button
+                            onClick={() => handleDeletePermanently(user.id)}
+                            className="p-2 hover:bg-red-50 rounded transition"
+                            title="Excluir permanentemente"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-700" />
                           </button>
                         )}
                       </div>
@@ -360,8 +410,8 @@ export default function SettingsPage() {
       <div className="card bg-blue-50 border-l-4 border-blue-500">
         <h3 className="font-semibold text-blue-900 mb-2">📝 Permissões</h3>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• <strong>GESTOR:</strong> Pode criar, editar e desativar usuários</li>
-          <li>• <strong>GERENTE:</strong> Pode criar e editar usuários (não pode desativar)</li>
+          <li>• <strong>GESTOR:</strong> Pode criar, editar, desativar, reativar e deletar usuários</li>
+          <li>• <strong>GERENTE:</strong> Pode criar e editar usuários (sem desativar/reativar/deletar)</li>
           <li>• <strong>AGRONOMO:</strong> Acesso apenas para consulta</li>
           <li>• <strong>FUNCIONARIO:</strong> Acesso restrito ao seu perfil</li>
         </ul>
