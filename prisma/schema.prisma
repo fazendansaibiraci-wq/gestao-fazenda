@@ -98,6 +98,15 @@ model User {
   ajustesReceita   AjusteReceita[]
   aplicacoesInsumo AplicacaoInsumo[]
 
+  // M4 - Rastreabilidade (Etapas)
+  etapasTerreiro      EtapaTerreiro[]
+  etapasSecador       EtapaSecador[]
+  etapasTulha         EtapaTulha[]
+  etapasBeneficio     EtapaBeneficio[]
+  etapasClassificacao EtapaClassificacao[]
+  etapasSilo          EtapaSilo[]
+  etapasArmazem       EtapaArmazem[]
+
   // M5 - Vales
   valesRecebidos Vale[] @relation("ValesRecebidos")
   valesLancados  Vale[] @relation("ValesLancados")
@@ -664,8 +673,8 @@ model Lote {
   // Relacionamentos
   chegadas           ChegadaTerreiro[]
   etapaTerreiro      EtapaTerreiro?
-  etapasSecador      EtapaSecador[]
-  etapasTulha        EtapaTulha[]
+  etapaSecador       EtapaSecador?
+  etapaTulha         EtapaTulha?
   etapaBeneficio     EtapaBeneficio?
   etapaClassificacao EtapaClassificacao?
   etapaSilo          EtapaSilo?
@@ -713,34 +722,38 @@ model EtapaTerreiro {
   loteId String @unique
 
   umidadeEntrada Float // %
+  umidadeSaida   Float? // %
   dataEntrada    DateTime
   dataSaida      DateTime?
   diasTerreiro   Int? // calculado
 
-  observacao        String?
-  responsavelId     String
-  dataCriacao       DateTime @default(now())
-  ultimaAtualizacao DateTime @updatedAt
+  observacao    String?
+  responsavel   User     @relation(fields: [responsavelId], references: [id])
+  responsavelId String
+  dataCriacao   DateTime @default(now())
 
   @@map("etapas_terreiro")
 }
 
 // Etapa 3: Secador Estático
 model EtapaSecador {
-  id    String @id @default(cuid())
-  lotes Lote[]
+  id     String @id @default(cuid())
+  lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  loteId String @unique
 
-  numeroSecador  Int // 1, 2, 3, ... (38.000 L cada)
-  dataEntrada    DateTime
-  horarioEntrada String // HH:MM
-  dataSaida      DateTime?
-  horarioSaida   String? // HH:MM
+  secadorId        Int // 1, 2, 3, ... (38.000 L cada)
+  quantidadeLitros Float
+  dataEntrada      DateTime
+  horaEntrada      String? // HH:MM
+  dataSaida        DateTime?
+  horaSaida        String? // HH:MM
 
   umidadeInicial Float
-  umidadeFinal   Float?
-  tempoSecagem   Int? // em horas, calculado
+  umidadeSaida   Float?
+  tempoSecagem   Float? // em horas, calculado
 
   observacao    String?
+  responsavel   User     @relation(fields: [responsavelId], references: [id])
   responsavelId String
   dataCriacao   DateTime @default(now())
 
@@ -749,17 +762,20 @@ model EtapaSecador {
 
 // Etapa 4: Tulha de Descanso
 model EtapaTulha {
-  id    String @id @default(cuid())
-  lotes Lote[]
+  id     String @id @default(cuid())
+  lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  loteId String @unique
 
-  numeroTulha Int // 1-6 (76.000 L cada, comporta 2 secadores)
-  dataEntrada DateTime
-  dataSaida   DateTime?
+  tulhaId          Int // 1-6 (76.000 L cada, comporta 2 secadores)
+  quantidadeLitros Float
+  dataEntrada      DateTime
+  dataSaida        DateTime?
 
   // Histórico de fusões nesta tulha
   fusoesTulha FusaoTulha[]
 
   observacao    String?
+  responsavel   User     @relation(fields: [responsavelId], references: [id])
   responsavelId String
   dataCriacao   DateTime @default(now())
 
@@ -788,16 +804,17 @@ model EtapaBeneficio {
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String @unique
 
-  data        DateTime
-  horaInicio  String // HH:MM
-  horaFim     String? // HH:MM
-  horasTotais Int? // calculado
+  horaInicio         String // HH:MM
+  horaFim            String? // HH:MM
+  tempoProcessamento Float? // calculado em horas
 
   umidadeEntrada Float
+  umidadeSaida   Float?
   observacao     String?
 
-  operadorId  String
-  dataCriacao DateTime @default(now())
+  responsavel   User     @relation(fields: [responsavelId], references: [id])
+  responsavelId String
+  dataCriacao   DateTime @default(now())
 
   @@map("etapas_beneficio")
 }
@@ -814,13 +831,15 @@ model EtapaClassificacao {
   moca10        Float // %
   peneira13     Float // %
   catacao       Float // %
+  fundo         Float? // %
 
   pontuacaoBebida Float? // 0-100
   umidadeFinal    Float
 
-  observacao    String?
-  responsavelId String // Sócio ou Gerente apenas
-  dataCriacao   DateTime @default(now())
+  observacao        String?
+  responsavel       User     @relation(fields: [responsavelId], references: [id])
+  responsavelId     String
+  dataClassificacao DateTime @default(now())
 
   @@map("etapas_classificacao")
 }
@@ -831,13 +850,14 @@ model EtapaSilo {
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String @unique
 
-  tipoSilo    String // "peneira17+" ou "bica_corrida"
+  siloId      Int // ID do silo (1, 2, 3, etc)
   dataEntrada DateTime
   dataSaida   DateTime?
 
   fusoesSilo FusaoSilo[]
 
   observacao    String?
+  responsavel   User     @relation(fields: [responsavelId], references: [id])
   responsavelId String
   dataCriacao   DateTime @default(now())
 
@@ -877,9 +897,10 @@ model EtapaArmazem {
   nomeArmazem   String?
   numeroBalanca String?
 
-  observacao  String?
-  gerenteId   String
-  dataCriacao DateTime @default(now())
+  observacao    String?
+  responsavel   User     @relation(fields: [responsavelId], references: [id])
+  responsavelId String
+  dataCriacao   DateTime @default(now())
 
   @@map("etapas_armazem")
 }
