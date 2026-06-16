@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Bot,
+  Fuel,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -24,6 +25,7 @@ const menuItems = [
   { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor },
   { label: 'Produtos', href: '/modules/produtos', icon: Package },
   { label: 'Safras', href: '/modules/safras', icon: Calendar },
+  { label: 'Combustível', href: '/modules/combustivel', icon: Fuel },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3 },
   { label: 'Assistente IA', href: '/modules/assistente', icon: Bot, role: 'GESTOR' },
   { label: 'Configurações', href: '/settings', icon: Settings },
