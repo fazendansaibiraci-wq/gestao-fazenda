@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import {
   Home,
   Leaf,
@@ -80,7 +81,10 @@ export function Sidebar() {
 
         {/* Logout */}
         <div className="border-t border-secondary p-4">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-light hover:bg-secondary/20 transition-colors">
+          <button
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-light hover:bg-secondary/20 transition-colors"
+          >
             <LogOut className="w-5 h-5 flex-shrink-0" />
             {isOpen && <span>Sair</span>}
           </button>
