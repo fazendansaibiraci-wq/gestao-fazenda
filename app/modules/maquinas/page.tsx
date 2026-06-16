@@ -1,0 +1,211 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Plus, Trash2 } from 'lucide-react'
+import { redirect, useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+
+export default function MaquinasPage() {
+  const router = useRouter()
+  const { status } = useSession()
+  const [maquinas, setMaquinas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [formData, setFormData] = useState({
+    nome: '',
+    tipo: 'Trator',
+    marca: '',
+    modelo: '',
+    ano: new Date().getFullYear(),
+    placa: '',
+    status: 'ATIVA',
+  })
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (status === 'unauthenticated') redirect('/login')
+    if (status === 'authenticated') load()
+  }, [status])
+
+  const load = async () => {
+    try {
+      const res = await fetch('/api/maquinas')
+      const data = await res.json()
+      setMaquinas(data.data || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const method = editingId ? 'PUT' : 'POST'
+      const url = editingId ? `/api/maquinas/${editingId}` : '/api/maquinas'
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      if (!res.ok) throw new Error('Erro')
+      setFormData({
+        nome: '',
+        tipo: 'Trator',
+        marca: '',
+        modelo: '',
+        ano: new Date().getFullYear(),
+        placa: '',
+        status: 'ATIVA',
+      })
+      setEditingId(null)
+      load()
+    } catch (err) {
+      alert('Erro ao salvar')
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Deletar máquina?')) {
+      try {
+        await fetch(`/api/maquinas/${id}`, { method: 'DELETE' })
+        load()
+      } catch (err) {
+        alert('Erro')
+      }
+    }
+  }
+
+  if (loading) return <div className="flex justify-center py-12"><div className="spinner"></div></div>
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-primary">Máquinas e Implementos</h1>
+
+      {/* Formulário */}
+      <form onSubmit={handleSubmit} className="card space-y-4">
+        <h2 className="font-semibold text-lg">{editingId ? 'Editar' : 'Nova'} Máquina</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input
+            type="text"
+            placeholder="Nome/Identificação"
+            value={formData.nome}
+            onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+            required
+            className="border rounded-lg px-3 py-2"
+          />
+          <select
+            value={formData.tipo}
+            onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+            className="border rounded-lg px-3 py-2"
+          >
+            <option>Trator</option>
+            <option>Pulverizador</option>
+            <option>Colhedora</option>
+            <option>Implemento</option>
+          </select>
+          <input
+            type="text"
+            placeholder="Marca"
+            value={formData.marca}
+            onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
+            className="border rounded-lg px-3 py-2"
+          />
+          <input
+            type="text"
+            placeholder="Modelo"
+            value={formData.modelo}
+            onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
+            className="border rounded-lg px-3 py-2"
+          />
+          <input
+            type="number"
+            placeholder="Ano"
+            value={formData.ano}
+            onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value) })}
+            className="border rounded-lg px-3 py-2"
+          />
+          <input
+            type="text"
+            placeholder="Placa"
+            value={formData.placa}
+            onChange={(e) => setFormData({ ...formData, placa: e.target.value })}
+            className="border rounded-lg px-3 py-2"
+          />
+          <select
+            value={formData.status}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            className="border rounded-lg px-3 py-2"
+          >
+            <option value="ATIVA">Ativa</option>
+            <option value="MANUTENCAO">Manutenção</option>
+            <option value="INATIVA">Inativa</option>
+          </select>
+          <button type="submit" className="btn btn-primary col-span-1">
+            {editingId ? 'Atualizar' : 'Adicionar'}
+          </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingId(null)
+                setFormData({
+                  nome: '',
+                  tipo: 'Trator',
+                  marca: '',
+                  modelo: '',
+                  ano: new Date().getFullYear(),
+                  placa: '',
+                  status: 'ATIVA',
+                })
+              }}
+              className="btn btn-outline"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+      </form>
+
+      {/* Lista */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {maquinas.map((m: any) => (
+          <div key={m.id} className="card">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h3 className="font-bold text-primary">{m.nome}</h3>
+                <p className="text-sm text-gray-600">{m.tipo}</p>
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                m.status === 'ATIVA' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+              }`}>
+                {m.status}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">
+              {m.marca} {m.modelo} {m.ano && `(${m.ano})`}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setEditingId(m.id)
+                  setFormData(m)
+                }}
+                className="flex-1 btn btn-outline text-sm"
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => handleDelete(m.id)}
+                className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

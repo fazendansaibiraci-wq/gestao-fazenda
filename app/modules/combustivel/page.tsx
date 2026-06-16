@@ -1,0 +1,515 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { redirect } from 'next/navigation'
+import { Fuel, BarChart3, Droplet } from 'lucide-react'
+
+export default function CombustivelPage() {
+  const { data: session, status } = useSession()
+  const [activeTab, setActiveTab] = useState('abastecimento')
+  const [maquinas, setMaquinas] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (status === 'unauthenticated') redirect('/login')
+    if (session?.user?.role && !['GERENTE', 'GESTOR'].includes(session.user.role)) {
+      redirect('/dashboard')
+    }
+    if (status === 'authenticated') load()
+  }, [status, session])
+
+  const load = async () => {
+    try {
+      const res = await fetch('/api/maquinas')
+      const data = await res.json()
+      setMaquinas(data.data?.filter((m: any) => m.tipo === 'Trator') || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (status === 'loading' || loading) {
+    return <div className="flex justify-center py-12"><div className="spinner"></div></div>
+  }
+
+  if (session?.user?.role && !['GERENTE', 'GESTOR'].includes(session.user.role)) {
+    return null
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-primary">Gestão de Combustível</h1>
+        <p className="text-gray-600 mt-1">Controle de abastecimentos e consumo de diesel</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('abastecimento')}
+          className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+            activeTab === 'abastecimento'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Fuel className="inline w-4 h-4 mr-2" />
+          Abastecimento
+        </button>
+        <button
+          onClick={() => setActiveTab('entrada')}
+          className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+            activeTab === 'entrada'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Droplet className="inline w-4 h-4 mr-2" />
+          Entrada Diesel
+        </button>
+        <button
+          onClick={() => setActiveTab('estoque')}
+          className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+            activeTab === 'estoque'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <BarChart3 className="inline w-4 h-4 mr-2" />
+          Painel Estoque
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="card">
+        {activeTab === 'abastecimento' && <AbaAbastecimento maquinas={maquinas} />}
+        {activeTab === 'entrada' && <AbaEntrada />}
+        {activeTab === 'estoque' && <AbaPainelEstoque />}
+      </div>
+    </div>
+  )
+}
+
+// Aba 1: Abastecimento de Trator
+function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
+  const [abastecimentos, setAbastecimentos] = useState([])
+  const [form, setForm] = useState({
+    maquinaId: '',
+    data: new Date().toISOString().split('T')[0],
+    horimetroAtual: '',
+    litrosAbastecidos: '',
+    valorPorLitro: '',
+    observacao: '',
+  })
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  const load = async () => {
+    try {
+      const res = await fetch('/api/abastecimentos')
+      const data = await res.json()
+      setAbastecimentos(data.data || [])
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const res = await fetch('/api/abastecimentos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          horimetroAtual: parseFloat(form.horimetroAtual),
+          litrosAbastecidos: parseFloat(form.litrosAbastecidos),
+          valorPorLitro: parseFloat(form.valorPorLitro),
+        }),
+      })
+      if (!res.ok) throw new Error('Erro')
+      setForm({
+        maquinaId: '',
+        data: new Date().toISOString().split('T')[0],
+        horimetroAtual: '',
+        litrosAbastecidos: '',
+        valorPorLitro: '',
+        observacao: '',
+      })
+      load()
+    } catch (err) {
+      alert('Erro ao salvar')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded-lg space-y-4">
+        <h3 className="font-semibold text-primary">Novo Abastecimento</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="text-sm font-medium block mb-1">Máquina (Trator)</label>
+            <select
+              value={form.maquinaId}
+              onChange={(e) => setForm({ ...form, maquinaId: e.target.value })}
+              required
+              className="w-full border rounded px-3 py-2 text-sm"
+            >
+              <option value="">Selecionar trator</option>
+              {maquinas.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Data/Hora</label>
+            <input
+              type="datetime-local"
+              value={form.data}
+              onChange={(e) => setForm({ ...form, data: e.target.value })}
+              required
+              className="w-full border rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Horímetro Atual (h)</label>
+            <input
+              type="number"
+              value={form.horimetroAtual}
+              onChange={(e) => setForm({ ...form, horimetroAtual: e.target.value })}
+              required
+              step="0.1"
+              className="w-full border rounded px-3 py-2 text-sm"
+              placeholder="0,0"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Litros Abastecidos</label>
+            <input
+              type="number"
+              value={form.litrosAbastecidos}
+              onChange={(e) => setForm({ ...form, litrosAbastecidos: e.target.value })}
+              required
+              step="0.01"
+              className="w-full border rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Valor R$/Litro</label>
+            <input
+              type="number"
+              value={form.valorPorLitro}
+              onChange={(e) => setForm({ ...form, valorPorLitro: e.target.value })}
+              required
+              step="0.01"
+              className="w-full border rounded px-3 py-2 text-sm"
+              placeholder="0,00"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Observação</label>
+            <input
+              type="text"
+              value={form.observacao}
+              onChange={(e) => setForm({ ...form, observacao: e.target.value })}
+              className="w-full border rounded px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+        <button type="submit" disabled={loading} className="btn btn-primary">
+          {loading ? 'Salvando...' : 'Registrar Abastecimento'}
+        </button>
+      </form>
+
+      {/* Histórico */}
+      <div>
+        <h3 className="font-semibold mb-3">Histórico de Abastecimentos</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-4 py-2 text-left">Data</th>
+                <th className="px-4 py-2 text-left">Máquina</th>
+                <th className="px-4 py-2 text-left">Horímetro</th>
+                <th className="px-4 py-2 text-left">Litros</th>
+                <th className="px-4 py-2 text-left">Consumo L/h</th>
+                <th className="px-4 py-2 text-left">Custo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {abastecimentos.slice(0, 10).map((a: any) => (
+                <tr key={a.id} className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-2">{new Date(a.data).toLocaleDateString('pt-BR')}</td>
+                  <td className="px-4 py-2 font-medium">{a.maquina?.nome}</td>
+                  <td className="px-4 py-2">{a.horimetroAtual.toFixed(1)}h</td>
+                  <td className="px-4 py-2">{a.litrosAbastecidos.toFixed(2)}L</td>
+                  <td className="px-4 py-2">{a.consumoLporH?.toFixed(2) || '-'}</td>
+                  <td className="px-4 py-2">R$ {a.custoAbastecimento?.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Aba 2: Entrada de Diesel
+function AbaEntrada() {
+  const [entradas, setEntradas] = useState([])
+  const [form, setForm] = useState({
+    data: new Date().toISOString().split('T')[0],
+    litrosRecebidos: '',
+    valorPorLitro: '',
+    nf: '',
+    fornecedor: '',
+  })
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  const load = async () => {
+    try {
+      const res = await fetch('/api/entradas-diesel')
+      const data = await res.json()
+      setEntradas(data.data || [])
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const res = await fetch('/api/entradas-diesel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          litrosRecebidos: parseFloat(form.litrosRecebidos),
+          valorPorLitro: parseFloat(form.valorPorLitro),
+        }),
+      })
+      if (!res.ok) throw new Error('Erro')
+      setForm({
+        data: new Date().toISOString().split('T')[0],
+        litrosRecebidos: '',
+        valorPorLitro: '',
+        nf: '',
+        fornecedor: '',
+      })
+      load()
+    } catch (err) {
+      alert('Erro ao salvar')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded-lg space-y-4">
+        <h3 className="font-semibold text-primary">Nova Entrada de Diesel</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="text-sm font-medium block mb-1">Data/Hora *</label>
+            <input
+              type="datetime-local"
+              value={form.data}
+              onChange={(e) => setForm({ ...form, data: e.target.value })}
+              required
+              className="w-full border rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Litros Recebidos *</label>
+            <input
+              type="number"
+              value={form.litrosRecebidos}
+              onChange={(e) => setForm({ ...form, litrosRecebidos: e.target.value })}
+              required
+              step="0.01"
+              className="w-full border rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Valor R$/Litro *</label>
+            <input
+              type="number"
+              value={form.valorPorLitro}
+              onChange={(e) => setForm({ ...form, valorPorLitro: e.target.value })}
+              required
+              step="0.01"
+              className="w-full border rounded px-3 py-2 text-sm"
+              placeholder="0,00"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">NF</label>
+            <input
+              type="text"
+              value={form.nf}
+              onChange={(e) => setForm({ ...form, nf: e.target.value })}
+              className="w-full border rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Fornecedor</label>
+            <input
+              type="text"
+              value={form.fornecedor}
+              onChange={(e) => setForm({ ...form, fornecedor: e.target.value })}
+              className="w-full border rounded px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+        <button type="submit" disabled={loading} className="btn btn-primary">
+          {loading ? 'Salvando...' : 'Registrar Entrada'}
+        </button>
+      </form>
+
+      {/* Histórico */}
+      <div>
+        <h3 className="font-semibold mb-3">Histórico de Entradas</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-4 py-2 text-left">Data</th>
+                <th className="px-4 py-2 text-left">Litros</th>
+                <th className="px-4 py-2 text-left">R$/Litro</th>
+                <th className="px-4 py-2 text-left">Custo Total</th>
+                <th className="px-4 py-2 text-left">NF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entradas.slice(0, 10).map((e: any) => (
+                <tr key={e.id} className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-2">{new Date(e.data).toLocaleDateString('pt-BR')}</td>
+                  <td className="px-4 py-2">{e.litrosRecebidos.toFixed(2)}L</td>
+                  <td className="px-4 py-2">R$ {e.valorPorLitro.toFixed(2)}</td>
+                  <td className="px-4 py-2">R$ {e.custoTotal?.toFixed(2) || (e.litrosRecebidos * e.valorPorLitro).toFixed(2)}</td>
+                  <td className="px-4 py-2">{e.nf || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Aba 3: Painel de Estoque
+function AbaPainelEstoque() {
+  const [estoque, setEstoque] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  const load = async () => {
+    try {
+      const res = await fetch('/api/painel-estoque')
+      const data = await res.json()
+      setEstoque(data.data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) return <div className="flex justify-center py-8"><div className="spinner"></div></div>
+
+  return (
+    <div className="space-y-6">
+      {/* Indicadores Principais */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
+          <p className="text-sm text-blue-700 font-medium">Estoque Teórico</p>
+          <p className="text-3xl font-bold text-blue-900 mt-2">{estoque?.estoqueTeorico?.toFixed(0) || 0}L</p>
+        </div>
+        <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
+          <p className="text-sm text-green-700 font-medium">Estoque Físico</p>
+          <p className="text-3xl font-bold text-green-900 mt-2">{estoque?.estoqueFisico?.toFixed(0) || 0}L</p>
+        </div>
+        <div className={`bg-gradient-to-br p-4 rounded-lg ${
+          estoque?.percentualDif > 2 ? 'from-red-50 to-red-100' : 'from-gray-50 to-gray-100'
+        }`}>
+          <p className="text-sm font-medium">Diferença</p>
+          <p className={`text-3xl font-bold mt-2 ${
+            estoque?.percentualDif > 2 ? 'text-red-900' : 'text-gray-900'
+          }`}>
+            {estoque?.percentualDif?.toFixed(1)}%
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg">
+          <p className="text-sm text-purple-700 font-medium">Custo Médio/Litro</p>
+          <p className="text-3xl font-bold text-purple-900 mt-2">R$ {estoque?.custoMedioLitro?.toFixed(2) || '0,00'}</p>
+        </div>
+      </div>
+
+      {/* Alertas */}
+      {estoque?.percentualDif && estoque.percentualDif > 2 && (
+        <div className="alert alert-error">
+          <p className="font-semibold">⚠️ Alerta de Desvio</p>
+          <p className="text-sm mt-1">Diferença de {estoque.percentualDif.toFixed(1)}% detectada. Possível desvio ou vazamento.</p>
+        </div>
+      )}
+
+      {/* Detalhes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="card">
+          <h4 className="font-semibold text-primary mb-3">Consumo do Período</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Custo Total Consumido:</span>
+              <span className="font-bold">R$ {estoque?.custoTotalConsumo?.toFixed(2) || '0,00'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Custo por Hora (Máquina):</span>
+              <span className="font-bold">R$ {estoque?.custoMedioHora?.toFixed(2) || '0,00'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <h4 className="font-semibold text-primary mb-3">Análise de Estoque</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Diferença (L):</span>
+              <span className="font-bold">{estoque?.diferenca?.toFixed(2)}L</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Status:</span>
+              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                estoque?.percentualDif > 2
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-green-100 text-green-800'
+              }`}>
+                {estoque?.percentualDif && estoque.percentualDif <= 2 ? 'OK' : 'ALERTA'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

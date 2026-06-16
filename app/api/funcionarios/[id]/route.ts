@@ -1,0 +1,160 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const funcionario = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        active: true,
+        tipoSalario: true,
+        salarioEntressafra: true,
+        salarioSafra: true,
+        valorHoraExtraEntressafra: true,
+        valorHoraExtraSafra: true,
+        bancoHorasAtivo: true,
+      },
+    })
+
+    if (!funcionario) {
+      return NextResponse.json(
+        { error: 'Funcionário não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ success: true, data: funcionario })
+  } catch (error) {
+    console.error('GET /api/funcionarios/[id]:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user?.role !== 'GESTOR') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+
+    // Verificar se funcionário existe
+    const funcionarioExistente = await prisma.user.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!funcionarioExistente) {
+      return NextResponse.json(
+        { error: 'Funcionário não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Se trocar email, verificar se novo email já existe
+    if (body.email && body.email !== funcionarioExistente.email) {
+      const emailExists = await prisma.user.findUnique({
+        where: { email: body.email },
+      })
+      if (emailExists) {
+        return NextResponse.json(
+          { error: 'Email já cadastrado' },
+          { status: 409 }
+        )
+      }
+    }
+
+    // Atualizar funcionário
+    const funcionario = await prisma.user.update({
+      where: { id: params.id },
+      data: {
+        name: body.name || undefined,
+        email: body.email || undefined,
+        phone: body.phone,
+        role: body.role || undefined,
+        active: body.active !== undefined ? body.active : undefined,
+        tipoSalario: body.tipoSalario || undefined,
+        salarioEntressafra: body.salarioEntressafra ? parseFloat(body.salarioEntressafra) : undefined,
+        salarioSafra: body.salarioSafra ? parseFloat(body.salarioSafra) : undefined,
+        valorHoraExtraEntressafra: body.valorHoraExtraEntressafra ? parseFloat(body.valorHoraExtraEntressafra) : undefined,
+        valorHoraExtraSafra: body.valorHoraExtraSafra ? parseFloat(body.valorHoraExtraSafra) : undefined,
+        bancoHorasAtivo: body.bancoHorasAtivo !== undefined ? body.bancoHorasAtivo : undefined,
+        // Apenas atualizar senha se foi fornecida
+        ...(body.password && { password: body.password }),
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: funcionario,
+      message: 'Funcionário atualizado com sucesso',
+    })
+  } catch (error) {
+    console.error('PUT /api/funcionarios/[id]:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user?.role !== 'GESTOR') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Verificar se funcionário existe
+    const funcionario = await prisma.user.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!funcionario) {
+      return NextResponse.json(
+        { error: 'Funcionário não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Deleta o funcionário
+    await prisma.user.delete({
+      where: { id: params.id },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Funcionário deletado com sucesso',
+    })
+  } catch (error) {
+    console.error('DELETE /api/funcionarios/[id]:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
