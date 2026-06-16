@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import {
   Home,
   Leaf,
@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   X,
+  Bot,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -24,12 +25,14 @@ const menuItems = [
   { label: 'Produtos', href: '/modules/produtos', icon: Package },
   { label: 'Safras', href: '/modules/safras', icon: Calendar },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3 },
+  { label: 'Assistente IA', href: '/modules/assistente', icon: Bot, role: 'GESTOR' },
   { label: 'Configurações', href: '/settings', icon: Settings },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(true)
+  const { data: session } = useSession()
 
   const isActive = (href: string) => {
     return pathname === href || pathname.startsWith(href + '/')
@@ -63,20 +66,22 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-2">
-          {menuItems.map(({ label, href, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive(href)
-                  ? 'bg-secondary text-primary font-semibold'
-                  : 'text-light hover:bg-secondary/20'
-              }`}
-            >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              {isOpen && <span className="truncate">{label}</span>}
-            </Link>
-          ))}
+          {menuItems
+            .filter((item) => !item.role || (session?.user as any)?.role === item.role)
+            .map(({ label, href, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  isActive(href)
+                    ? 'bg-secondary text-primary font-semibold'
+                    : 'text-light hover:bg-secondary/20'
+                }`}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                {isOpen && <span className="truncate">{label}</span>}
+              </Link>
+            ))}
         </nav>
 
         {/* Logout */}
