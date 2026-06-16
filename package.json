@@ -19,6 +19,7 @@
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.2.15",
     "autoprefixer": "^10.4.16",
+    "bcryptjs": "^3.0.3",
     "date-fns": "^4.4.0",
     "dexie": "^3.2.4",
     "exceljs": "^4.3.0",
