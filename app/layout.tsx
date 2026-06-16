@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { RootLayout } from '@/components/layout/RootLayout'
+import { Providers } from '@/components/providers'
 
 const APP_NAME = 'Gestão Fazenda'
 const APP_DEFAULT_TITLE = 'Gestão Fazenda - Sistema de Gestão Agrícola'
@@ -57,10 +58,11 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta name="apple-mobile-web-app-title" content={APP_NAME} />
         <meta name="theme-color" content="#2d6a4f" />
         <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body>
-        <RootLayout>{children}</RootLayout>
+        <Providers>
+          <RootLayout>{children}</RootLayout>
+        </Providers>
       </body>
     </html>
   )
