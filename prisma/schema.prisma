@@ -864,14 +864,16 @@ model EtapaArmazem {
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String @unique
 
-  dataSaida         DateTime
-  pesoKg            Float? // em kg (alias para pesoBruto)
-  pesoBruto         Float // em kg
+  dataSaida         DateTime?
+  pesoKg            Float?
+  quantidadeSacas   Int?
+  nfTransporte      String?
+  armazemDestino    String?
+  numerosPesagem    String?
+  pesoBruto         Float? // em kg
   pesoLiquido       Float? // em kg (após limpeza)
-  quantidadeSacas   Float? // calculado: peso / 60
   numeroLoteArmazem String? // ID do lote no armazém
 
-  nfTransporte  String?
   nomeArmazem   String?
   numeroBalanca String?
 
