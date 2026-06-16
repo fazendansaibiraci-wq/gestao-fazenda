@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { Package, Merge2 } from 'lucide-react'
+import { Package, GitMerge } from 'lucide-react'
 
 export default function SiloPage() {
   const { data: session, status } = useSession()
@@ -130,7 +130,7 @@ export default function SiloPage() {
               modeFusao ? 'bg-primary text-white' : 'bg-gray-200'
             }`}
           >
-            <Merge2 className="w-4 h-4" />
+            <GitMerge className="w-4 h-4" />
             Fusionar Lotes
           </button>
         </div>
@@ -208,7 +208,7 @@ export default function SiloPage() {
           {/* Modo Fusão */}
           <div className="card">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Merge2 className="w-5 h-5 text-primary" />
+              <GitMerge className="w-5 h-5 text-primary" />
               Fusionar Lotes em Silo
             </h3>
 
