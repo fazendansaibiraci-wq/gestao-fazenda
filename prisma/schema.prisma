@@ -280,6 +280,9 @@ model Safra {
   aplicacoes    AplicacaoInsumo[] @relation("AplicacaoInsumoSafra")
   historico     HistoricoAplicacao[] @relation("HistoricoAplicacaoSafra")
 
+  // SafraReceita relation
+  safraReceita  SafraReceita? @relation("SafraReceitasRelacao")
+
   @@map("safras")
 }
 
@@ -461,6 +464,9 @@ model ReceitaBase {
   // Aplicações
   aplicacoes        AplicacaoInsumo[]
 
+  // SafraReceita relation
+  safraReceita      SafraReceita? @relation("ReceitaBaseSafra")
+
   criadoPor         User       @relation("ReceitaBaseCriador", fields: [criadoPorId], references: [id])
   criadoPorId       String
 
@@ -534,6 +540,9 @@ model AplicacaoInsumo {
   realizadoPor      User       @relation(fields: [realizadoPorId], references: [id])
   realizadoPorId    String
 
+  // SafraReceita relation
+  safraReceita      SafraReceita? @relation("AplicacaoInsumoSafra")
+
   dataCriacao       DateTime   @default(now())
 
   @@index([talhaoId, data])
@@ -557,6 +566,9 @@ model HistoricoAplicacao {
   custoTotal        Float?
   custoPorHectare   Float?
 
+  // SafraReceita relation
+  safraReceita      SafraReceita? @relation("HistoricoAplicacaoSafra")
+
   dataCriacao       DateTime   @default(now())
 
   @@index([talhaoId, safraId])
@@ -572,6 +584,9 @@ model SafraReceita {
   receitasBase      ReceitaBase[] @relation("ReceitaBaseSafra")
   aplicacoes        AplicacaoInsumo[] @relation("AplicacaoInsumoSafra")
   historico         HistoricoAplicacao[] @relation("HistoricoAplicacaoSafra")
+
+  // SafraExtended relation
+  safraExtended     SafraExtended?
 
   @@unique([safraId])
   @@map("safra_receitas")
