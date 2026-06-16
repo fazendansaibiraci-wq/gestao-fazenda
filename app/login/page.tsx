@@ -110,7 +110,7 @@ export default function LoginPage() {
             </p>
             <ul className="text-xs text-blue-600 space-y-1">
               <li>Email: <code className="font-mono">admin@fazenda.com</code></li>
-              <li>Senha: <code className="font-mono">senha123</code></li>
+              <li>Senha: <code className="font-mono">admin123</code></li>
             </ul>
           </div>
 
