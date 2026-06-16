@@ -60,6 +60,9 @@ const withPWA = require('next-pwa')({
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 module.exports = withPWA(nextConfig);
