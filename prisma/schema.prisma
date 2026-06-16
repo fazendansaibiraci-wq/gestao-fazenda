@@ -28,7 +28,7 @@ enum TalhaoStatus {
 }
 
 enum PerfilTalhao {
-  RECÉM_PLANTADO
+  RECEM_PLANTADO
   ESQUELETADO
   PLENA_PRODUCAO
 }
@@ -88,7 +88,7 @@ model User {
   escalasAfra              EscalaSafra[]
   registrosAtividade       RegistroAtividade[]
   bancoHoras               BancoHoras?
-  aprovacoesPendentes      AprovaçãoHoraExtra[]
+  aprovacoesPendentes      AprovacaoHoraExtra[]
 
   // M2 - Combustível
   conferenciasEstoque      ConferenciaEstoque[]
@@ -160,7 +160,7 @@ model BancoHoras {
 }
 
 // Aprovações de hora extra
-model AprovaçãoHoraExtra {
+model AprovacaoHoraExtra {
   id            String     @id @default(cuid())
   funcionario   User       @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
   funcionarioId String
@@ -433,7 +433,7 @@ model RelatorioM2 {
 
 // ========== M3 - RECEITAS E INSUMOS ==========
 
-enum SeqüenciaAplicacao {
+enum SequenciaAplicacao {
   PRIMEIRA
   SEGUNDA
   TERCEIRA
@@ -445,7 +445,7 @@ model ReceitaBase {
   id                String     @id @default(cuid())
   nome              String
   atividade         TipoAtividade
-  sequencia         SeqüenciaAplicacao
+  sequencia         SequenciaAplicacao
   perfilTalhao      PerfilTalhao
   safra             Safra      @relation("ReceitaBaseSafra", fields: [safraId], references: [id], onDelete: Cascade)
   safraId           String
@@ -789,7 +789,7 @@ model EtapaClassificacao {
   peneira15         Float      // %
   moca10            Float      // %
   peneira13         Float      // %
-  cataçao           Float      // %
+  catacao           Float      // %
 
   pontuacaoBebida   Float?     // 0-100
   umidadeFinal      Float
