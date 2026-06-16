@@ -680,6 +680,14 @@ model Lote {
   etapaSilo          EtapaSilo?
   etapaArmazem       EtapaArmazem?
 
+  // Fusões em Tulha
+  fusoesTulhaComoPrincipal  FusaoTulha[] @relation("FusaoTulhaLotePrincipal")
+  fusoesTulhaComoSecundario FusaoTulha[] @relation("FusaoTulhaLoteSecundario")
+
+  // Fusões em Silo
+  fusoesSiloComoPrincipal  FusaoSilo[] @relation("FusaoSiloLotePrincipal")
+  fusoesSiloComoSecundario FusaoSilo[] @relation("FusaoSiloLoteSecundario")
+
   @@index([safraId])
   @@index([statusAtual])
   @@index([dataCriacao])
@@ -788,11 +796,15 @@ model FusaoTulha {
   tulha   EtapaTulha @relation(fields: [tulhaId], references: [id], onDelete: Cascade)
   tulhaId String
 
-  lotesOriginais String[] // IDs dos lotes originais
-  loteResultante String // ID do lote resultante (ex: L006-009)
+  lotePrincipal    Lote   @relation("FusaoTulhaLotePrincipal", fields: [lotePrincipalId], references: [id])
+  lotePrincipalId  String
+  loteSecundario   Lote   @relation("FusaoTulhaLoteSecundario", fields: [loteSecundarioId], references: [id])
+  loteSecundarioId String
 
-  observacao  String?
-  realizadoEm DateTime @default(now())
+  quantidadeTotal Float
+  dataFusao       DateTime
+  realizadoPor    String?
+  observacao      String?
 
   @@index([tulhaId])
   @@map("fusoes_tulha")
@@ -870,10 +882,15 @@ model FusaoSilo {
   silo   EtapaSilo @relation(fields: [siloId], references: [id], onDelete: Cascade)
   siloId String
 
-  lotesOriginais String[]
-  loteResultante String
+  lotePrincipal    Lote   @relation("FusaoSiloLotePrincipal", fields: [lotePrincipalId], references: [id])
+  lotePrincipalId  String
+  loteSecundario   Lote   @relation("FusaoSiloLoteSecundario", fields: [loteSecundarioId], references: [id])
+  loteSecundarioId String
 
-  realizadoEm DateTime @default(now())
+  quantidadeTotal Float
+  dataFusao       DateTime
+  realizadoPor    String?
+  observacao      String?
 
   @@map("fusoes_silo")
 }
