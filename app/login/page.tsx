@@ -103,17 +103,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-700 font-semibold mb-2">
-              Credenciais de Teste:
-            </p>
-            <ul className="text-xs text-blue-600 space-y-1">
-              <li>Email: <code className="font-mono">admin@fazenda.com</code></li>
-              <li>Senha: <code className="font-mono">admin123</code></li>
-            </ul>
-          </div>
-
           {/* Footer */}
           <p className="text-center text-gray-600 text-sm mt-6">
             Acesso seguro apenas para usuários autorizados
