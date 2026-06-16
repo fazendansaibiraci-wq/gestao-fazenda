@@ -2,6 +2,7 @@ import { type NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from './prisma'
+import bcrypt from 'bcryptjs'
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -29,9 +30,9 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Usuário inativo')
         }
 
-        // Em produção, use bcrypt ou similar para comparar senhas
-        // Por enquanto, comparação simples para desenvolvimento
-        if (user.password !== credentials.password) {
+        // Comparar senha com bcrypt
+        const passwordMatch = await bcrypt.compare(credentials.password, user.password)
+        if (!passwordMatch) {
           throw new Error('Senha incorreta')
         }
 
