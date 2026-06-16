@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
       const headerCell = worksheet.getCell('A1')
       headerCell.value = `FOLHA DE PAGAMENTO - ${mes}`
       headerCell.font = { bold: true, size: 14 }
-      headerCell.alignment = { horizontal: 'center', vertical: 'center' }
+      headerCell.alignment = { horizontal: 'center', vertical: 'middle' }
 
       // Colunas
       worksheet.columns = [
