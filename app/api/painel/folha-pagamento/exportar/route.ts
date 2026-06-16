@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Horas extras aprovadas
-        const horasExtrasAp = await prisma.aProvaçãoHoraExtra.aggregate({
+        const horasExtrasAp = await prisma.aprovacaoHoraExtra.aggregate({
           where: {
             funcionarioId: func.id,
             status: 'aprovado',
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
       const worksheet = workbook.addWorksheet('Folha de Pagamento')
 
       // Cabeçalho
-      worksheet.merge Cells('A1', 'H1')
+      worksheet.mergeCells('A1', 'H1')
       const headerCell = worksheet.getCell('A1')
       headerCell.value = `FOLHA DE PAGAMENTO - ${mes}`
       headerCell.font = { bold: true, size: 14 }
