@@ -28,7 +28,7 @@ const menuItems = [
   { label: 'Combustível', href: '/modules/combustivel', icon: Fuel },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3 },
   { label: 'Assistente IA', href: '/modules/assistente', icon: Bot, role: 'GESTOR' },
-  { label: 'Configurações', href: '/settings', icon: Settings },
+  { label: 'Configurações', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
 ]
 
 export function Sidebar() {
@@ -69,7 +69,12 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-2">
           {menuItems
-            .filter((item) => !item.role || (session?.user as any)?.role === item.role)
+            .filter((item) => {
+              if (!item.role) return true
+              const userRole = (session?.user as any)?.role
+              const allowedRoles = item.role.split('|')
+              return allowedRoles.includes(userRole)
+            })
             .map(({ label, href, icon: Icon }) => (
               <Link
                 key={href}

@@ -51,9 +51,11 @@ export default function SettingsPage() {
       redirect('/login')
     }
 
-    const userRole = (session?.user as any)?.role
-    if (userRole !== 'GESTOR' && userRole !== 'GERENTE') {
-      redirect('/modules/painel')
+    if (status === 'authenticated') {
+      const userRole = (session?.user as any)?.role
+      if (userRole !== 'GESTOR' && userRole !== 'GERENTE') {
+        redirect('/dashboard')
+      }
     }
   }, [status, session])
 
