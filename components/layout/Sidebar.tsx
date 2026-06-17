@@ -16,19 +16,21 @@ import {
   X,
   Bot,
   Fuel,
+  CheckSquare,
 } from 'lucide-react'
 import { useState } from 'react'
 
 const menuItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: Home },
-  { label: 'Talhões', href: '/modules/talhoes', icon: Leaf },
-  { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor },
-  { label: 'Produtos', href: '/modules/produtos', icon: Package },
-  { label: 'Safras', href: '/modules/safras', icon: Calendar },
-  { label: 'Combustível', href: '/modules/combustivel', icon: Fuel },
-  { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3 },
+  { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Produtos', href: '/modules/produtos', icon: Package, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO' },
   { label: 'Assistente IA', href: '/modules/assistente', icon: Bot, role: 'GESTOR' },
   { label: 'Configurações', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
+  { label: 'Lançamento de Atividades', href: '/modules/atividades', icon: CheckSquare, role: 'FUNCIONARIO' },
 ]
 
 export function Sidebar() {
@@ -70,10 +72,21 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto p-4 space-y-2">
           {menuItems
             .filter((item) => {
-              if (!item.role) return true
               const userRole = (session?.user as any)?.role
-              const allowedRoles = item.role.split('|')
-              return allowedRoles.includes(userRole)
+
+              // Se tem role, o usuário deve estar nele
+              if (item.role) {
+                const allowedRoles = item.role.split('|')
+                if (!allowedRoles.includes(userRole)) return false
+              }
+
+              // Se tem excludeRoles, o usuário não deve estar nele
+              if (item.excludeRoles) {
+                const excludedRoles = item.excludeRoles.split('|')
+                if (excludedRoles.includes(userRole)) return false
+              }
+
+              return true
             })
             .map(({ label, href, icon: Icon }) => (
               <Link

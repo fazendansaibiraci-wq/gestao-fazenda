@@ -30,9 +30,13 @@ export default function DashboardPage() {
     }
 
     if (status === 'authenticated') {
+      const userRole = (session?.user as any)?.role
+      if (userRole === 'FUNCIONARIO') {
+        redirect('/modules/atividades')
+      }
       loadStats()
     }
-  }, [status])
+  }, [status, session])
 
   const loadStats = async () => {
     try {

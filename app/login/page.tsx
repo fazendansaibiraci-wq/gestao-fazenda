@@ -1,13 +1,14 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Leaf } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -28,7 +29,21 @@ export default function LoginPage() {
       if (result?.error) {
         setError(result.error)
       } else if (result?.ok) {
-        router.push('/dashboard')
+        // Fetch a sessão para verificar o role
+        try {
+          const sessionRes = await fetch('/api/auth/session')
+          const sessionData = await sessionRes.json()
+          const userRole = sessionData?.user?.role
+
+          if (userRole === 'FUNCIONARIO') {
+            router.push('/modules/atividades')
+          } else {
+            router.push('/dashboard')
+          }
+        } catch (err) {
+          // Fallback para dashboard se não conseguir obter sessão
+          router.push('/dashboard')
+        }
       }
     } catch (err) {
       setError('Erro ao fazer login. Tente novamente.')
