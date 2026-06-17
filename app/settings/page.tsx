@@ -227,10 +227,13 @@ export default function SettingsPage() {
 
       {/* Formulário */}
       {showForm && (
-        <div className="card">
-          <h2 className="text-xl font-bold mb-4">
-            {editingId ? 'Editar Usuário' : 'Novo Usuário'}
-          </h2>
+        <div className={`card ${editingId ? 'border-l-4 border-l-blue-500' : ''}`}>
+          <div className="flex items-center gap-2 mb-4">
+            {editingId && <Edit2 className="w-5 h-5 text-blue-600" />}
+            <h2 className="text-xl font-bold">
+              {editingId ? `Editar Usuário: ${formData.name}` : 'Novo Usuário'}
+            </h2>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Nome */}
@@ -240,8 +243,9 @@ export default function SettingsPage() {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 placeholder="Nome completo"
+                required
               />
             </div>
 
@@ -252,23 +256,25 @@ export default function SettingsPage() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 placeholder="seu@email.com"
+                required
               />
             </div>
 
             {/* Senha */}
             <div>
               <label className="block text-sm font-medium mb-1">
-                {editingId ? 'Senha (deixe em branco para manter)' : 'Senha'} *
+                {editingId ? 'Nova Senha (opcional)' : 'Senha'} *
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full border rounded px-3 py-2 pr-10"
-                  placeholder="••••••••"
+                  className="w-full border rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder={editingId ? 'Deixe em branco para manter a senha atual' : '••••••••'}
+                  required={!editingId}
                 />
                 <button
                   type="button"
@@ -283,6 +289,9 @@ export default function SettingsPage() {
                   )}
                 </button>
               </div>
+              {editingId && (
+                <p className="text-xs text-gray-500 mt-1">Deixe em branco para manter a senha atual</p>
+              )}
             </div>
 
             {/* Perfil */}
@@ -291,7 +300,8 @@ export default function SettingsPage() {
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                required
               >
                 {roleOptions.map((role) => (
                   <option key={role.value} value={role.value}>
@@ -305,14 +315,14 @@ export default function SettingsPage() {
             <div className="flex gap-2 pt-4">
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition"
+                className="flex-1 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition font-medium"
               >
-                {editingId ? 'Atualizar' : 'Cadastrar'}
+                {editingId ? 'Atualizar Usuário' : 'Cadastrar Usuário'}
               </button>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition font-medium"
               >
                 Cancelar
               </button>
