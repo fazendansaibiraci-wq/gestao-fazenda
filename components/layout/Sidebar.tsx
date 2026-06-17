@@ -16,12 +16,13 @@ import {
   X,
   Bot,
   Fuel,
-  CheckSquare,
+  ClipboardList,
 } from 'lucide-react'
 import { useState } from 'react'
 
 const menuItems = [
   { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Registro de Atividades', href: '/modules/atividades', icon: ClipboardList },
   { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
   { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO' },
   { label: 'Produtos', href: '/modules/produtos', icon: Package, excludeRoles: 'FUNCIONARIO' },
@@ -30,7 +31,6 @@ const menuItems = [
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO' },
   { label: 'Assistente IA', href: '/modules/assistente', icon: Bot, role: 'GESTOR' },
   { label: 'Configurações', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
-  { label: 'Lançamento de Atividades', href: '/modules/atividades', icon: CheckSquare, role: 'FUNCIONARIO' },
 ]
 
 export function Sidebar() {
