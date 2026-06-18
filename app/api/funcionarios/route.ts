@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,12 +71,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Hash da senha com bcrypt
+    const hashedPassword = await bcrypt.hash(body.password, 10)
+
     // Criar funcionário
     const funcionario = await prisma.user.create({
       data: {
         name: body.name,
         email: body.email,
-        password: body.password, // Em produção, usar bcrypt!
+        password: hashedPassword,
         phone: body.phone,
         role: body.role || 'FUNCIONARIO',
         active: body.active !== false,

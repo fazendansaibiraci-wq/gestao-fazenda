@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
 
 export async function GET(
   request: NextRequest,
@@ -85,24 +86,29 @@ export async function PUT(
       }
     }
 
+    // Hash da senha se foi fornecida
+    let updateData: any = {
+      name: body.name || undefined,
+      email: body.email || undefined,
+      phone: body.phone,
+      role: body.role || undefined,
+      active: body.active !== undefined ? body.active : undefined,
+      tipoSalario: body.tipoSalario || undefined,
+      salarioEntressafra: body.salarioEntressafra ? parseFloat(body.salarioEntressafra) : undefined,
+      salarioSafra: body.salarioSafra ? parseFloat(body.salarioSafra) : undefined,
+      valorHoraExtraEntressafra: body.valorHoraExtraEntressafra ? parseFloat(body.valorHoraExtraEntressafra) : undefined,
+      valorHoraExtraSafra: body.valorHoraExtraSafra ? parseFloat(body.valorHoraExtraSafra) : undefined,
+      bancoHorasAtivo: body.bancoHorasAtivo !== undefined ? body.bancoHorasAtivo : undefined,
+    }
+
+    if (body.password) {
+      updateData.password = await bcrypt.hash(body.password, 10)
+    }
+
     // Atualizar funcionário
     const funcionario = await prisma.user.update({
       where: { id: params.id },
-      data: {
-        name: body.name || undefined,
-        email: body.email || undefined,
-        phone: body.phone,
-        role: body.role || undefined,
-        active: body.active !== undefined ? body.active : undefined,
-        tipoSalario: body.tipoSalario || undefined,
-        salarioEntressafra: body.salarioEntressafra ? parseFloat(body.salarioEntressafra) : undefined,
-        salarioSafra: body.salarioSafra ? parseFloat(body.salarioSafra) : undefined,
-        valorHoraExtraEntressafra: body.valorHoraExtraEntressafra ? parseFloat(body.valorHoraExtraEntressafra) : undefined,
-        valorHoraExtraSafra: body.valorHoraExtraSafra ? parseFloat(body.valorHoraExtraSafra) : undefined,
-        bancoHorasAtivo: body.bancoHorasAtivo !== undefined ? body.bancoHorasAtivo : undefined,
-        // Apenas atualizar senha se foi fornecida
-        ...(body.password && { password: body.password }),
-      },
+      data: updateData,
     })
 
     return NextResponse.json({
