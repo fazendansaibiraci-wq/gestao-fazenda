@@ -251,6 +251,9 @@ model Produto {
 
   receitas Receita[]
 
+  // Receitas de Aplicação
+  produtosAplicacao ProdutoAplicacao[]
+
   // M3 - Receitas
   produtosReceita ProdutoReceita[] @relation("ProdutoReceitaBase")
   ajustes         AjusteReceita[]  @relation("AjusteReceitaProduto")
@@ -272,6 +275,44 @@ model Receita {
 
   @@unique([produtoId, safraId, perfilTalhao, tipo])
   @@map("receitas")
+}
+
+// Receitas de Aplicação - cadastradas pelo Gestor
+model ReceitaAplicacao {
+  id            String   @id @default(cuid())
+  nome          String   @unique // ex: "Herbicida Pré-emergente"
+  tipo          TipoAtividade // PULVERIZACAO, HERBICIDA, CORRETIVO_SOLO, ADUBACAO, INSETICIDA_SOLO
+  observacoes   String?
+  ativo         Boolean  @default(true)
+
+  // Produtos utilizados e suas dosagens
+  produtosAplicacao ProdutoAplicacao[]
+
+  // Referência na atividade
+  registrosAtividade RegistroAtividade[]
+
+  dataCriacao       DateTime @default(now())
+  ultimaAtualizacao DateTime @updatedAt
+
+  @@map("receitas_aplicacao")
+}
+
+// Relação muitos-para-muitos: Receita tem muitos Produtos com dosagem
+model ProdutoAplicacao {
+  id              String   @id @default(cuid())
+  receita         ReceitaAplicacao @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+  receitaId       String
+
+  produto         Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId       String
+
+  dosagem         Float    // quantidade
+  unidade         String   // L, kg, g, ml, sacas, bags (mesma do produto)
+
+  dataCriacao     DateTime @default(now())
+
+  @@unique([receitaId, produtoId])
+  @@map("produtos_aplicacao")
 }
 
 model Safra {
@@ -321,6 +362,10 @@ model RegistroAtividade {
   status        StatusRegistroAtividade @default(PENDENTE)
   observacao    String?
   fotoEvidencia String? // URL da imagem
+
+  // Receita de Aplicação
+  receitaAplicacao   ReceitaAplicacao? @relation(fields: [receitaAplicacaoId], references: [id], onDelete: SetNull)
+  receitaAplicacaoId String?
 
   // Campos condicionais por tipo de atividade
   totalBombas         Int? // Pulverização/Herbicida/Inseticida solo

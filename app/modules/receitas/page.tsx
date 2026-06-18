@@ -1,361 +1,388 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { Plus, BookOpen, PlusCircle } from 'lucide-react'
+import { Plus, Pencil, Trash2, X } from 'lucide-react'
+
+interface Produto {
+  id: string
+  nomeComercial: string
+  unidadeMedida: string
+}
+
+interface ProdutoAplicacao {
+  produto: Produto
+  dosagem: number
+  unidade: string
+}
+
+interface ReceitaAplicacao {
+  id: string
+  nome: string
+  tipo: string
+  observacoes?: string
+  ativo: boolean
+  produtosAplicacao: ProdutoAplicacao[]
+}
 
 export default function ReceitasPage() {
   const { data: session, status } = useSession()
-  const [activeTab, setActiveTab] = useState('receitas')
-  const [receitas, setReceitas] = useState([])
-  const [safras, setSafras] = useState([])
+  const [receitas, setReceitas] = useState<ReceitaAplicacao[]>([])
+  const [produtos, setProdutos] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const [formData, setFormData] = useState({
+    nome: '',
+    tipo: 'PULVERIZACAO',
+    observacoes: '',
+    ativo: true,
+    produtos: [] as Array<{ produtoId: string; dosagem: string; unidade: string }>,
+  })
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
-    if (status === 'authenticated') load()
-  }, [status])
+    if (session?.user?.role && !['GESTOR', 'GERENTE'].includes(session.user.role)) {
+      redirect('/dashboard')
+    }
+    if (status === 'authenticated') loadData()
+  }, [status, session])
 
-  const load = async () => {
+  const loadData = async () => {
     try {
-      const [receitasRes, safrasRes] = await Promise.all([
-        fetch('/api/receitas-base'),
-        fetch('/api/safras'),
+      setLoading(true)
+      const [receitasRes, produtosRes] = await Promise.all([
+        fetch('/api/receitas'),
+        fetch('/api/produtos'),
       ])
-      if (receitasRes.ok) setReceitas((await receitasRes.json()).data)
-      if (safrasRes.ok) setSafras((await safrasRes.json()).data)
+
+      if (receitasRes.ok) {
+        const data = await receitasRes.json()
+        setReceitas(data.data || [])
+      }
+
+      if (produtosRes.ok) {
+        const data = await produtosRes.json()
+        setProdutos(data.data?.filter((p: any) => p.status) || [])
+      }
     } catch (err) {
-      console.error(err)
+      setError(err instanceof Error ? err.message : 'Erro ao carregar')
     } finally {
       setLoading(false)
     }
   }
 
-  if (status === 'loading' || loading) {
-    return <div className="flex justify-center py-12"><div className="spinner"></div></div>
+  const handleAddProduto = () => {
+    setFormData((prev) => ({
+      ...prev,
+      produtos: [...prev.produtos, { produtoId: '', dosagem: '', unidade: '' }],
+    }))
   }
 
-  const isAgronomo = session?.user?.role === 'AGRONOMO'
+  const handleRemoveProduto = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      produtos: prev.produtos.filter((_, i) => i !== index),
+    }))
+  }
+
+  const handleProdutoChange = (index: number, field: string, value: string) => {
+    setFormData((prev) => {
+      const newProdutos = [...prev.produtos]
+      newProdutos[index] = { ...newProdutos[index], [field]: value }
+      return { ...prev, produtos: newProdutos }
+    })
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!formData.nome || formData.produtos.length === 0) {
+      alert('Preencha nome e produtos')
+      return
+    }
+
+    try {
+      const url = editingId ? '/' api/receitas' : '/api/receitas'
+      const method = editingId ? 'PUT' : 'POST'
+      const data = editingId
+        ? { ...formData, id: editingId }
+        : formData
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) throw new Error('Erro ao salvar')
+
+      await loadData()
+      setFormData({
+        nome: '',
+        tipo: 'PULVERIZACAO',
+        observacoes: '',
+        ativo: true,
+        produtos: [],
+      })
+      setEditingId(null)
+      setShowForm(false)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro')
+    }
+  }
+
+  const handleEdit = (receita: ReceitaAplicacao) => {
+    setFormData({
+      nome: receita.nome,
+      tipo: receita.tipo,
+      observacoes: receita.observacoes || '',
+      ativo: receita.ativo,
+      produtos: receita.produtosAplicacao.map((p) => ({
+        produtoId: p.produto.id,
+        dosagem: p.dosagem.toString(),
+        unidade: p.unidade,
+      })),
+    })
+    setEditingId(receita.id)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Deletar receita?')) return
+
+    try {
+      const response = await fetch(\/api/receitas?id=\\, { method: 'DELETE' })
+      if (!response.ok) throw new Error('Erro ao deletar')
+      setReceitas((prev) => prev.filter((r) => r.id !== id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro')
+    }
+  }
+
+  if (status === 'loading' || loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="spinner"></div>
+      </div>
+    )
+  }
+
+  if (session?.user?.role && !['GESTOR', 'GERENTE'].includes(session.user.role)) {
+    return null
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Receitas e Insumos</h1>
-          <p className="text-gray-600 mt-1">Gestão de receitas agrícolas e aplicações</p>
+          <h1 className="text-3xl font-bold text-primary">Receitas de Aplicação</h1>
+          <p className="text-gray-600 mt-1">Cadastro de receitas para atividades</p>
         </div>
-        {isAgronomo && (
-          <button onClick={() => setActiveTab('nova')} className="btn btn-primary">
-            <Plus className="w-5 h-5" />
-            Nova Receita
-          </button>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
         <button
-          onClick={() => setActiveTab('receitas')}
-          className={`px-4 py-3 font-medium whitespace-nowrap transition-colors border-b-2 ${
-            activeTab === 'receitas'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-          }`}
+          onClick={() => {
+            setFormData({
+              nome: '',
+              tipo: 'PULVERIZACAO',
+              observacoes: '',
+              ativo: true,
+              produtos: [],
+            })
+            setEditingId(null)
+            setShowForm(!showForm)
+          }}
+          className="btn btn-primary"
         >
-          <BookOpen className="inline w-4 h-4 mr-2" />
-          Receitas Base
+          <Plus className="w-5 h-5" />
+          {showForm ? 'Cancelar' : 'Nova Receita'}
         </button>
-        <button
-          onClick={() => setActiveTab('aplicacoes')}
-          className={`px-4 py-3 font-medium whitespace-nowrap transition-colors border-b-2 ${
-            activeTab === 'aplicacoes'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <PlusCircle className="inline w-4 h-4 mr-2" />
-          Aplicações
-        </button>
-        {isAgronomo && (
-          <button
-            onClick={() => setActiveTab('nova')}
-            className={`px-4 py-3 font-medium whitespace-nowrap transition-colors border-b-2 ${
-              activeTab === 'nova'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Plus className="inline w-4 h-4 mr-2" />
-            Nova
-          </button>
-        )}
       </div>
 
-      {/* Content */}
-      <div className="card">
-        {activeTab === 'receitas' && <AbaReceitas receitas={receitas} isAgronomo={isAgronomo} />}
-        {activeTab === 'aplicacoes' && <AbaAplicacoes />}
-        {activeTab === 'nova' && isAgronomo && <AbaNovaReceita onSave={load} />}
-      </div>
-    </div>
-  )
-}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600">{error}</p>
+        </div>
+      )}
 
-// Aba 1: Receitas Base
-function AbaReceitas({ receitas, isAgronomo }: { receitas: any[]; isAgronomo: boolean }) {
-  return (
-    <div className="space-y-4">
-      <h3 className="font-semibold text-primary">Receitas Cadastradas</h3>
-      {receitas.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">Nenhuma receita cadastrada</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {receitas.map((r: any) => (
-            <div key={r.id} className="border rounded-lg p-4 space-y-2">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="font-semibold text-primary">{r.nome}</h4>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {r.atividade.replace(/_/g, ' ')} - {r.perfilTalhao.replace(/_/g, ' ')}
-                  </p>
-                </div>
-                {isAgronomo && (
-                  <button className="text-blue-600 text-sm hover:text-blue-800">Editar</button>
-                )}
+      {showForm && (
+        <div className="card">
+          <h2 className="text-xl font-bold mb-4">{editingId ? 'Editar' : 'Nova'} Receita</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Nome da Receita</label>
+              <input
+                type="text"
+                value={formData.nome}
+                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="ex: Herbicida Pré-emergente"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Tipo de Atividade</label>
+              <select
+                value={formData.tipo}
+                onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              >
+                <option value="PULVERIZACAO">Pulverização</option>
+                <option value="HERBICIDA">Herbicida</option>
+                <option value="ADUBACAO">Adubação</option>
+                <option value="CORRETIVO_SOLO">Corretivo de Solo</option>
+                <option value="INSETICIDA_SOLO">Inseticida Solo</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Observações</label>
+              <textarea
+                value={formData.observacoes}
+                onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium">Produtos</label>
+                <button
+                  type="button"
+                  onClick={handleAddProduto}
+                  className="text-primary text-sm hover:underline"
+                >
+                  + Adicionar Produto
+                </button>
               </div>
-              <div className="text-sm">
-                <p><strong>Unidade Base:</strong> {r.unidadeBase}</p>
-                <p><strong>Safra:</strong> {r.safra?.nome}</p>
-                <p className="mt-2"><strong>Produtos:</strong> {r.produtosReceita?.length || 0}</p>
+
+              <div className="space-y-2">
+                {formData.produtos.map((prod, idx) => (
+                  <div key={idx} className="flex gap-2 items-end">
+                    <select
+                      value={prod.produtoId}
+                      onChange={(e) => {
+                        const p = produtos.find((x) => x.id === e.target.value)
+                        handleProdutoChange(idx, 'produtoId', e.target.value)
+                        if (p) handleProdutoChange(idx, 'unidade', p.unidadeMedida)
+                      }}
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                    >
+                      <option value="">Selecione</option>
+                      {produtos.map((p) => (
+                        <option key={p.id} value={p.id}>{p.nomeComercial}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={prod.dosagem}
+                      onChange={(e) => handleProdutoChange(idx, 'dosagem', e.target.value)}
+                      className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                    />
+                    <div className="w-20 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                      {prod.unidade || 'un.'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveProduto(idx)}
+                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.ativo}
+                onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
+                className="rounded"
+              />
+              <label className="ml-2 text-sm">Ativo</label>
+            </div>
+
+            <div className="flex gap-2">
+              <button type="submit" className="btn btn-primary">
+                {editingId ? 'Atualizar' : 'Criar'} Receita
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false)
+                  setEditingId(null)
+                }}
+                className="btn btn-secondary"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
         </div>
       )}
-    </div>
-  )
-}
-
-// Aba 2: Aplicações
-function AbaAplicacoes() {
-  const [aplicacoes, setAplicacoes] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    load()
-  }, [])
-
-  const load = async () => {
-    try {
-      const res = await fetch('/api/aplicacoes-insumo')
-      const data = await res.json()
-      setAplicacoes(data.data || [])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) return <div className="flex justify-center py-8"><div className="spinner"></div></div>
-
-  return (
-    <div className="space-y-4">
-      <h3 className="font-semibold text-primary">Histórico de Aplicações</h3>
-      {aplicacoes.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">Nenhuma aplicação registrada</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-2 text-left">Data</th>
-                <th className="px-4 py-2 text-left">Receita</th>
-                <th className="px-4 py-2 text-left">Talhão</th>
-                <th className="px-4 py-2 text-left">Quantidade</th>
-                <th className="px-4 py-2 text-left">Custo/ha</th>
-              </tr>
-            </thead>
-            <tbody>
-              {aplicacoes.map((a: any) => (
-                <tr key={a.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2">{new Date(a.data).toLocaleDateString('pt-BR')}</td>
-                  <td className="px-4 py-2 font-medium">{a.receita?.nome}</td>
-                  <td className="px-4 py-2">{a.talhao?.nome}</td>
-                  <td className="px-4 py-2">{a.quantidade.toFixed(1)}</td>
-                  <td className="px-4 py-2">R$ {a.custoPorHectare?.toFixed(2) || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Aba 3: Nova Receita (Agrônomo)
-function AbaNovaReceita({ onSave }: { onSave: () => void }) {
-  const [form, setForm] = useState({
-    nome: '',
-    atividade: 'PULVERIZACAO',
-    sequencia: 'PRIMEIRA',
-    perfilTalhao: 'RECÉM_PLANTADO',
-    safraId: '',
-    unidadeBase: 'bomba 1.000L',
-  })
-  const [safras, setSafras] = useState([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    load()
-  }, [])
-
-  const load = async () => {
-    try {
-      const res = await fetch('/api/safras')
-      const data = await res.json()
-      setSafras(data.data || [])
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      const res = await fetch('/api/receitas-base', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      if (!res.ok) throw new Error('Erro')
-      alert('Receita criada com sucesso')
-      setForm({
-        nome: '',
-        atividade: 'PULVERIZACAO',
-        sequencia: 'PRIMEIRA',
-        perfilTalhao: 'RECÉM_PLANTADO',
-        safraId: '',
-        unidadeBase: 'bomba 1.000L',
-      })
-      onSave()
-    } catch (err) {
-      alert('Erro ao salvar receita')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
-      <h3 className="font-semibold text-primary text-lg">Criar Nova Receita</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="form-group">
-          <label htmlFor="nome">Nome da Receita *</label>
-          <input
-            type="text"
-            id="nome"
-            value={form.nome}
-            onChange={(e) => setForm({ ...form, nome: e.target.value })}
-            required
-            placeholder="Ex: Pulverização Preventiva 1ª"
-            className="border rounded px-3 py-2 w-full"
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="safraId">Safra *</label>
-          <select
-            id="safraId"
-            value={form.safraId}
-            onChange={(e) => setForm({ ...form, safraId: e.target.value })}
-            required
-            className="border rounded px-3 py-2 w-full"
+        {receitas.map((receita) => (
+          <div
+            key={receita.id}
+            className={\card \\}
           >
-            <option value="">Selecionar safra</option>
-            {safras.map((s: any) => (
-              <option key={s.id} value={s.id}>
-                {s.nome}
-              </option>
-            ))}
-          </select>
-        </div>
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h3 className="font-bold text-lg">{receita.nome}</h3>
+                <p className="text-sm text-gray-600">
+                  {receita.tipo.replace(/_/g, ' ')}
+                </p>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => handleEdit(receita)}
+                  className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(receita.id)}
+                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="atividade">Tipo de Atividade *</label>
-          <select
-            id="atividade"
-            value={form.atividade}
-            onChange={(e) => setForm({ ...form, atividade: e.target.value })}
-            className="border rounded px-3 py-2 w-full"
-          >
-            <option value="PULVERIZACAO">Pulverização</option>
-            <option value="HERBICIDA">Herbicida</option>
-            <option value="ADUBACAO">Adubação</option>
-            <option value="INSETICIDA_SOLO">Inseticida Solo</option>
-          </select>
-        </div>
+            {receita.observacoes && (
+              <p className="text-sm text-gray-600 mb-2">{receita.observacoes}</p>
+            )}
 
-        <div className="form-group">
-          <label htmlFor="sequencia">Sequência *</label>
-          <select
-            id="sequencia"
-            value={form.sequencia}
-            onChange={(e) => setForm({ ...form, sequencia: e.target.value })}
-            className="border rounded px-3 py-2 w-full"
-          >
-            <option value="PRIMEIRA">1ª Aplicação</option>
-            <option value="SEGUNDA">2ª Aplicação</option>
-            <option value="TERCEIRA">3ª Aplicação</option>
-            <option value="QUARTA">4ª Aplicação</option>
-            <option value="QUINTA">5ª Aplicação</option>
-          </select>
-        </div>
+            <div className="bg-gray-50 rounded p-2 mb-2">
+              <p className="text-xs font-semibold mb-1">Produtos:</p>
+              {receita.produtosAplicacao.map((p, idx) => (
+                <div key={idx} className="text-xs text-gray-700">
+                  • {p.produto.nomeComercial}: {p.dosagem} {p.unidade}
+                </div>
+              ))}
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="perfilTalhao">Perfil do Talhão *</label>
-          <select
-            id="perfilTalhao"
-            value={form.perfilTalhao}
-            onChange={(e) => setForm({ ...form, perfilTalhao: e.target.value })}
-            className="border rounded px-3 py-2 w-full"
-          >
-            <option value="RECÉM_PLANTADO">Recém Plantado</option>
-            <option value="ESQUELETADO">Esqueletado</option>
-            <option value="PLENA_PRODUCAO">Plena Produção</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="unidadeBase">Unidade Base *</label>
-          <select
-            id="unidadeBase"
-            value={form.unidadeBase}
-            onChange={(e) => setForm({ ...form, unidadeBase: e.target.value })}
-            className="border rounded px-3 py-2 w-full"
-          >
-            <option value="bomba 1.000L">Bomba 1.000L</option>
-            <option value="bag">Bag</option>
-            <option value="tanque">Tanque</option>
-            <option value="litro">Litro</option>
-            <option value="kg">Kg</option>
-          </select>
-        </div>
+            <span
+              className={\	ext-xs px-2 py-1 rounded-full \\}
+            >
+              {receita.ativo ? 'Ativo' : 'Inativo'}
+            </span>
+          </div>
+        ))}
       </div>
 
-      <div className="alert alert-info">
-        <p className="text-sm">Após criar a receita base, você poderá adicionar produtos e suas dosagens.</p>
-      </div>
-
-      <div className="flex gap-4">
-        <button type="submit" disabled={loading} className="btn btn-primary">
-          {loading ? 'Criando...' : 'Criar Receita'}
-        </button>
-      </div>
-    </form>
+      {receitas.length === 0 && !showForm && (
+        <div className="card text-center py-8">
+          <p className="text-gray-600">Nenhuma receita cadastrada</p>
+        </div>
+      )}
+    </div>
   )
 }

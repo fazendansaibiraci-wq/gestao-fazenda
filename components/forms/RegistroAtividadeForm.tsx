@@ -17,6 +17,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [talhoes, setTalhoes] = useState([])
   const [maquinas, setMaquinas] = useState([])
   const [produtos, setProdutos] = useState([])
+  const [receitas, setReceitas] = useState([])
 
   const [form, setForm] = useState({
     data: initialData?.data?.split('T')[0] || new Date().toISOString().split('T')[0],
@@ -25,6 +26,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     talhaoId: initialData?.talhaoId || '',
     safraId: initialData?.safraId || '',
     tipoAtividade: initialData?.tipoAtividade || TipoAtividade.GERAIS,
+    receitaAplicacaoId: initialData?.receitaAplicacaoId || '',
     status: initialData?.status || 'CONCLUIDO',
     totalBombas: initialData?.totalBombas || '',
     tipoAdubo: initialData?.tipoAdubo || '',
@@ -47,17 +49,19 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
   const loadData = async () => {
     try {
-      const [safrasRes, talhaoesRes, maquinasRes, produtosRes] = await Promise.all([
+      const [safrasRes, talhaoesRes, maquinasRes, produtosRes, receitasRes] = await Promise.all([
         fetch('/api/safras'),
         fetch('/api/talhoes'),
         fetch('/api/maquinas'),
         fetch('/api/produtos'),
+        fetch('/api/receitas'),
       ])
 
       if (safrasRes.ok) setSafras((await safrasRes.json()).data)
       if (talhaoesRes.ok) setTalhoes((await talhaoesRes.json()).data)
       if (maquinasRes.ok) setMaquinas((await maquinasRes.json()).data)
       if (produtosRes.ok) setProdutos((await produtosRes.json()).data)
+      if (receitasRes.ok) setReceitas((await receitasRes.json()).data)
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
     }
@@ -243,6 +247,26 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               </select>
             </div>
           </div>
+
+          {needsProduto.includes(form.tipoAtividade as any) && (
+            <div className="form-group">
+              <label htmlFor="receitaAplicacaoId">Receita de Aplicação</label>
+              <select
+                id="receitaAplicacaoId"
+                name="receitaAplicacaoId"
+                value={form.receitaAplicacaoId}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <option value="">Selecionar receita (opcional)</option>
+                {receitas.map((r: any) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nome} - {r.tipo.replace(/_/g, ' ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="form-group">
