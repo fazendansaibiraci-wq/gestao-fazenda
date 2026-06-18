@@ -15,8 +15,7 @@ export function TalhaoForm({ id, initialData }: TalhaoFormProps) {
   const [form, setForm] = useState({
     nome: initialData?.nome || '',
     area: initialData?.area || '',
-    fazenda: initialData?.fazenda || '',
-    cultura: initialData?.cultura || '',
+    variedade: initialData?.variedade || '',
     status: initialData?.status || 'ATIVO',
   })
 
@@ -107,26 +106,14 @@ export function TalhaoForm({ id, initialData }: TalhaoFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
             <div className="form-group">
-              <label htmlFor="fazenda">Fazenda</label>
+              <label htmlFor="variedade">>Variedade</label>
               <input
                 type="text"
-                id="fazenda"
-                name="fazenda"
-                value={form.fazenda}
-                onChange={handleChange}
-                disabled={loading}
-                placeholder="Fazenda Esperança"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="cultura">Cultura</label>
-              <input
-                type="text"
-                id="cultura"
-                name="cultura"
-                value={form.cultura}
+                id="variedade"
+                name="variedade"
+                value={form.variedade}
                 onChange={handleChange}
                 disabled={loading}
                 placeholder="Café Arábica"
