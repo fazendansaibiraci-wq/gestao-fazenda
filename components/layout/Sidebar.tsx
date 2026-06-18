@@ -17,6 +17,7 @@ import {
   Bot,
   Fuel,
   ClipboardList,
+  Tag,
   Beaker,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -28,6 +29,7 @@ const menuItems = [
   { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO' },
   { label: 'Produtos', href: '/modules/produtos', icon: Package, excludeRoles: 'FUNCIONARIO' },
   { label: 'Receitas', href: '/modules/receitas', icon: Beaker, role: 'GESTOR|GERENTE' },
+  { label: 'Tipos de Atividade', href: '/modules/tipos-atividade', icon: Tag, role: 'GESTOR' },
   { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
   { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO' },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO' },

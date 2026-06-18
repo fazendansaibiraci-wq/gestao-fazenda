@@ -1069,3 +1069,13 @@ model AssistantLog {
   @@index([status])
   @@map("assistant_logs")
 }
+model TipoAtividade {
+  id          Int       @id @default(autoincrement())
+  nome        String    @unique
+  descricao   String?
+  ativo       Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("tipos_atividade")
+}
