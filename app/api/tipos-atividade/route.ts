@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const apenasAtivos = searchParams.get('ativo') === 'true'
 
-    const tipos = await prisma.tipoAtividade.findMany({
+    const tipos = await prisma.tipoAtividadeCadastro.findMany({
       where: apenasAtivos ? { ativo: true } : undefined,
       orderBy: { nome: 'asc' },
     })
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
     }
 
-    const tipo = await prisma.tipoAtividade.create({
+    const tipo = await prisma.tipoAtividadeCadastro.create({
       data: {
         nome: nome.trim(),
         descricao: descricao?.trim() || null,

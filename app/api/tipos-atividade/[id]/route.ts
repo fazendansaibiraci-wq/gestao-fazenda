@@ -25,7 +25,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
     }
 
-    const tipo = await prisma.tipoAtividade.update({
+    const tipo = await prisma.tipoAtividadeCadastro.update({
       where: { id },
       data: {
         nome: nome.trim(),
@@ -62,7 +62,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
     }
 
-    await prisma.tipoAtividade.delete({ where: { id } })
+    await prisma.tipoAtividadeCadastro.delete({ where: { id } })
     return NextResponse.json({ message: 'Tipo excluído com sucesso' })
   } catch (error: any) {
     if (error?.code === 'P2025') {

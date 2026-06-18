@@ -1069,7 +1069,7 @@ model AssistantLog {
   @@index([status])
   @@map("assistant_logs")
 }
-model TipoAtividade {
+model TipoAtividadeCadastro {
   id          Int       @id @default(autoincrement())
   nome        String    @unique
   descricao   String?
