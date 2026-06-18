@@ -74,18 +74,30 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto p-4 space-y-2">
           {menuItems
             .filter((item) => {
-              const userRole = (session?.user as any)?.role
+              const userRole = (session?.user as any)?.role || ''
 
-              // Se tem role, o usuário deve estar nele
+              // Se não tem role definido para o item, mostrar para todos
+              if (!item.role && !item.excludeRoles) {
+                return true
+              }
+
+              // Se tem role específico, o usuário deve estar nele
               if (item.role) {
                 const allowedRoles = item.role.split('|')
-                if (!allowedRoles.includes(userRole)) return false
+                if (userRole && !allowedRoles.includes(userRole)) {
+                  return false
+                }
+                if (!userRole) {
+                  return false // Não mostrar se role não está carregado
+                }
               }
 
               // Se tem excludeRoles, o usuário não deve estar nele
               if (item.excludeRoles) {
                 const excludedRoles = item.excludeRoles.split('|')
-                if (excludedRoles.includes(userRole)) return false
+                if (userRole && excludedRoles.includes(userRole)) {
+                  return false
+                }
               }
 
               return true
