@@ -106,19 +106,17 @@ export function TalhaoForm({ id, initialData }: TalhaoFormProps) {
             </div>
           </div>
 
-        
-            <div className="form-group">
-              <label htmlFor="variedade">>Variedade</label>
-              <input
-                type="text"
-                id="variedade"
-                name="variedade"
-                value={form.variedade}
-                onChange={handleChange}
-                disabled={loading}
-                placeholder="Café Arábica"
-              />
-            </div>
+          <div className="form-group">
+            <label htmlFor="variedade">Variedade</label>
+            <input
+              type="text"
+              id="variedade"
+              name="variedade"
+              value={form.variedade}
+              onChange={handleChange}
+              disabled={loading}
+              placeholder="Café Arábica"
+            />
           </div>
 
           <div className="form-group">
@@ -139,7 +137,6 @@ export function TalhaoForm({ id, initialData }: TalhaoFormProps) {
         </div>
       </div>
 
-      {/* Botões */}
       <div className="flex gap-4">
         <button
           type="submit"
