@@ -13,8 +13,7 @@ export async function GET(request: NextRequest) {
         id: true,
         nome: true,
         area: true,
-        fazenda: true,
-        cultura: true,
+        variedade: true,
         status: true,
       },
       orderBy: { nome: 'asc' },
@@ -43,8 +42,7 @@ export async function POST(request: NextRequest) {
       data: {
         nome: body.nome,
         area: parseFloat(body.area),
-        fazenda: body.fazenda,
-        cultura: body.cultura,
+        variedade: body.variedade,
         status: body.status || 'ATIVO',
       },
     })
