@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Pencil, Eye } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 interface Atividade {
@@ -24,6 +24,9 @@ export default function AtividadesPage() {
   const [loading, setLoading] = useState(true)
   const [filtroData, setFiltroData] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
+
+  const userRole = (session?.user as any)?.role || ''
+  const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
@@ -63,7 +66,9 @@ export default function AtividadesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-primary">Registro de Atividades</h1>
-          <p className="text-gray-600 mt-1">Acompanhe suas atividades diárias</p>
+          <p className="text-gray-600 mt-1">
+            {isGestor ? 'Gerencie as atividades dos funcionários' : 'Acompanhe suas atividades diárias'}
+          </p>
         </div>
         <Link href="/modules/atividades/nova">
           <button className="btn btn-primary">
@@ -82,7 +87,6 @@ export default function AtividadesPage() {
             value={filtroData}
             onChange={(e) => setFiltroData(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm"
-            placeholder="Filtrar por data"
           />
           <select
             value={filtroStatus}
@@ -92,7 +96,6 @@ export default function AtividadesPage() {
             <option value="">Todos os Status</option>
             <option value="CONCLUIDO">Concluído</option>
             <option value="EM_ANDAMENTO">Em Andamento</option>
-            <option value="PENDENTE">Pendente</option>
           </select>
         </div>
       </div>
@@ -104,6 +107,7 @@ export default function AtividadesPage() {
             <tr className="border-b bg-gray-50">
               <th className="px-4 py-3 text-left font-semibold">Data</th>
               <th className="px-4 py-3 text-left font-semibold">Horário</th>
+              {isGestor && <th className="px-4 py-3 text-left font-semibold">Funcionário</th>}
               <th className="px-4 py-3 text-left font-semibold">Talhão</th>
               <th className="px-4 py-3 text-left font-semibold">Atividade</th>
               <th className="px-4 py-3 text-left font-semibold">Status</th>
@@ -113,7 +117,7 @@ export default function AtividadesPage() {
           <tbody>
             {atividades.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={isGestor ? 7 : 6} className="px-4 py-8 text-center text-gray-500">
                   Nenhuma atividade registrada
                 </td>
               </tr>
@@ -126,6 +130,11 @@ export default function AtividadesPage() {
                   <td className="px-4 py-3">
                     {a.horaEntrada} {a.horaSaida ? `- ${a.horaSaida}` : ''}
                   </td>
+                  {isGestor && (
+                    <td className="px-4 py-3 text-gray-600">
+                      {a.funcionario?.name || '-'}
+                    </td>
+                  )}
                   <td className="px-4 py-3 font-medium">{a.talhao?.nome}</td>
                   <td className="px-4 py-3 text-gray-600">
                     {a.tipoAtividade.replace(/_/g, ' ')}
@@ -134,8 +143,6 @@ export default function AtividadesPage() {
                     <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
                       a.status === 'CONCLUIDO'
                         ? 'bg-green-100 text-green-800'
-                        : a.status === 'PENDENTE'
-                        ? 'bg-orange-100 text-orange-800'
                         : 'bg-blue-100 text-blue-800'
                     }`}>
                       {a.status.replace(/_/g, ' ')}
@@ -154,7 +161,7 @@ export default function AtividadesPage() {
       </div>
 
       {/* Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card">
           <p className="text-gray-600 text-sm">Total de Registros</p>
           <p className="text-3xl font-bold text-primary mt-2">{atividades.length}</p>
@@ -163,12 +170,6 @@ export default function AtividadesPage() {
           <p className="text-gray-600 text-sm">Concluídos</p>
           <p className="text-3xl font-bold text-green-600 mt-2">
             {atividades.filter((a) => a.status === 'CONCLUIDO').length}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-gray-600 text-sm">Pendentes</p>
-          <p className="text-3xl font-bold text-orange-600 mt-2">
-            {atividades.filter((a) => a.status === 'PENDENTE').length}
           </p>
         </div>
         <div className="card">
