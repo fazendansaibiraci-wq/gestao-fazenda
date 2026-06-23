@@ -973,3 +973,14 @@ model TipoAtividadeCadastro {
 
   @@map("tipos_atividade")
 }
+model Implemento {
+  id                String   @id @default(cuid())
+  nome              String
+  tipo              String?
+  descricao         String?
+  status            Boolean  @default(true)
+  dataCriacao       DateTime @default(now())
+  ultimaAtualizacao DateTime @updatedAt
+
+  @@map("implementos")
+}
