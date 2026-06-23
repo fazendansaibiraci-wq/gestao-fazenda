@@ -3,9 +3,8 @@
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Leaf, Tractor, Package, Calendar, BarChart3, AlertCircle } from 'lucide-react'
+import { Leaf, Tractor, Calendar, BarChart3, AlertCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { db } from '@/lib/db'
 
 interface DashboardStats {
   totalTalhoes: number
@@ -42,17 +41,17 @@ export default function DashboardPage() {
     try {
       setLoading(true)
       const [talhoes, safras, maquinas, atividades] = await Promise.all([
-        db.talhoes.toArray(),
-        db.safras.toArray(),
-        db.maquinas.toArray(),
-        db.atividades.where('status').equals('pendente').toArray(),
+        fetch('/api/talhoes').then(r => r.json()),
+        fetch('/api/safras').then(r => r.json()),
+        fetch('/api/maquinas').then(r => r.json()),
+        fetch('/api/registros-atividade?status=PENDENTE').then(r => r.json()),
       ])
 
       setStats({
-        totalTalhoes: talhoes.length,
-        totalSafras: safras.length,
-        totalMaquinas: maquinas.length,
-        atividadesPendentes: atividades.length,
+        totalTalhoes: talhoes.data?.length || 0,
+        totalSafras: safras.data?.length || 0,
+        totalMaquinas: maquinas.data?.length || 0,
+        atividadesPendentes: atividades.data?.length || 0,
       })
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error)
@@ -75,7 +74,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-primary">
           Bem-vindo, {session.user?.name}!
@@ -85,9 +83,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Talhões */}
         <Link href="/modules/talhoes">
           <div className="card cursor-pointer hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between">
@@ -104,7 +100,6 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Safras */}
         <Link href="/modules/safras">
           <div className="card cursor-pointer hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between">
@@ -121,7 +116,6 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Máquinas */}
         <Link href="/modules/maquinas">
           <div className="card cursor-pointer hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between">
@@ -138,7 +132,6 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Atividades Pendentes */}
         <Link href="/modules/atividades">
           <div className="card cursor-pointer hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between">
@@ -158,7 +151,6 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Quick Actions */}
       <div>
         <h2 className="text-xl font-bold text-primary mb-4">Ações Rápidas</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -185,15 +177,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Info Box */}
       <div className="card bg-light border-l-4 border-primary">
         <div className="flex gap-3">
           <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-primary">Dica:</p>
             <p className="text-sm text-gray-700 mt-1">
-              O sistema funciona offline. Suas alterações serão sincronizadas automaticamente quando
-              estiver conectado à internet. Verifique o menu de configurações para gerenciar a sincronização.
+              Todos os dados são salvos na nuvem e sincronizados em tempo real.
             </p>
           </div>
         </div>
