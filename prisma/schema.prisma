@@ -75,7 +75,6 @@ model User {
   phone    String?
   active   Boolean  @default(true)
 
-  // Campos de funcionário
   tipoSalario               TipoSalario?
   salarioEntressafra        Float?
   salarioSafra              Float?
@@ -83,22 +82,18 @@ model User {
   valorHoraExtraSafra       Float?
   bancoHorasAtivo           Boolean      @default(false)
 
-  // Relacionamentos
   escalasEntressafra  EscalaEntressafra[]
   escalasAfra         EscalaSafra[]
   registrosAtividade  RegistroAtividade[]
   bancoHoras          BancoHoras?
   aprovacoesPendentes AprovacaoHoraExtra[]
 
-  // M2 - Combustível
   conferenciasEstoque ConferenciaEstoque[]
 
-  // M3 - Receitas
   receitasCriadas  ReceitaBase[]     @relation("ReceitaBaseCriador")
   ajustesReceita   AjusteReceita[]
   aplicacoesInsumo AplicacaoInsumo[]
 
-  // M4 - Rastreabilidade (Etapas)
   etapasTerreiro      EtapaTerreiro[]
   etapasSecador       EtapaSecador[]
   etapasTulha         EtapaTulha[]
@@ -107,11 +102,9 @@ model User {
   etapasSilo          EtapaSilo[]
   etapasArmazem       EtapaArmazem[]
 
-  // M5 - Vales
   valesRecebidos Vale[] @relation("ValesRecebidos")
   valesLancados  Vale[] @relation("ValesLancados")
 
-  // M7 - Assistente
   chatSessions  AssistantChat[]
   assistantLogs AssistantLog[]
 
@@ -121,16 +114,15 @@ model User {
   @@map("users")
 }
 
-// Escalas de trabalho
 model EscalaEntressafra {
   id                    String  @id @default(cuid())
   funcionario           User    @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
   funcionarioId         String
-  diaSemana             Int // 0-6 (domingo a sábado)
-  horarioEntrada        String // HH:MM
-  horarioSaida          String // HH:MM
-  intervaloAlmocoInicio String? // HH:MM
-  intervaloAlmocoFim    String? // HH:MM
+  diaSemana             Int
+  horarioEntrada        String
+  horarioSaida          String
+  intervaloAlmocoInicio String?
+  intervaloAlmocoFim    String?
 
   @@unique([funcionarioId, diaSemana])
   @@map("escalas_entressafra")
@@ -140,9 +132,9 @@ model EscalaSafra {
   id                    String   @id @default(cuid())
   funcionario           User     @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
   funcionarioId         String
-  data                  DateTime // data específica
-  horarioEntrada        String // HH:MM
-  horarioSaida          String // HH:MM
+  data                  DateTime
+  horarioEntrada        String
+  horarioSaida          String
   intervaloAlmocoInicio String?
   intervaloAlmocoFim    String?
   ehFeriado             Boolean  @default(false)
@@ -151,13 +143,12 @@ model EscalaSafra {
   @@map("escalas_safra")
 }
 
-// Banco de horas
 model BancoHoras {
   id               String @id @default(cuid())
   funcionario      User   @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
   funcionarioId    String @unique
   saldoHoras       Float  @default(0)
-  mes              Int // 1-12
+  mes              Int
   ano              Int
   saldoAnterior    Float  @default(0)
   horasAdicionadas Float  @default(0)
@@ -169,14 +160,13 @@ model BancoHoras {
   @@map("banco_horas")
 }
 
-// Aprovações de hora extra
 model AprovacaoHoraExtra {
   id            String  @id @default(cuid())
   funcionario   User    @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
   funcionarioId String
   registroId    String
   horasExtras   Float
-  status        String  @default("pendente") // pendente, aprovado, rejeitado
+  status        String  @default("pendente")
   observacao    String?
 
   criadoEm   DateTime  @default(now())
@@ -188,9 +178,8 @@ model AprovacaoHoraExtra {
 model Talhao {
   id                String       @id @default(cuid())
   nome              String
-  area              Float // hectares
-  fazenda           String?
-  cultura           String?
+  area              Float
+  variedade         String?
   status            TalhaoStatus @default(ATIVO)
   dataCriacao       DateTime     @default(now())
   ultimaAtualizacao DateTime     @updatedAt
@@ -198,15 +187,12 @@ model Talhao {
   talfaoSafra        TalhaoSafra[]
   registrosAtividade RegistroAtividade[]
   chegadasTerreiro   ChegadaTerreiro[]
-
-  // M3 - Receitas
   aplicacoesInsumo   AplicacaoInsumo[]
   historicoAplicacao HistoricoAplicacao[]
 
   @@map("talhoes")
 }
 
-// Perfil de talhão por safra
 model TalhaoSafra {
   id       String       @id @default(cuid())
   talhao   Talhao       @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
@@ -222,7 +208,7 @@ model TalhaoSafra {
 model Maquina {
   id                String        @id @default(cuid())
   nome              String
-  tipo              String // Trator/Pulverizador/Colhedora/Implemento
+  tipo              String
   marca             String?
   modelo            String?
   ano               Int?
@@ -241,27 +227,22 @@ model Maquina {
 model Produto {
   id                String   @id @default(cuid())
   nomeComercial     String
-  categoria         String // fertilizante/fungicida/herbicida/inseticida/adjuvante/corretivo
-  unidadeMedida     String // L/kg/g/ml/sacas/bags
+  categoria         String
+  unidadeMedida     String
   valorUnitario     Float
   fornecedor        String?
-  status            Boolean  @default(true) // ativo/inativo
+  status            Boolean  @default(true)
   dataCriacao       DateTime @default(now())
   ultimaAtualizacao DateTime @updatedAt
 
-  receitas Receita[]
-
-  // Receitas de Aplicação
+  receitas          Receita[]
   produtosAplicacao ProdutoAplicacao[]
-
-  // M3 - Receitas
-  produtosReceita ProdutoReceita[] @relation("ProdutoReceitaBase")
-  ajustes         AjusteReceita[]  @relation("AjusteReceitaProduto")
+  produtosReceita   ProdutoReceita[] @relation("ProdutoReceitaBase")
+  ajustes           AjusteReceita[]  @relation("AjusteReceitaProduto")
 
   @@map("produtos")
 }
 
-// Receitas de insumos por talhão/safra/perfil
 model Receita {
   id           String       @id @default(cuid())
   produto      Produto      @relation(fields: [produtoId], references: [id], onDelete: Cascade)
@@ -270,25 +251,21 @@ model Receita {
   safraId      String
   perfilTalhao PerfilTalhao
   dosagem      Float
-  unidade      String // mesma unidade do produto
-  tipo         String // tipo de atividade (pulverização, adubação, etc)
+  unidade      String
+  tipo         String
 
   @@unique([produtoId, safraId, perfilTalhao, tipo])
   @@map("receitas")
 }
 
-// Receitas de Aplicação - cadastradas pelo Gestor
 model ReceitaAplicacao {
-  id            String   @id @default(cuid())
-  nome          String   @unique // ex: "Herbicida Pré-emergente"
-  tipo          TipoAtividade // PULVERIZACAO, HERBICIDA, CORRETIVO_SOLO, ADUBACAO, INSETICIDA_SOLO
-  observacoes   String?
-  ativo         Boolean  @default(true)
+  id          String        @id @default(cuid())
+  nome        String        @unique
+  tipo        TipoAtividade
+  observacoes String?
+  ativo       Boolean       @default(true)
 
-  // Produtos utilizados e suas dosagens
-  produtosAplicacao ProdutoAplicacao[]
-
-  // Referência na atividade
+  produtosAplicacao  ProdutoAplicacao[]
   registrosAtividade RegistroAtividade[]
 
   dataCriacao       DateTime @default(now())
@@ -297,19 +274,16 @@ model ReceitaAplicacao {
   @@map("receitas_aplicacao")
 }
 
-// Relação muitos-para-muitos: Receita tem muitos Produtos com dosagem
 model ProdutoAplicacao {
-  id              String   @id @default(cuid())
-  receita         ReceitaAplicacao @relation(fields: [receitaId], references: [id], onDelete: Cascade)
-  receitaId       String
+  id        String           @id @default(cuid())
+  receita   ReceitaAplicacao @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+  receitaId String
+  produto   Produto          @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId String
+  dosagem   Float
+  unidade   String
 
-  produto         Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  produtoId       String
-
-  dosagem         Float    // quantidade
-  unidade         String   // L, kg, g, ml, sacas, bags (mesma do produto)
-
-  dataCriacao     DateTime @default(now())
+  dataCriacao DateTime @default(now())
 
   @@unique([receitaId, produtoId])
   @@map("produtos_aplicacao")
@@ -317,7 +291,7 @@ model ProdutoAplicacao {
 
 model Safra {
   id                String      @id @default(cuid())
-  nome              String // ex: "Safra 25/26"
+  nome              String
   dataInicio        DateTime
   dataFim           DateTime?
   status            SafraStatus @default(ATIVA)
@@ -329,15 +303,11 @@ model Safra {
   registrosAtividade RegistroAtividade[]
   lotes              Lote[]
   chegadasTerreiro   ChegadaTerreiro[]
-
-  // M3 - Receitas
-  receitasBase ReceitaBase[]        @relation("ReceitaBaseSafra")
-  aplicacoes   AplicacaoInsumo[]    @relation("AplicacaoInsumoSafra")
-  historico    HistoricoAplicacao[] @relation("HistoricoAplicacaoSafra")
-
-  // SafraReceita relation
-  safraReceita  SafraReceita?  @relation("SafraReceitasRelacao")
-  safraExtended SafraExtended?
+  receitasBase       ReceitaBase[]        @relation("ReceitaBaseSafra")
+  aplicacoes         AplicacaoInsumo[]    @relation("AplicacaoInsumoSafra")
+  historico          HistoricoAplicacao[] @relation("HistoricoAplicacaoSafra")
+  safraReceita       SafraReceita?        @relation("SafraReceitasRelacao")
+  safraExtended      SafraExtended?
 
   @@map("safras")
 }
@@ -347,51 +317,44 @@ model RegistroAtividade {
   funcionario       User     @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
   funcionarioId     String
   data              DateTime
-  horaEntrada       String // HH:MM
-  horaSaida         String? // HH:MM
-  horasCalculadas   Float? // calculado automaticamente
+  horaEntrada       String
+  horaSaida         String?
+  horasCalculadas   Float?
   horasprevistasdia Float?
 
   talhao   Talhao @relation(fields: [talhaoId], references: [id])
   talhaoId String
-
-  safra   Safra  @relation(fields: [safraId], references: [id])
-  safraId String
+  safra    Safra  @relation(fields: [safraId], references: [id])
+  safraId  String
 
   tipoAtividade TipoAtividade
   status        StatusRegistroAtividade @default(PENDENTE)
   observacao    String?
-  fotoEvidencia String? // URL da imagem
+  fotoEvidencia String?
 
-  // Receita de Aplicação
   receitaAplicacao   ReceitaAplicacao? @relation(fields: [receitaAplicacaoId], references: [id], onDelete: SetNull)
   receitaAplicacaoId String?
 
-  // Campos condicionais por tipo de atividade
-  totalBombas         Int? // Pulverização/Herbicida/Inseticida solo
-  tipoAdubo           String? // Adubação
-  quantidadeAdubo     Float? // Adubação (toneladas/kg)
-  tipoCorretivo       String? // Correção de solo
-  quantidadeCorretivo Float? // toneladas
+  totalBombas         Int?
+  tipoAdubo           String?
+  quantidadeAdubo     Float?
+  tipoCorretivo       String?
+  quantidadeCorretivo Float?
 
-  // Máquina e implemento
   maquina             Maquina? @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
   maquinaId           String?
   horimetroInicial    Float?
   horimetroFinal      Float?
-  horasMaquina        Float? // calculado: horimetroFinal - horimetroInicial
+  horasMaquina        Float?
   implementoUtilizado String?
 
-  // Falta
   isFalta         Boolean @default(false)
-  motivoFalta     String? // atestado médico/pessoal/outro
+  motivoFalta     String?
   observacaoFalta String?
 
-  // Hora extra
   ehHoraExtra     Boolean @default(false)
-  statusAprovacao String  @default("pendente") // pendente, aprovado, rejeitado
+  statusAprovacao String  @default("pendente")
 
-  // AplicacaoInsumo relation
   aplicacoesInsumo AplicacaoInsumo[]
 
   dataCriacao       DateTime @default(now())
@@ -408,13 +371,11 @@ model Feriado {
   data        DateTime @unique
   nome        String
   descricao   String?
-  tipo        String   @default("nacional") // nacional/municipal
+  tipo        String   @default("nacional")
   dataCriacao DateTime @default(now())
 
   @@map("feriados")
 }
-
-// ========== M2 - COMBUSTÍVEL E DIESEL ==========
 
 model AbastecimentoTrator {
   id                String   @id @default(cuid())
@@ -424,13 +385,12 @@ model AbastecimentoTrator {
   horimetroAtual    Float
   horimetroanterior Float?
   litrosAbastecidos Float
-  valorPorLitro     Float // R$/litro
+  valorPorLitro     Float
 
-  // Cálculos automáticos
-  horasTrabalhadad   Float? // horímetro atual - anterior
-  consumoLporH       Float? // litros / horas trabalhadas
-  custoAbastecimento Float? // litros × R$/litro
-  consumoMedio       Float? // histórico do trator
+  horasTrabalhadad   Float?
+  consumoLporH       Float?
+  custoAbastecimento Float?
+  consumoMedio       Float?
   alertaConsumo      Boolean @default(false)
 
   observacao        String?
@@ -445,13 +405,12 @@ model EntradaDiesel {
   id              String   @id @default(cuid())
   data            DateTime
   litrosRecebidos Float
-  valorPorLitro   Float // R$/litro
-  custoTotal      Float? // litros × R$/litro
-  nf              String? // número nota fiscal
+  valorPorLitro   Float
+  custoTotal      Float?
+  nf              String?
   fornecedor      String?
-
-  observacao  String?
-  dataCriacao DateTime @default(now())
+  observacao      String?
+  dataCriacao     DateTime @default(now())
 
   @@index([data])
   @@map("entradas_diesel")
@@ -460,14 +419,14 @@ model EntradaDiesel {
 model ConferenciaEstoque {
   id             String   @id @default(cuid())
   data           DateTime
-  estoqueFisico  Float // informado pelo gerente
-  estoqueTeorico Float // entradas - abastecimentos
-  diferenca      Float? // calculado automaticamente
-  percentualDif  Float? // (diferenca / estoqueTeorico) * 100
+  estoqueFisico  Float
+  estoqueTeorico Float
+  diferenca      Float?
+  percentualDif  Float?
   alerta         Boolean  @default(false)
 
-  custoMedioLitro   Float? // média ponderada
-  custoTotalConsumo Float? // no período
+  custoMedioLitro   Float?
+  custoTotalConsumo Float?
 
   observacao     String?
   realizadoPor   User    @relation(fields: [realizadoPorId], references: [id])
@@ -484,11 +443,10 @@ model RelatorioM2 {
   dataPeriodo DateTime
   dataFim     DateTime
 
-  estoqueTeorico Float
-  estoqueFisico  Float
-  diferenca      Float
-
-  custoMedioHora    Float // custo total / horas trabalhadas
+  estoqueTeorico    Float
+  estoqueFisico     Float
+  diferenca         Float
+  custoMedioHora    Float
   custoMedioLitro   Float
   custoTotalConsumo Float
 
@@ -496,8 +454,6 @@ model RelatorioM2 {
 
   @@map("relatorios_m2")
 }
-
-// ========== M3 - RECEITAS E INSUMOS ==========
 
 enum SequenciaAplicacao {
   PRIMEIRA
@@ -515,20 +471,12 @@ model ReceitaBase {
   perfilTalhao PerfilTalhao
   safra        Safra              @relation("ReceitaBaseSafra", fields: [safraId], references: [id], onDelete: Cascade)
   safraId      String
+  unidadeBase  String
 
-  unidadeBase String // "bomba 1.000L" / "bag" / "tanque"
-
-  // Produtos da receita
   produtosReceita ProdutoReceita[]
-
-  // Ajustes
-  ajustes AjusteReceita[]
-
-  // Aplicações
-  aplicacoes AplicacaoInsumo[]
-
-  // SafraReceita relation
-  safraReceita SafraReceita[] @relation("ReceitaBaseSafra")
+  ajustes         AjusteReceita[]
+  aplicacoes      AplicacaoInsumo[]
+  safraReceita    SafraReceita[] @relation("ReceitaBaseSafra")
 
   criadoPor   User   @relation("ReceitaBaseCriador", fields: [criadoPorId], references: [id])
   criadoPorId String
@@ -544,11 +492,9 @@ model ProdutoReceita {
   id        String      @id @default(cuid())
   receita   ReceitaBase @relation(fields: [receitaId], references: [id], onDelete: Cascade)
   receitaId String
-
-  produto   Produto @relation("ProdutoReceitaBase", fields: [produtoId], references: [id])
+  produto   Produto     @relation("ProdutoReceitaBase", fields: [produtoId], references: [id])
   produtoId String
-
-  doseUnidade Float // dose por unidade (bomba, bag, etc)
+  doseUnidade Float
 
   @@unique([receitaId, produtoId])
   @@map("produtos_receita")
@@ -558,11 +504,9 @@ model AjusteReceita {
   id        String      @id @default(cuid())
   receita   ReceitaBase @relation(fields: [receitaId], references: [id], onDelete: Cascade)
   receitaId String
-
-  tipo      String // "adicionar_produto" / "alterar_dose" / "remover_produto"
-  produto   Produto? @relation("AjusteReceitaProduto", fields: [produtoId], references: [id], onDelete: SetNull)
+  tipo      String
+  produto   Produto?    @relation("AjusteReceitaProduto", fields: [produtoId], references: [id], onDelete: SetNull)
   produtoId String?
-
   doseAnterior Float?
   doseNova     Float?
 
@@ -579,9 +523,8 @@ model AplicacaoInsumo {
   id        String      @id @default(cuid())
   receita   ReceitaBase @relation(fields: [receitaId], references: [id])
   receitaId String
-
-  talhao   Talhao @relation(fields: [talhaoId], references: [id])
-  talhaoId String
+  talhao    Talhao      @relation(fields: [talhaoId], references: [id])
+  talhaoId  String
 
   registroAtividade   RegistroAtividade? @relation(fields: [registroAtividadeId], references: [id], onDelete: SetNull)
   registroAtividadeId String?
@@ -590,20 +533,18 @@ model AplicacaoInsumo {
   safraId String
 
   data       DateTime
-  quantidade Float // quantidade utilizada (bombas, bags, etc)
+  quantidade Float
 
-  // Cálculos
-  quantidadeTotalPorProduto Float? // dose × quantidade
-  custoPorProduto           Float? // quantidade × valor unitário
-  custoTotal                Float? // soma dos custos
-  custoPorHectare           Float? // custo total / área talhão
-  produtividadeHaHora       Float? // quando horas informadas
+  quantidadeTotalPorProduto Float?
+  custoPorProduto           Float?
+  custoTotal                Float?
+  custoPorHectare           Float?
+  produtividadeHaHora       Float?
 
   observacao     String?
   realizadoPor   User    @relation(fields: [realizadoPorId], references: [id])
   realizadoPorId String
 
-  // SafraReceita relation
   safraReceita SafraReceita[] @relation("AplicacaoInsumoSafra")
 
   dataCriacao DateTime @default(now())
@@ -619,17 +560,15 @@ model HistoricoAplicacao {
   safra    Safra  @relation("HistoricoAplicacaoSafra", fields: [safraId], references: [id])
   safraId  String
 
-  sequencia     Int // ordem da aplicação (1ª, 2ª, 3ª...)
-  tipoAtividade TipoAtividade
-  data          DateTime
-
-  receita            String // snapshot do nome da receita
-  perfilTalhaoNaData PerfilTalhao // imutável
+  sequencia          Int
+  tipoAtividade      TipoAtividade
+  data               DateTime
+  receita            String
+  perfilTalhaoNaData PerfilTalhao
 
   custoTotal      Float?
   custoPorHectare Float?
 
-  // SafraReceita relation
   safraReceita SafraReceita[] @relation("HistoricoAplicacaoSafra")
 
   dataCriacao DateTime @default(now())
@@ -638,7 +577,6 @@ model HistoricoAplicacao {
   @@map("historico_aplicacao")
 }
 
-// Extensão do modelo Safra para receitas
 model SafraReceita {
   id      String @id @default(cuid())
   safra   Safra  @relation("SafraReceitasRelacao", fields: [safraId], references: [id], onDelete: Cascade)
@@ -647,15 +585,12 @@ model SafraReceita {
   receitasBase ReceitaBase[]        @relation("ReceitaBaseSafra")
   aplicacoes   AplicacaoInsumo[]    @relation("AplicacaoInsumoSafra")
   historico    HistoricoAplicacao[] @relation("HistoricoAplicacaoSafra")
-
-  // SafraExtended relation
   safraExtended SafraExtended?
 
   @@unique([safraId])
   @@map("safra_receitas")
 }
 
-// Extensão do modelo Safra
 model SafraExtended {
   id      String @id @default(cuid())
   safra   Safra  @relation(fields: [safraId], references: [id], onDelete: Cascade)
@@ -666,8 +601,6 @@ model SafraExtended {
 
   @@map("safra_extended")
 }
-
-// ========== M4 - RASTREABILIDADE DO CAFÉ ==========
 
 enum TipoColheita {
   MAQUINA
@@ -693,29 +626,24 @@ enum StatusLote {
   VENDIDO
 }
 
-// Modelo central: Lote de café
 model Lote {
-  id            String @id @default(cuid()) // ex: L2526-001
-  identificador String @unique // ID amigável do lote
+  id            String @id @default(cuid())
+  identificador String @unique
   safra         Safra  @relation(fields: [safraId], references: [id])
   safraId       String
 
-  // Linhagem e operações
   tipoOperacao TipoOperacaoLote
-  lotesOrigem  String[] // Array de IDs dos lotes que originaram este
-  lotesDestino String[] // Array de lotes criados a partir deste
+  lotesOrigem  String[]
+  lotesDestino String[]
 
-  // Status e medições
   statusAtual      StatusLote @default(COLHEITA)
-  quantidadeTotal  Float // em litros
-  quantidadeAltual Float? // atual (pode diminuir com processamento)
+  quantidadeTotal  Float
+  quantidadeAltual Float?
 
-  // Rastreabilidade
   criadorId         String
   dataCriacao       DateTime @default(now())
   ultimaAtualizacao DateTime @updatedAt
 
-  // Relacionamentos
   chegadas           ChegadaTerreiro[]
   etapaTerreiro      EtapaTerreiro?
   etapaSecador       EtapaSecador?
@@ -725,13 +653,10 @@ model Lote {
   etapaSilo          EtapaSilo?
   etapaArmazem       EtapaArmazem?
 
-  // Fusões em Tulha
   fusoesTulhaComoPrincipal  FusaoTulha[] @relation("FusaoTulhaLotePrincipal")
   fusoesTulhaComoSecundario FusaoTulha[] @relation("FusaoTulhaLoteSecundario")
-
-  // Fusões em Silo
-  fusoesSiloComoPrincipal  FusaoSilo[] @relation("FusaoSiloLotePrincipal")
-  fusoesSiloComoSecundario FusaoSilo[] @relation("FusaoSiloLoteSecundario")
+  fusoesSiloComoPrincipal   FusaoSilo[]  @relation("FusaoSiloLotePrincipal")
+  fusoesSiloComoSecundario  FusaoSilo[]  @relation("FusaoSiloLoteSecundario")
 
   @@index([safraId])
   @@index([statusAtual])
@@ -739,24 +664,19 @@ model Lote {
   @@map("lotes")
 }
 
-// Etapa 1: Colheita / Chegada no Terreiro
 model ChegadaTerreiro {
   id     String  @id @default(cuid())
   lote   Lote?   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String?
-
-  safra   Safra  @relation(fields: [safraId], references: [id])
+  safra  Safra   @relation(fields: [safraId], references: [id])
   safraId String
-
-  talhao   Talhao @relation(fields: [talhaoId], references: [id])
+  talhao  Talhao @relation(fields: [talhaoId], references: [id])
   talhaoId String
 
-  tipoColheita TipoColheita
-
-  // Quantidade (pode vir em diferentes unidades)
+  tipoColheita     TipoColheita
   quantidade       Float
-  unidadeOriginal  String // "carretas", "alqueires", "caminhões"
-  quantidadeLitros Float // convertida automaticamente para litros
+  unidadeOriginal  String
+  quantidadeLitros Float
 
   observacao    String?
   responsavelId String
@@ -768,17 +688,16 @@ model ChegadaTerreiro {
   @@map("chegadas_terreiro")
 }
 
-// Etapa 2: Terreiro (Meia Seca)
 model EtapaTerreiro {
   id     String @id @default(cuid())
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String @unique
 
-  umidadeEntrada Float // %
-  umidadeSaida   Float? // %
+  umidadeEntrada Float
+  umidadeSaida   Float?
   dataEntrada    DateTime
   dataSaida      DateTime?
-  diasTerreiro   Int? // calculado
+  diasTerreiro   Int?
 
   observacao    String?
   responsavel   User     @relation(fields: [responsavelId], references: [id])
@@ -788,22 +707,20 @@ model EtapaTerreiro {
   @@map("etapas_terreiro")
 }
 
-// Etapa 3: Secador Estático
 model EtapaSecador {
   id     String @id @default(cuid())
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String @unique
 
-  secadorId        Int // 1, 2, 3, ... (38.000 L cada)
+  secadorId        Int
   quantidadeLitros Float
   dataEntrada      DateTime
-  horaEntrada      String? // HH:MM
+  horaEntrada      String?
   dataSaida        DateTime?
-  horaSaida        String? // HH:MM
-
-  umidadeInicial Float
-  umidadeSaida   Float?
-  tempoSecagem   Float? // em horas, calculado
+  horaSaida        String?
+  umidadeInicial   Float
+  umidadeSaida     Float?
+  tempoSecagem     Float?
 
   observacao    String?
   responsavel   User     @relation(fields: [responsavelId], references: [id])
@@ -813,19 +730,16 @@ model EtapaSecador {
   @@map("etapas_secador")
 }
 
-// Etapa 4: Tulha de Descanso
 model EtapaTulha {
   id     String @id @default(cuid())
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String @unique
 
-  tulhaId          Int // 1-6 (76.000 L cada, comporta 2 secadores)
+  tulhaId          Int
   quantidadeLitros Float
   dataEntrada      DateTime
   dataSaida        DateTime?
-
-  // Histórico de fusões nesta tulha
-  fusoesTulha FusaoTulha[]
+  fusoesTulha      FusaoTulha[]
 
   observacao    String?
   responsavel   User     @relation(fields: [responsavelId], references: [id])
@@ -835,7 +749,6 @@ model EtapaTulha {
   @@map("etapas_tulha")
 }
 
-// Registro de Fusão em Tulha
 model FusaoTulha {
   id      String     @id @default(cuid())
   tulha   EtapaTulha @relation(fields: [tulhaId], references: [id], onDelete: Cascade)
@@ -855,19 +768,17 @@ model FusaoTulha {
   @@map("fusoes_tulha")
 }
 
-// Etapa 5a: Benefício (Operacional)
 model EtapaBeneficio {
   id     String @id @default(cuid())
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String @unique
 
-  horaInicio         String // HH:MM
-  horaFim            String? // HH:MM
-  tempoProcessamento Float? // calculado em horas
-
-  umidadeEntrada Float
-  umidadeSaida   Float?
-  observacao     String?
+  horaInicio         String
+  horaFim            String?
+  tempoProcessamento Float?
+  umidadeEntrada     Float
+  umidadeSaida       Float?
+  observacao         String?
 
   responsavel   User     @relation(fields: [responsavelId], references: [id])
   responsavelId String
@@ -876,21 +787,19 @@ model EtapaBeneficio {
   @@map("etapas_beneficio")
 }
 
-// Etapa 5b: Classificação Física
 model EtapaClassificacao {
   id     String @id @default(cuid())
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String @unique
 
-  peneira17Plus Float // %
-  peneira16     Float // %
-  peneira15     Float // %
-  moca10        Float // %
-  peneira13     Float // %
-  catacao       Float // %
-  fundo         Float? // %
-
-  pontuacaoBebida Float? // 0-100
+  peneira17Plus   Float
+  peneira16       Float
+  peneira15       Float
+  moca10          Float
+  peneira13       Float
+  catacao         Float
+  fundo           Float?
+  pontuacaoBebida Float?
   umidadeFinal    Float
 
   observacao        String?
@@ -901,17 +810,15 @@ model EtapaClassificacao {
   @@map("etapas_classificacao")
 }
 
-// Etapa 6: Silos
 model EtapaSilo {
   id     String @id @default(cuid())
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
   loteId String @unique
 
-  siloId      Int // ID do silo (1, 2, 3, etc)
+  siloId      Int
   dataEntrada DateTime
   dataSaida   DateTime?
-
-  fusoesSilo FusaoSilo[]
+  fusoesSilo  FusaoSilo[]
 
   observacao    String?
   responsavel   User     @relation(fields: [responsavelId], references: [id])
@@ -921,7 +828,6 @@ model EtapaSilo {
   @@map("etapas_silo")
 }
 
-// Registro de Fusão em Silo
 model FusaoSilo {
   id     String    @id @default(cuid())
   silo   EtapaSilo @relation(fields: [siloId], references: [id], onDelete: Cascade)
@@ -940,7 +846,6 @@ model FusaoSilo {
   @@map("fusoes_silo")
 }
 
-// Etapa 7: Armazém
 model EtapaArmazem {
   id     String @id @default(cuid())
   lote   Lote   @relation(fields: [loteId], references: [id], onDelete: Cascade)
@@ -952,12 +857,11 @@ model EtapaArmazem {
   nfTransporte      String?
   armazemDestino    String?
   numerosPesagem    String?
-  pesoBruto         Float? // em kg
-  pesoLiquido       Float? // em kg (após limpeza)
-  numeroLoteArmazem String? // ID do lote no armazém
-
-  nomeArmazem   String?
-  numeroBalanca String?
+  pesoBruto         Float?
+  pesoLiquido       Float?
+  numeroLoteArmazem String?
+  nomeArmazem       String?
+  numeroBalanca     String?
 
   observacao    String?
   responsavel   User     @relation(fields: [responsavelId], references: [id])
@@ -967,15 +871,12 @@ model EtapaArmazem {
   @@map("etapas_armazem")
 }
 
-// Divisão de Lote
 model DivisaoLote {
   id           String   @id @default(cuid())
-  loteOriginal String // ID do lote original
-  lotesDestino String[] // IDs dos lotes criados (ex: L001-A, L001-B)
-
-  motivo     String? // ex: "Excede capacidade secador"
-  observacao String?
-
+  loteOriginal String
+  lotesDestino String[]
+  motivo       String?
+  observacao   String?
   realizadoPor String
   dataCriacao  DateTime @default(now())
 
@@ -983,25 +884,22 @@ model DivisaoLote {
   @@map("divisoes_lote")
 }
 
-// M5 - Painel do Gestor
-
-// Vale (Adiantamento)
 model Vale {
   id        String @id @default(cuid())
   usuario   User   @relation("ValesRecebidos", fields: [usuarioId], references: [id], onDelete: Cascade)
   usuarioId String
 
-  valor          Float // R$
+  valor          Float
   dataLancamento DateTime
-  mesPagamento   String // ex: "2025-06" (ano-mês para controle)
+  mesPagamento   String
 
-  motivo    String? // opcional: motivo do vale
-  descricao String? // descrição adicional
+  motivo    String?
+  descricao String?
 
   lancadoPor   User   @relation("ValesLancados", fields: [lancadoPorId], references: [id])
   lancadoPorId String
 
-  status           String    @default("PENDENTE") // PENDENTE, DESCONTADO, CANCELADO
+  status           String    @default("PENDENTE")
   dataCancelamento DateTime?
 
   dataCriacao     DateTime @default(now())
@@ -1012,15 +910,12 @@ model Vale {
   @@map("vales")
 }
 
-// M7 - Assistente de IA
-
-// Sessão de Chat com IA
 model AssistantChat {
   id        String @id @default(cuid())
   usuario   User   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   usuarioId String
 
-  titulo    String? // título da conversa
+  titulo    String?
   mensagens ChatMessage[]
 
   ativa       Boolean   @default(true)
@@ -1031,13 +926,12 @@ model AssistantChat {
   @@map("assistant_chats")
 }
 
-// Mensagem individual no chat
 model ChatMessage {
   id     String        @id @default(cuid())
   chat   AssistantChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
   chatId String
 
-  papel    String // "usuario" ou "assistant"
+  papel    String
   conteudo String @db.Text
 
   dataCriacao DateTime @default(now())
@@ -1046,17 +940,16 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
-// Log de Alterações Solicitadas via IA
 model AssistantLog {
   id        String @id @default(cuid())
   usuario   User   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   usuarioId String
 
-  tipoAlteracao        String // "campo", "regra", "relatorio", "permissao", etc
+  tipoAlteracao        String
   descricaoSolicitacao String @db.Text
 
-  previa String? @db.Text // JSON com prévia da alteração
-  status String  @default("PENDENTE") // PENDENTE, APROVADO, REJEITADO, APLICADO
+  previa String? @db.Text
+  status String  @default("PENDENTE")
 
   dataAprovacao  DateTime?
   dataaplicacao  DateTime?
@@ -1069,13 +962,14 @@ model AssistantLog {
   @@index([status])
   @@map("assistant_logs")
 }
+
 model TipoAtividadeCadastro {
-  id          Int       @id @default(autoincrement())
-  nome        String    @unique
-  descricao   String?
-  ativo       Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique
+  descricao String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("tipos_atividade")
 }
