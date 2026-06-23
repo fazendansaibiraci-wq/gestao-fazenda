@@ -38,7 +38,7 @@ import { useState } from 'react'
   { label: 'Assistente IA', href: '/modules/assistente', icon: Bot, role: 'GESTOR' },
   { label: 'Configurações', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
 ]
-]
+
 
 export function Sidebar() {
   const pathname = usePathname()
