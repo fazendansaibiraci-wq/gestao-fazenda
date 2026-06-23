@@ -19,17 +19,17 @@ import {
 } from 'lucide-react'
 
 const menuItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO' },
-  { label: 'Atividades', href: '/modules/atividades', icon: ClipboardList },
+  { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
+  { label: 'Atividades', href: '/modules/atividades', icon: ClipboardList, excludeRoles: 'AGRONOMO' },
   { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
-  { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Produtos', href: '/modules/produtos', icon: Package, excludeRoles: 'FUNCIONARIO' },
-  { label: 'Receitas', href: '/modules/receitas', icon: Beaker, role: 'GESTOR|GERENTE' },
+  { label: 'Receitas', href: '/modules/receitas', icon: Beaker, role: 'GESTOR|GERENTE|AGRONOMO' },
   { label: 'Tipos', href: '/modules/tipos-atividade', icon: Tag, role: 'GESTOR' },
   { label: 'Implementos', href: '/modules/implementos', icon: Tractor, role: 'GESTOR|GERENTE' },
   { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
-  { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO' },
-  { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
+  { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Assistente IA', href: '/modules/assistente', icon: Bot, role: 'GESTOR' },
   { label: 'Config', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
 ]
@@ -59,13 +59,13 @@ export function MobileNavigation() {
     return true
   })
 
-  const itensprincipais = itensFiltrados.slice(0, 4)
+  const itensPrincipais = itensFiltrados.slice(0, 4)
   const itensMais = itensFiltrados.slice(4)
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-gray-200 z-50">
       <div className="flex justify-around">
-        {itensprincipais.map(({ label, href, icon: Icon }) => (
+        {itensPrincipais.map(({ label, href, icon: Icon }) => (
           <Link
             key={href}
             href={href}
@@ -78,7 +78,6 @@ export function MobileNavigation() {
           </Link>
         ))}
 
-        {/* Mais */}
         {itensMais.length > 0 && (
           <div className="relative group flex flex-col items-center gap-1 px-2 py-3 flex-1">
             <span className="text-2xl text-gray-500">⋯</span>
