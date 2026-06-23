@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     // Criar registro
     const registro = await prisma.registroAtividade.create({
       data: {
-        funcionarioId: session.user?.id as string,
+        funcionarioId: body.funcionarioId || session.user?.id as string,
         data: new Date(body.data),
         horaEntrada: body.horaEntrada,
         horaSaida: body.horaSaida || null,
