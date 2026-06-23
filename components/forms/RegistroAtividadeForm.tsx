@@ -16,7 +16,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [safras, setSafras] = useState([])
   const [talhoes, setTalhoes] = useState([])
   const [maquinas, setMaquinas] = useState([])
-  const [produtos, setProdutos] = useState([])
+  const [implementos, setImplementos] = useState([])
   const [receitas, setReceitas] = useState([])
 
   const [form, setForm] = useState({
@@ -49,19 +49,19 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
   const loadData = async () => {
     try {
-      const [safrasRes, talhaoesRes, maquinasRes, produtosRes, receitasRes] = await Promise.all([
+      const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes] = await Promise.all([
         fetch('/api/safras'),
         fetch('/api/talhoes'),
         fetch('/api/maquinas'),
-        fetch('/api/produtos'),
         fetch('/api/receitas'),
+        fetch('/api/implementos'),
       ])
 
       if (safrasRes.ok) setSafras((await safrasRes.json()).data)
       if (talhaoesRes.ok) setTalhoes((await talhaoesRes.json()).data)
       if (maquinasRes.ok) setMaquinas((await maquinasRes.json()).data)
-      if (produtosRes.ok) setProdutos((await produtosRes.json()).data)
       if (receitasRes.ok) setReceitas((await receitasRes.json()).data)
+      if (implementosRes.ok) setImplementos((await implementosRes.json()).data)
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
     }
@@ -79,16 +79,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     if (form.maquinaId && form.horimetroInicial && form.horimetroFinal) {
       const inicial = parseFloat(form.horimetroInicial)
       const final = parseFloat(form.horimetroFinal)
-      const diferenca = final - inicial
-
       if (final <= inicial) {
         setError('Horímetro final deve ser maior que inicial')
         return false
-      }
-
-      if (diferenca > 24) {
-        setError(`Alerta: Diferença de ${diferenca.toFixed(1)}h é maior que 24h`)
-        // Não bloqueia, apenas aviso
       }
     }
     return true
@@ -173,6 +166,38 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
           <p className="text-red-600 text-sm">{error}</p>
         </div>
       )}
+
+      {/* Falta — aparece primeiro */}
+      <div className="card border-l-4 border-orange-400">
+        <h3 className="text-lg font-semibold text-primary mb-4">Registrar Falta?</h3>
+        <label className="flex items-center gap-2 cursor-pointer mb-4">
+          <input
+            type="checkbox"
+            name="isFalta"
+            checked={form.isFalta}
+            onChange={handleChange}
+            disabled={loading}
+          />
+          <span className="text-sm font-medium">Marcar como falta</span>
+        </label>
+        {form.isFalta && (
+          <div className="form-group">
+            <label htmlFor="motivoFalta">Motivo da Falta</label>
+            <select
+              id="motivoFalta"
+              name="motivoFalta"
+              value={form.motivoFalta}
+              onChange={handleChange}
+              disabled={loading}
+            >
+              <option value="">Selecionar motivo</option>
+              <option value="atestado_medico">Atestado Médico</option>
+              <option value="pessoal">Pessoal</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+        )}
+      </div>
 
       {/* Informações Básicas */}
       <div className="card">
@@ -310,7 +335,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         </div>
       </div>
 
-      {/* Campos Condicionais por Tipo de Atividade */}
+      {/* Campos Condicionais */}
       {needsProduto.includes(form.tipoAtividade as any) && (
         <div className="card">
           <h3 className="text-lg font-semibold text-primary mb-4">Aplicação de Produto</h3>
@@ -355,7 +380,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                 onChange={handleChange}
                 disabled={loading}
                 step="0.01"
-                placeholder="0,00"
               />
             </div>
           </div>
@@ -388,16 +412,15 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                 onChange={handleChange}
                 disabled={loading}
                 step="0.01"
-                placeholder="0,00"
               />
             </div>
           </div>
         </div>
       )}
 
-      {/* Máquina */}
+      {/* Máquina e Implemento */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-primary mb-4">Máquina (Opcional)</h3>
+        <h3 className="text-lg font-semibold text-primary mb-4">Máquina e Implemento (Opcional)</h3>
         <div className="space-y-4">
           <div className="form-group">
             <label htmlFor="maquinaId">Máquina Utilizada</label>
@@ -419,9 +442,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
           {form.maquinaId && (
             <div className="space-y-4">
-              <div className="alert alert-info">
-                <p>Se selecionou máquina, horímetro inicial e final são obrigatórios</p>
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label htmlFor="horimetroInicial">Horímetro Inicial (h)</label>
@@ -452,56 +472,27 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   />
                 </div>
               </div>
-              <div className="form-group">
-                <label htmlFor="implementoUtilizado">Implemento Utilizado</label>
-                <input
-                  type="text"
-                  id="implementoUtilizado"
-                  name="implementoUtilizado"
-                  value={form.implementoUtilizado}
-                  onChange={handleChange}
-                  disabled={loading}
-                  placeholder="Ex: Arado"
-                />
-              </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Falta */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-primary mb-4">Falta</h3>
-        <label className="flex items-center gap-2 cursor-pointer mb-4">
-          <input
-            type="checkbox"
-            name="isFalta"
-            checked={form.isFalta}
-            onChange={handleChange}
-            disabled={loading}
-          />
-          <span className="text-sm font-medium">Registrar como falta</span>
-        </label>
-
-        {form.isFalta && (
-          <div className="space-y-4">
-            <div className="form-group">
-              <label htmlFor="motivoFalta">Motivo da Falta</label>
-              <select
-                id="motivoFalta"
-                name="motivoFalta"
-                value={form.motivoFalta}
-                onChange={handleChange}
-                disabled={loading}
-              >
-                <option value="">Selecionar motivo</option>
-                <option value="atestado_medico">Atestado Médico</option>
-                <option value="pessoal">Pessoal</option>
-                <option value="outro">Outro</option>
-              </select>
-            </div>
+          <div className="form-group">
+            <label htmlFor="implementoUtilizado">Implemento Utilizado</label>
+            <select
+              id="implementoUtilizado"
+              name="implementoUtilizado"
+              value={form.implementoUtilizado}
+              onChange={handleChange}
+              disabled={loading}
+            >
+              <option value="">Sem implemento</option>
+              {implementos.map((imp: any) => (
+                <option key={imp.id} value={imp.nome}>
+                  {imp.nome}{imp.tipo ? ` (${imp.tipo})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Observações */}
@@ -523,11 +514,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
       {/* Botões */}
       <div className="flex gap-4">
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn btn-primary flex-1"
-        >
+        <button type="submit" disabled={loading} className="btn btn-primary flex-1">
           {loading ? 'Salvando...' : id ? 'Atualizar' : 'Registrar Atividade'}
         </button>
         <button
