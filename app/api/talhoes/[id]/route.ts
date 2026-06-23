@@ -45,8 +45,7 @@ export async function PUT(
       data: {
         nome: body.nome || undefined,
         area: body.area ? parseFloat(body.area) : undefined,
-        fazenda: body.fazenda,
-        cultura: body.cultura,
+        variedade: body.variedade,
         status: body.status,
       },
     })
