@@ -76,18 +76,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calcular horas trabalhadas
-    let horasCalculadas = null
-    if (body.horaEntrada && body.horaSaida) {
-      const [hE, mE] = body.horaEntrada.split(':').map(Number)
-      const [hS, mS] = body.horaSaida.split(':').map(Number)
-      const entrada = hE * 60 + mE
-      const saida = hS * 60 + mS
-      if (saida > entrada) {
-        horasCalculadas = (saida - entrada) / 60
-      }
-    }
-
     // Buscar funcionário e configurações globais
     const funcionarioId = body.funcionarioId || session.user?.id as string
     const [funcionario, config] = await Promise.all([
@@ -106,36 +94,69 @@ export async function POST(request: NextRequest) {
     ])
 
     // Detectar se está na safra
-    let estaНаSafra = false
+    let estaNaSafra = false
     if (config?.inicioSafra && config?.fimSafra) {
       const dataRegistro = new Date(body.data)
-      estaНаSafra = dataRegistro >= new Date(config.inicioSafra) && dataRegistro <= new Date(config.fimSafra)
+      estaNaSafra = dataRegistro >= new Date(config.inicioSafra) && dataRegistro <= new Date(config.fimSafra)
+    }
+
+    // Calcular horas brutas (saída - entrada)
+    let horasBrutas = null
+    if (body.horaEntrada && body.horaSaida) {
+      const [hE, mE] = body.horaEntrada.split(':').map(Number)
+      const [hS, mS] = body.horaSaida.split(':').map(Number)
+      const entrada = hE * 60 + mE
+      const saida = hS * 60 + mS
+      if (saida > entrada) {
+        horasBrutas = (saida - entrada) / 60
+      }
+    }
+
+    // Aplicar desconto de almoço
+    // - Fora da safra: sempre desconta 1h
+    // - Na safra: desconta 1h, EXCETO se passouDiretoAlmoco = true (nesse caso a 1h vira hora extra)
+    let horasCalculadas = horasBrutas
+    let horaAlmocoComoExtra = false
+
+    if (horasBrutas !== null && !body.isFalta) {
+      if (!estaNaSafra) {
+        // Fora da safra: sempre desconta 1h
+        horasCalculadas = Math.max(0, horasBrutas - 1)
+      } else {
+        // Na safra
+        if (body.passouDiretoAlmoco) {
+          // Passou direto: não desconta, a 1h de almoço vira hora extra
+          horasCalculadas = horasBrutas
+          horaAlmocoComoExtra = true
+        } else {
+          // Teve almoço: desconta 1h normalmente
+          horasCalculadas = Math.max(0, horasBrutas - 1)
+        }
+      }
     }
 
     // Calcular carga horária do dia
-    const cargaHorariaDia = estaНаSafra
+    const cargaHorariaDia = estaNaSafra
       ? (funcionario?.cargaHorariaSafra || 8)
       : (config?.cargaHorariaEntressafra || 8)
 
-    // Calcular horas extras e desconto
+    // Calcular horas extras e devidas
     let horasExtras = 0
     let horasDevidas = 0
     let ehHoraExtra = false
-    let valorHoraExtra = 0
 
     if (horasCalculadas !== null && !body.isFalta) {
       if (horasCalculadas > cargaHorariaDia) {
-        // Horas a mais = hora extra
         horasExtras = horasCalculadas - cargaHorariaDia
         ehHoraExtra = true
-        valorHoraExtra = estaНаSafra
-          ? (funcionario?.valorHoraExtraSafra || 0)
-          : (funcionario?.valorHoraExtraEntressafra || 0)
       } else if (horasCalculadas < cargaHorariaDia) {
-        // Horas a menos = desconto
         horasDevidas = cargaHorariaDia - horasCalculadas
       }
     }
+
+    const valorHoraExtra = estaNaSafra
+      ? (funcionario?.valorHoraExtraSafra || 0)
+      : (funcionario?.valorHoraExtraEntressafra || 0)
 
     // Criar registro
     const registro = await prisma.registroAtividade.create({
@@ -164,6 +185,7 @@ export async function POST(request: NextRequest) {
         implementoUtilizado: body.implementoUtilizado || null,
         isFalta: body.isFalta || false,
         motivoFalta: body.motivoFalta || null,
+        passouDiretoAlmoco: body.passouDiretoAlmoco || false,
         ehHoraExtra,
         statusAprovacao: ehHoraExtra ? 'pendente' : 'aprovado',
       },
@@ -181,7 +203,6 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Retornar com informações de horas extras e desconto
     return NextResponse.json(
       {
         success: true,
@@ -190,8 +211,9 @@ export async function POST(request: NextRequest) {
         horasExtras: horasExtras > 0 ? horasExtras : null,
         horasDevidas: horasDevidas > 0 ? horasDevidas : null,
         valorHoraExtra: horasExtras > 0 ? valorHoraExtra * horasExtras : null,
-        estaНаSafra,
+        estaNaSafra,
         cargaHorariaDia,
+        horaAlmocoComoExtra,
       },
       { status: 201 }
     )
