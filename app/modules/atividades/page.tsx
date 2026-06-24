@@ -13,6 +13,9 @@ interface Atividade {
   horaSaida?: string
   tipoAtividade: string
   status: string
+  isFalta: boolean
+  motivoFalta?: string
+  periodoFalta?: string
   talhao: { nome: string }
   safra: { nome: string }
   funcionario?: { name: string }
@@ -71,6 +74,16 @@ export default function AtividadesPage() {
     }
   }
 
+  const periodoLabel = (periodo?: string) => {
+    if (!periodo) return ''
+    const map: Record<string, string> = {
+      DIA_INTEIRO: 'Dia inteiro',
+      MANHA: 'Manhã',
+      TARDE: 'Tarde',
+    }
+    return map[periodo] || periodo
+  }
+
   if (status === 'loading' || loading) {
     return <div className="flex items-center justify-center h-64"><div className="spinner"></div></div>
   }
@@ -122,7 +135,7 @@ export default function AtividadesPage() {
               <th className="px-4 py-3 text-left font-semibold">Data</th>
               <th className="px-4 py-3 text-left font-semibold">Horário</th>
               {isGestor && <th className="px-4 py-3 text-left font-semibold">Funcionário</th>}
-              <th className="px-4 py-3 text-left font-semibold">Talhão</th>
+              <th className="px-4 py-3 text-left font-semibold">Talhão / Falta</th>
               <th className="px-4 py-3 text-left font-semibold">Atividade</th>
               <th className="px-4 py-3 text-left font-semibold">Status</th>
               <th className="px-4 py-3 text-right font-semibold">Ações</th>
@@ -137,30 +150,45 @@ export default function AtividadesPage() {
               </tr>
             ) : (
               atividades.map((a) => (
-                <tr key={a.id} className="border-b hover:bg-gray-50">
+                <tr key={a.id} className={`border-b hover:bg-gray-50 ${a.isFalta ? 'bg-red-50' : ''}`}>
                   <td className="px-4 py-3">
                     {new Date(a.data).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="px-4 py-3">
-                    {a.horaEntrada} {a.horaSaida ? `- ${a.horaSaida}` : ''}
+                    {a.isFalta ? '—' : `${a.horaEntrada}${a.horaSaida ? ` - ${a.horaSaida}` : ''}`}
                   </td>
                   {isGestor && (
                     <td className="px-4 py-3 text-gray-600">
                       {a.funcionario?.name || '-'}
                     </td>
                   )}
-                  <td className="px-4 py-3 font-medium">{a.talhao?.nome}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {a.isFalta ? (
+                      <span className="text-red-600">
+                        Falta — {periodoLabel(a.periodoFalta)}
+                        {a.motivoFalta && <span className="text-xs text-gray-500 ml-1">({a.motivoFalta.replace(/_/g, ' ')})</span>}
+                      </span>
+                    ) : (
+                      a.talhao?.nome
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-gray-600">
-                    {a.tipoAtividade.replace(/_/g, ' ')}
+                    {a.isFalta ? '—' : a.tipoAtividade.replace(/_/g, ' ')}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                      a.status === 'CONCLUIDO'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {a.status.replace(/_/g, ' ')}
-                    </span>
+                    {a.isFalta ? (
+                      <span className="text-xs px-2 py-1 rounded-full font-semibold bg-red-100 text-red-800">
+                        Falta
+                      </span>
+                    ) : (
+                      <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                        a.status === 'CONCLUIDO'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {a.status.replace(/_/g, ' ')}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
