@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Plus, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { redirect, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
@@ -18,6 +17,7 @@ export default function MaquinasPage() {
     modelo: '',
     ano: new Date().getFullYear(),
     placa: '',
+    valor: '',
     status: 'ATIVA',
   })
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -57,6 +57,7 @@ export default function MaquinasPage() {
         modelo: '',
         ano: new Date().getFullYear(),
         placa: '',
+        valor: '',
         status: 'ATIVA',
       })
       setEditingId(null)
@@ -137,6 +138,14 @@ export default function MaquinasPage() {
             onChange={(e) => setFormData({ ...formData, placa: e.target.value })}
             className="border rounded-lg px-3 py-2"
           />
+          <input
+            type="number"
+            placeholder="Valor (R$)"
+            value={formData.valor}
+            onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+            step="0.01"
+            className="border rounded-lg px-3 py-2"
+          />
           <select
             value={formData.status}
             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
@@ -161,6 +170,7 @@ export default function MaquinasPage() {
                   modelo: '',
                   ano: new Date().getFullYear(),
                   placa: '',
+                  valor: '',
                   status: 'ATIVA',
                 })
               }}
@@ -187,14 +197,19 @@ export default function MaquinasPage() {
                 {m.status}
               </span>
             </div>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-gray-600 mb-1">
               {m.marca} {m.modelo} {m.ano && `(${m.ano})`}
             </p>
+            {m.valor && (
+              <p className="text-sm font-medium text-green-700 mb-3">
+                R$ {Number(m.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={() => {
                   setEditingId(m.id)
-                  setFormData(m)
+                  setFormData({ ...m, valor: m.valor || '' })
                 }}
                 className="flex-1 btn btn-outline text-sm"
               >
