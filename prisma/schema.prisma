@@ -213,6 +213,7 @@ model Maquina {
   modelo            String?
   ano               Int?
   placa             String?
+  valor             Float?
   status            MaquinaStatus @default(ATIVA)
   ultimoHorimetro   Float         @default(0)
   dataCriacao       DateTime      @default(now())
