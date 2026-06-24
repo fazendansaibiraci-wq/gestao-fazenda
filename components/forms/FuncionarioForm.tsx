@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserRole } from '@prisma/client'
 
@@ -25,6 +25,7 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     salarioSafra: initialData?.salarioSafra || '',
     valorHoraExtraEntressafra: initialData?.valorHoraExtraEntressafra || '',
     valorHoraExtraSafra: initialData?.valorHoraExtraSafra || '',
+    cargaHorariaSafra: initialData?.cargaHorariaSafra || '',
     bancoHorasAtivo: initialData?.bancoHorasAtivo || false,
     active: initialData?.active !== undefined ? initialData.active : true,
   })
@@ -290,6 +291,33 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
                 placeholder="0,00"
               />
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Jornada */}
+      <div className="card">
+        <h3 className="text-lg font-semibold text-primary mb-4">Jornada de Trabalho</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="form-group">
+            <label htmlFor="cargaHorariaSafra">
+              Carga Horária Safra (horas/dia)
+            </label>
+            <input
+              type="number"
+              id="cargaHorariaSafra"
+              name="cargaHorariaSafra"
+              value={form.cargaHorariaSafra}
+              onChange={handleChange}
+              disabled={loading}
+              step="0.5"
+              min="1"
+              max="24"
+              placeholder="Ex: 10"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              A carga horária fora da safra é definida nas Configurações Globais.
+            </p>
           </div>
         </div>
       </div>
