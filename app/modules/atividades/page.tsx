@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 interface Atividade {
@@ -56,6 +56,20 @@ export default function AtividadesPage() {
     setLoading(true)
     load()
   }, [filtroData, filtroStatus])
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este lançamento?')) return
+    try {
+      const res = await fetch(`/api/registros-atividade/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Erro ao excluir')
+      }
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao excluir')
+    }
+  }
 
   if (status === 'loading' || loading) {
     return <div className="flex items-center justify-center h-64"><div className="spinner"></div></div>
@@ -149,9 +163,20 @@ export default function AtividadesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/modules/atividades/${a.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                      Editar
-                    </Link>
+                    <div className="flex items-center justify-end gap-2">
+                      <Link href={`/modules/atividades/${a.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        Editar
+                      </Link>
+                      {isGestor && (
+                        <button
+                          onClick={() => handleDelete(a.id)}
+                          className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
