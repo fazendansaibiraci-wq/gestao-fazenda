@@ -67,9 +67,21 @@ export async function DELETE(
     const maquina = await prisma.maquina.findUnique({ where: { id: params.id } })
     if (!maquina) return NextResponse.json({ error: 'Não encontrada' }, { status: 404 })
 
+    // Desvincular registros de atividade antes de deletar
+    await prisma.registroAtividade.updateMany({
+      where: { maquinaId: params.id },
+      data: { maquinaId: null },
+    })
+
+    // Deletar abastecimentos vinculados
+    await prisma.abastecimentoTrator.deleteMany({
+      where: { maquinaId: params.id },
+    })
+
     await prisma.maquina.delete({ where: { id: params.id } })
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error('DELETE /api/maquinas/[id]:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
