@@ -69,10 +69,14 @@ export default function MaquinasPage() {
   const handleDelete = async (id: string) => {
     if (confirm('Deletar máquina?')) {
       try {
-        await fetch(`/api/maquinas/${id}`, { method: 'DELETE' })
+        const res = await fetch(`/api/maquinas/${id}`, { method: 'DELETE' })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || 'Erro ao deletar')
+        }
         load()
       } catch (err) {
-        alert('Erro')
+        alert(err instanceof Error ? err.message : 'Erro ao deletar')
       }
     }
   }
