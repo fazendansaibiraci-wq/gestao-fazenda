@@ -351,6 +351,7 @@ model RegistroAtividade {
 passouDiretoAlmoco Boolean @default(false)
   isFalta         Boolean @default(false)
   motivoFalta     String?
+periodoFalta    String?
   observacaoFalta String?
 
   ehHoraExtra     Boolean @default(false)
