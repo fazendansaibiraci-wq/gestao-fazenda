@@ -20,6 +20,7 @@ import {
   Tag,
   Beaker,
   Users,
+  DollarSign,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -37,6 +38,7 @@ const menuItems = [
   { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
   { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
+  { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, role: 'GESTOR' },
   { label: 'Assistente IA', href: '/modules/assistente', icon: Bot, role: 'GESTOR' },
   { label: 'Configurações', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
 ]
