@@ -21,6 +21,8 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [implementos, setImplementos] = useState([])
   const [receitas, setReceitas] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
+  const [estaNaSafra, setEstaNaSafra] = useState(false)
+  const [config, setConfig] = useState<any>(null)
 
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -45,6 +47,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     implementoUtilizado: initialData?.implementoUtilizado || '',
     isFalta: initialData?.isFalta || false,
     motivoFalta: initialData?.motivoFalta || '',
+    passouDiretoAlmoco: initialData?.passouDiretoAlmoco || false,
     observacao: initialData?.observacao || '',
     fotoEvidencia: initialData?.fotoEvidencia || '',
     funcionarioId: initialData?.funcionarioId || '',
@@ -54,15 +57,28 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     loadData()
   }, [])
 
+  // Verificar se a data selecionada está na safra
+  useEffect(() => {
+    if (config?.inicioSafra && config?.fimSafra && form.data) {
+      const dataRegistro = new Date(form.data)
+      const inicio = new Date(config.inicioSafra)
+      const fim = new Date(config.fimSafra)
+      setEstaNaSafra(dataRegistro >= inicio && dataRegistro <= fim)
+    } else {
+      setEstaNaSafra(false)
+    }
+  }, [form.data, config])
+
   const loadData = async () => {
     try {
-      const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes] = await Promise.all([
+      const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes, configRes] = await Promise.all([
         fetch('/api/safras'),
         fetch('/api/talhoes'),
         fetch('/api/maquinas'),
         fetch('/api/receitas'),
         fetch('/api/implementos'),
         fetch('/api/funcionarios'),
+        fetch('/api/configuracoes'),
       ])
 
       if (safrasRes.ok) setSafras((await safrasRes.json()).data)
@@ -71,6 +87,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
       if (receitasRes.ok) setReceitas((await receitasRes.json()).data)
       if (implementosRes.ok) setImplementos((await implementosRes.json()).data)
       if (funcionariosRes.ok) setFuncionarios((await funcionariosRes.json()).data)
+      if (configRes.ok) setConfig((await configRes.json()).data)
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
     }
@@ -138,6 +155,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
           horimetroInicial,
           horimetroFinal,
           horasMaquina,
+          passouDiretoAlmoco: estaNaSafra ? form.passouDiretoAlmoco : false,
         }),
       })
 
@@ -308,6 +326,24 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               </select>
             </div>
           </div>
+
+          {/* Almoço — só aparece na safra e quando não é falta */}
+          {estaNaSafra && !form.isFalta && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="passouDiretoAlmoco"
+                  checked={form.passouDiretoAlmoco}
+                  onChange={handleChange}
+                  disabled={loading}
+                />
+                <span className="text-sm font-medium text-amber-800">
+                  Passou direto no almoço (1h conta como hora extra)
+                </span>
+              </label>
+            </div>
+          )}
         </div>
       </div>
 
