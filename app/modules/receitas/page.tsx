@@ -186,9 +186,7 @@ export default function ReceitasPage() {
                       {prods.map(pr => <option key={pr.id} value={pr.id}>{pr.nomeComercial}</option>)}
                     </select>
                     <input type="text" placeholder="Dose" value={String(p.dosagem)} onChange={e => updP(i, 'dosagem', e.target.value)} className="w-20 border rounded-lg px-2 py-2 text-sm" />
-                    <select value={p.unidade} onChange={e => updP(i, 'unidade', e.target.value)} className="w-24 border rounded-lg px-2 py-2 text-sm">
-                      <option>L/ha</option><option>mL/ha</option><option>kg/ha</option><option>g/ha</option><option>L/100L</option>
-                    </select>
+                  
                     {form.produtos.length > 1 && <button type="button" onClick={() => remP(i)} className="text-red-400 px-1">×</button>}
                   </div>
                 ))}
