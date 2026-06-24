@@ -27,6 +27,9 @@ interface ResumoFuncionario {
   funcionario: { id: string; name: string; role: string }
   estaNaSafra: boolean
   salarioBase: number
+  valorDia: number
+  valorHoraNormal: number
+  valorHoraExtra: number
   diasTrabalhados: number
   totalFaltas: number
   totalHorasTrabalhadas: number
@@ -35,7 +38,7 @@ interface ResumoFuncionario {
   valorHorasExtras: number
   descontoHorasDevidas: number
   descontoFaltas: number
-  totalAPagar: number
+  totalAcumulado: number
   registrosDiarios: RegistroDiario[]
 }
 
@@ -61,7 +64,6 @@ export default function ResumoMensalPage() {
       const res = await fetch(`/api/resumo-mensal?mes=${mes}&ano=${ano}`)
       const data = await res.json()
       setResumo(data.data?.resumo || [])
-      // Funcionário vê expandido por padrão
       if (isFuncionario && data.data?.resumo?.length > 0) {
         setExpandidos([data.data.resumo[0].funcionario.id])
       }
@@ -83,13 +85,14 @@ export default function ResumoMensalPage() {
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ]
 
-  const totalGeral = resumo.reduce((acc, r) => acc + r.totalAPagar, 0)
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   const fmtH = (h: number) => {
     const horas = Math.floor(h)
     const minutos = Math.round((h - horas) * 60)
     return `${horas}h ${minutos.toString().padStart(2, '0')}min`
   }
+
+  const totalAcumuladoGeral = resumo.reduce((acc, r) => acc + r.totalAcumulado, 0)
 
   if (status === 'loading' || loading) {
     return <div className="flex justify-center py-12"><div className="spinner"></div></div>
@@ -105,11 +108,10 @@ export default function ResumoMensalPage() {
             Resumo Mensal
           </h1>
           <p className="text-gray-600 mt-1">
-            {isFuncionario ? 'Seu resumo de jornada e pagamento' : 'Salários, horas extras e descontos por funcionário'}
+            {isFuncionario ? 'Seu resumo acumulado do mês' : 'Acompanhe o acumulado de cada funcionário'}
           </p>
         </div>
 
-        {/* Filtro mês/ano */}
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-gray-500" />
           <select
@@ -133,11 +135,11 @@ export default function ResumoMensalPage() {
         </div>
       </div>
 
-      {/* Total geral — só para gestor */}
+      {/* Total geral acumulado — só para gestor */}
       {!isFuncionario && (
         <div className="card bg-primary text-white">
-          <p className="text-sm opacity-80">Total a pagar em {meses[mes - 1]}/{ano}</p>
-          <p className="text-4xl font-bold mt-1">{fmt(totalGeral)}</p>
+          <p className="text-sm opacity-80">Total acumulado em {meses[mes - 1]}/{ano}</p>
+          <p className="text-4xl font-bold mt-1">{fmt(totalAcumuladoGeral)}</p>
           <p className="text-sm opacity-80 mt-1">{resumo.length} funcionários</p>
         </div>
       )}
@@ -151,89 +153,72 @@ export default function ResumoMensalPage() {
         <div className="space-y-4">
           {resumo.map((r) => (
             <div key={r.funcionario.id} className="card">
-              {/* Header do card */}
+              {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-bold text-lg text-primary">{r.funcionario.name}</h3>
-                  <span className="text-xs text-gray-500">{r.funcionario.role}</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-500">{r.funcionario.role}</span>
+                    {r.estaNaSafra ? (
+                      <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">Safra</span>
+                    ) : (
+                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">Entressafra</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {r.estaNaSafra ? (
-                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-                      Período Safra
-                    </span>
-                  ) : (
-                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
-                      Entressafra
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Totais */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500">Dias trabalhados</p>
-                  <p className="text-xl font-bold text-gray-800">{r.diasTrabalhados}</p>
-                </div>
-                <div className={`rounded-lg p-3 ${r.totalFaltas > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
-                  <p className="text-xs text-gray-500">Faltas</p>
-                  <p className={`text-xl font-bold ${r.totalFaltas > 0 ? 'text-red-600' : 'text-gray-800'}`}>
-                    {r.totalFaltas}
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500">Horas trabalhadas</p>
-                  <p className="text-xl font-bold text-gray-800">{fmtH(r.totalHorasTrabalhadas)}</p>
-                </div>
-                <div className={`rounded-lg p-3 ${r.totalHorasExtras > 0 ? 'bg-green-50' : 'bg-gray-50'}`}>
-                  <p className="text-xs text-gray-500">Horas extras</p>
-                  <p className={`text-xl font-bold ${r.totalHorasExtras > 0 ? 'text-green-600' : 'text-gray-800'}`}>
-                    {fmtH(r.totalHorasExtras)}
-                  </p>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Salário base</p>
+                  <p className="text-sm font-medium text-gray-700">{fmt(r.salarioBase)}</p>
+                  <p className="text-xs text-gray-400">{fmt(r.valorDia)}/dia · {fmt(r.valorHoraNormal)}/hora</p>
                 </div>
               </div>
 
-              {/* Cálculo financeiro */}
-              <div className="border-t pt-4 space-y-2 mb-4">
+              {/* Resumo acumulado simples */}
+              <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Salário base</span>
-                  <span className="font-medium">{fmt(r.salarioBase)}</span>
+                  <span className="text-gray-600">
+                    {r.diasTrabalhados} dia(s) trabalhado(s) × {fmt(r.valorDia)}
+                  </span>
+                  <span className="font-medium">{fmt(r.diasTrabalhados * r.valorDia)}</span>
                 </div>
+
                 {r.valorHorasExtras > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-green-600 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3" />
-                      Horas extras ({fmtH(r.totalHorasExtras)})
+                      {fmtH(r.totalHorasExtras)} extras × {fmt(r.valorHoraExtra)}
                     </span>
                     <span className="font-medium text-green-600">+ {fmt(r.valorHorasExtras)}</span>
                   </div>
                 )}
+
                 {r.descontoHorasDevidas > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-orange-600 flex items-center gap-1">
                       <TrendingDown className="w-3 h-3" />
-                      Horas a menos ({fmtH(r.totalHorasDevidas)})
+                      {fmtH(r.totalHorasDevidas)} devidas × {fmt(r.valorHoraNormal)}
                     </span>
                     <span className="font-medium text-orange-600">- {fmt(r.descontoHorasDevidas)}</span>
                   </div>
                 )}
+
                 {r.descontoFaltas > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-red-600 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      Desconto faltas ({r.totalFaltas} dia(s))
+                      {r.totalFaltas} falta(s) × {fmt(r.valorDia)}
                     </span>
                     <span className="font-medium text-red-600">- {fmt(r.descontoFaltas)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-base border-t pt-2 mt-2">
-                  <span>Total a pagar</span>
-                  <span className="text-primary text-lg">{fmt(r.totalAPagar)}</span>
+
+                <div className="border-t pt-2 flex justify-between font-bold text-base">
+                  <span>Total acumulado</span>
+                  <span className="text-primary text-lg">{fmt(r.totalAcumulado)}</span>
                 </div>
               </div>
 
-              {/* Botão expandir registros diários */}
+              {/* Botão expandir */}
               <button
                 onClick={() => toggleExpandir(r.funcionario.id)}
                 className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
