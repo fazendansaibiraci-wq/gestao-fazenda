@@ -186,23 +186,9 @@ export default function AtividadesPage() {
       </div>
 
       {/* Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card">
-          <p className="text-gray-600 text-sm">Total de Registros</p>
-          <p className="text-3xl font-bold text-primary mt-2">{atividades.length}</p>
-        </div>
-        <div className="card">
-          <p className="text-gray-600 text-sm">Concluídos</p>
-          <p className="text-3xl font-bold text-green-600 mt-2">
-            {atividades.filter((a) => a.status === 'CONCLUIDO').length}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-gray-600 text-sm">Em Andamento</p>
-          <p className="text-3xl font-bold text-blue-600 mt-2">
-            {atividades.filter((a) => a.status === 'EM_ANDAMENTO').length}
-          </p>
-        </div>
+      <div className="card">
+        <p className="text-gray-600 text-sm">Total de Registros</p>
+        <p className="text-3xl font-bold text-primary mt-2">{atividades.length}</p>
       </div>
     </div>
   )
