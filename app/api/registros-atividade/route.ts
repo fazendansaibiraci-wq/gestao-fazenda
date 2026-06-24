@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
     const registro = await prisma.registroAtividade.create({
       data: {
         funcionarioId,
-        data: new Date(body.data),
+      data: new Date(new Date(body.data).toISOString().split('T')[0] + 'T12:00:00.000Z'),
         horaEntrada: body.horaEntrada,
         horaSaida: body.horaSaida || null,
         horasCalculadas,
