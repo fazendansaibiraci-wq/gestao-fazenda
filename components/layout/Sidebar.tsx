@@ -19,11 +19,12 @@ import {
   ClipboardList,
   Tag,
   Beaker,
+  Users,
 } from 'lucide-react'
 import { useState } from 'react'
 
 
- const menuItems = [
+const menuItems = [
   { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Registro de Atividades', href: '/modules/atividades', icon: ClipboardList, excludeRoles: 'AGRONOMO' },
   { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
@@ -32,6 +33,7 @@ import { useState } from 'react'
   { label: 'Receitas', href: '/modules/receitas', icon: Beaker, role: 'GESTOR|GERENTE|AGRONOMO' },
   { label: 'Tipos de Atividade', href: '/modules/tipos-atividade', icon: Tag, role: 'GESTOR' },
   { label: 'Implementos', href: '/modules/implementos', icon: Tractor, role: 'GESTOR|GERENTE' },
+  { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR' },
   { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
   { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
@@ -51,13 +53,11 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Desktop Sidebar */}
       <aside
         className={`hidden lg:flex flex-col bg-primary text-white transition-all duration-300 ${
           isOpen ? 'w-64' : 'w-20'
         }`}
       >
-        {/* Logo/Header */}
         <div className="flex items-center justify-between p-4 border-b border-secondary">
           {isOpen && (
             <div className="flex items-center gap-2">
@@ -75,29 +75,25 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-2">
           {menuItems
             .filter((item) => {
               const userRole = (session?.user as any)?.role || ''
 
-              // Se não tem role definido para o item, mostrar para todos
               if (!item.role && !item.excludeRoles) {
                 return true
               }
 
-              // Se tem role específico, o usuário deve estar nele
               if (item.role) {
                 const allowedRoles = item.role.split('|')
                 if (userRole && !allowedRoles.includes(userRole)) {
                   return false
                 }
                 if (!userRole) {
-                  return false // Não mostrar se role não está carregado
+                  return false
                 }
               }
 
-              // Se tem excludeRoles, o usuário não deve estar nele
               if (item.excludeRoles) {
                 const excludedRoles = item.excludeRoles.split('|')
                 if (userRole && excludedRoles.includes(userRole)) {
@@ -123,7 +119,6 @@ export function Sidebar() {
             ))}
         </nav>
 
-        {/* Logout */}
         <div className="border-t border-secondary p-4">
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
