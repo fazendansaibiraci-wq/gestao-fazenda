@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
 
     const userRole = (session.user as any)?.role
     const userId = (session.user as any)?.id
+    const isFuncionario = userRole === 'FUNCIONARIO'
 
     const { searchParams } = new URL(request.url)
     const mes = parseInt(searchParams.get('mes') || String(new Date().getMonth() + 1))
@@ -20,9 +21,6 @@ export async function GET(request: NextRequest) {
     const fimMes = new Date(ano, mes, 0, 23, 59, 59)
 
     const config = await prisma.configuracaoGlobal.findFirst()
-
-    // Funcionário só vê o próprio resumo
-    const isFuncionario = userRole === 'FUNCIONARIO'
 
     const whereUser: any = {
       active: true,
@@ -74,6 +72,27 @@ export async function GET(request: NextRequest) {
     const resumo = funcionarios.map((func) => {
       const registrosFuncionario = registros.filter(r => r.funcionarioId === func.id)
 
+      // Detectar se está na safra
+      let estaNaSafra = false
+      if (config?.inicioSafra && config?.fimSafra) {
+        const meioDoMes = new Date(ano, mes - 1, 15)
+        estaNaSafra = meioDoMes >= new Date(config.inicioSafra) && meioDoMes <= new Date(config.fimSafra)
+      }
+
+      const salarioBase = estaNaSafra
+        ? (func.salarioSafra || 0)
+        : (func.salarioEntressafra || 0)
+
+      const valorHoraExtra = estaNaSafra
+        ? (func.valorHoraExtraSafra || 0)
+        : (func.valorHoraExtraEntressafra || 0)
+
+      // Valor hora normal = salário ÷ 220
+      const valorHoraNormal = salarioBase / 220
+
+      // Valor dia = salário ÷ 30
+      const valorDia = salarioBase / 30
+
       let totalHorasTrabalhadas = 0
       let totalHorasExtras = 0
       let totalHorasDevidas = 0
@@ -103,12 +122,10 @@ export async function GET(request: NextRequest) {
         const horas = reg.horasCalculadas || 0
         const cargaDia = reg.horasprevistasdia || config?.cargaHorariaEntressafra || 8
 
-        // Calcular horas brutas (antes do desconto)
         let horasBrutas = horas
         let descontoAlmoco = 0
 
         if (!reg.passouDiretoAlmoco) {
-          // Teve almoço, então horas brutas = horas + 1h
           horasBrutas = horas + 1
           descontoAlmoco = 1
         }
@@ -136,36 +153,23 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      // Detectar se o mês está na safra
-      let estaNaSafra = false
-      if (config?.inicioSafra && config?.fimSafra) {
-        const meioDoMes = new Date(ano, mes - 1, 15)
-        estaNaSafra = meioDoMes >= new Date(config.inicioSafra) && meioDoMes <= new Date(config.fimSafra)
-      }
-
-      const salarioBase = estaNaSafra
-        ? (func.salarioSafra || 0)
-        : (func.salarioEntressafra || 0)
-
-      const valorHoraExtra = estaNaSafra
-        ? (func.valorHoraExtraSafra || 0)
-        : (func.valorHoraExtraEntressafra || 0)
-
-      const diasUteisDoMes = 26
-      const cargaHorariaDia = estaNaSafra
-        ? (func.cargaHorariaSafra || 8)
-        : (config?.cargaHorariaEntressafra || 8)
-      const valorHoraNormal = salarioBase / (diasUteisDoMes * cargaHorariaDia)
-
+      // Cálculo acumulado
       const valorHorasExtras = totalHorasExtras * valorHoraExtra
       const descontoHorasDevidas = totalHorasDevidas * valorHoraNormal
-      const descontoFaltas = totalFaltas * (salarioBase / diasUteisDoMes)
-      const totalAPagar = salarioBase + valorHorasExtras - descontoHorasDevidas - descontoFaltas
+      const descontoFaltas = totalFaltas * valorDia
+      const totalDescontos = descontoHorasDevidas + descontoFaltas
+
+      // Total acumulado = (salário ÷ 30 × dias trabalhados) + horas extras - descontos
+      const acumuladoDiasTrabalhados = diasTrabalhados * valorDia
+      const totalAcumulado = acumuladoDiasTrabalhados + valorHorasExtras - totalDescontos
 
       return {
         funcionario: { id: func.id, name: func.name, role: func.role },
         estaNaSafra,
         salarioBase,
+        valorDia: Math.round(valorDia * 100) / 100,
+        valorHoraNormal: Math.round(valorHoraNormal * 100) / 100,
+        valorHoraExtra,
         diasTrabalhados,
         totalFaltas,
         totalHorasTrabalhadas: Math.round(totalHorasTrabalhadas * 100) / 100,
@@ -174,7 +178,7 @@ export async function GET(request: NextRequest) {
         valorHorasExtras: Math.round(valorHorasExtras * 100) / 100,
         descontoHorasDevidas: Math.round(descontoHorasDevidas * 100) / 100,
         descontoFaltas: Math.round(descontoFaltas * 100) / 100,
-        totalAPagar: Math.round(totalAPagar * 100) / 100,
+        totalAcumulado: Math.round(totalAcumulado * 100) / 100,
         registrosDiarios,
       }
     })
