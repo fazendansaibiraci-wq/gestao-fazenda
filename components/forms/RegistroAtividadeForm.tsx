@@ -47,6 +47,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     implementoUtilizado: initialData?.implementoUtilizado || '',
     isFalta: initialData?.isFalta || false,
     motivoFalta: initialData?.motivoFalta || '',
+    periodoFalta: initialData?.periodoFalta || 'DIA_INTEIRO',
     passouDiretoAlmoco: initialData?.passouDiretoAlmoco || false,
     observacao: initialData?.observacao || '',
     fotoEvidencia: initialData?.fotoEvidencia || '',
@@ -57,7 +58,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     loadData()
   }, [])
 
-  // Verificar se a data selecionada está na safra
   useEffect(() => {
     if (config?.inicioSafra && config?.fimSafra && form.data) {
       const dataRegistro = new Date(form.data)
@@ -122,10 +122,13 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     setLoading(true)
 
     try {
-      if (!form.data || !form.horaEntrada || !form.talhaoId || !form.safraId) {
-        setError('Preencha todos os campos obrigatórios')
-        setLoading(false)
-        return
+      // Se é falta, só precisa de data e funcionário
+      if (!form.isFalta) {
+        if (!form.data || !form.horaEntrada || !form.talhaoId || !form.safraId) {
+          setError('Preencha todos os campos obrigatórios')
+          setLoading(false)
+          return
+        }
       }
 
       if (isGestor && !form.funcionarioId) {
@@ -143,20 +146,36 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
       const method = id ? 'PUT' : 'POST'
       const url = id ? `/api/registros-atividade/${id}` : '/api/registros-atividade'
 
+      // Se é falta, usa valores padrão para campos obrigatórios no banco
+      const payload = form.isFalta ? {
+        data: new Date(form.data + 'T12:00:00'),
+        funcionarioId: form.funcionarioId,
+        isFalta: true,
+        motivoFalta: form.motivoFalta,
+        periodoFalta: form.periodoFalta,
+        observacao: form.observacao,
+        // Campos obrigatórios com valores padrão
+        talhaoId: form.talhaoId || (talhoes[0] as any)?.id,
+        safraId: form.safraId || (safras[0] as any)?.id,
+        tipoAtividade: TipoAtividade.GERAIS,
+        status: 'CONCLUIDO',
+        horaEntrada: '00:00',
+      } : {
+        ...form,
+        data: new Date(form.data + 'T12:00:00'),
+        totalBombas: form.totalBombas ? parseInt(form.totalBombas) : null,
+        quantidadeAdubo: form.quantidadeAdubo ? parseFloat(form.quantidadeAdubo) : null,
+        quantidadeCorretivo: form.quantidadeCorretivo ? parseFloat(form.quantidadeCorretivo) : null,
+        horimetroInicial,
+        horimetroFinal,
+        horasMaquina,
+        passouDiretoAlmoco: estaNaSafra ? form.passouDiretoAlmoco : false,
+      }
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          data: new Date(form.data),
-          totalBombas: form.totalBombas ? parseInt(form.totalBombas) : null,
-          quantidadeAdubo: form.quantidadeAdubo ? parseFloat(form.quantidadeAdubo) : null,
-          quantidadeCorretivo: form.quantidadeCorretivo ? parseFloat(form.quantidadeCorretivo) : null,
-          horimetroInicial,
-          horimetroFinal,
-          horasMaquina,
-          passouDiretoAlmoco: estaNaSafra ? form.passouDiretoAlmoco : false,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -225,6 +244,14 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         </div>
       )}
 
+      {/* Data */}
+      <div className="card">
+        <h3 className="text-lg font-semibold text-primary mb-4">Data *</h3>
+        <div className="form-group">
+          <input type="date" id="data" name="data" value={form.data} onChange={handleChange} required disabled={loading} />
+        </div>
+      </div>
+
       {/* Falta */}
       <div className="card border-l-4 border-orange-400">
         <h3 className="text-lg font-semibold text-primary mb-4">Registrar Falta?</h3>
@@ -239,214 +266,244 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
           <span className="text-sm font-medium">Marcar como falta</span>
         </label>
         {form.isFalta && (
-          <div className="form-group">
-            <label htmlFor="motivoFalta">Motivo da Falta</label>
-            <select
-              id="motivoFalta"
-              name="motivoFalta"
-              value={form.motivoFalta}
-              onChange={handleChange}
-              disabled={loading}
-            >
-              <option value="">Selecionar motivo</option>
-              <option value="atestado_medico">Atestado Médico</option>
-              <option value="pessoal">Pessoal</option>
-              <option value="outro">Outro</option>
-            </select>
+          <div className="space-y-4">
+            <div className="form-group">
+              <label htmlFor="periodoFalta">Período da Falta</label>
+              <select
+                id="periodoFalta"
+                name="periodoFalta"
+                value={form.periodoFalta}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <option value="DIA_INTEIRO">Dia Inteiro</option>
+                <option value="MANHA">Manhã</option>
+                <option value="TARDE">Tarde</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="motivoFalta">Motivo da Falta</label>
+              <select
+                id="motivoFalta"
+                name="motivoFalta"
+                value={form.motivoFalta}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <option value="">Selecionar motivo</option>
+                <option value="atestado_medico">Atestado Médico</option>
+                <option value="pessoal">Pessoal</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="observacao">Observação</label>
+              <textarea
+                id="observacao"
+                name="observacao"
+                value={form.observacao}
+                onChange={handleChange}
+                disabled={loading}
+                placeholder="Detalhes adicionais sobre a falta..."
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-4 pt-2">
+              <button type="submit" disabled={loading} className="btn btn-primary flex-1">
+                {loading ? 'Salvando...' : 'Registrar Falta'}
+              </button>
+              <button type="button" onClick={() => router.back()} disabled={loading} className="btn btn-outline flex-1">
+                Cancelar
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Informações Básicas */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-primary mb-4">Informações Básicas</h3>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="form-group">
-              <label htmlFor="data">Data *</label>
-              <input type="date" id="data" name="data" value={form.data} onChange={handleChange} required disabled={loading} />
-            </div>
-            <div className="form-group">
-              <label htmlFor="talhaoId">Talhão *</label>
-              <select id="talhaoId" name="talhaoId" value={form.talhaoId} onChange={handleChange} required disabled={loading}>
-                <option value="">Selecionar talhão</option>
-                {talhoes.map((t: any) => (
-                  <option key={t.id} value={t.id}>{t.nome} ({t.area} ha)</option>
-                ))}
-              </select>
-            </div>
-          </div>
+      {/* Campos de atividade — só aparecem quando NÃO é falta */}
+      {!form.isFalta && (
+        <>
+          {/* Informações Básicas */}
+          <div className="card">
+            <h3 className="text-lg font-semibold text-primary mb-4">Informações Básicas</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-group">
+                  <label htmlFor="talhaoId">Talhão *</label>
+                  <select id="talhaoId" name="talhaoId" value={form.talhaoId} onChange={handleChange} required disabled={loading}>
+                    <option value="">Selecionar talhão</option>
+                    {talhoes.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.nome} ({t.area} ha)</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="safraId">Safra *</label>
+                  <select id="safraId" name="safraId" value={form.safraId} onChange={handleChange} required disabled={loading}>
+                    <option value="">Selecionar safra</option>
+                    {safras.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="form-group">
-              <label htmlFor="safraId">Safra *</label>
-              <select id="safraId" name="safraId" value={form.safraId} onChange={handleChange} required disabled={loading}>
-                <option value="">Selecionar safra</option>
-                {safras.map((s: any) => (
-                  <option key={s.id} value={s.id}>{s.nome}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label htmlFor="tipoAtividade">Tipo de Atividade *</label>
-              <select id="tipoAtividade" name="tipoAtividade" value={form.tipoAtividade} onChange={handleChange} disabled={loading}>
-                {tiposAtividade.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
+              <div className="form-group">
+                <label htmlFor="tipoAtividade">Tipo de Atividade *</label>
+                <select id="tipoAtividade" name="tipoAtividade" value={form.tipoAtividade} onChange={handleChange} disabled={loading}>
+                  {tiposAtividade.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {needsProduto.includes(form.tipoAtividade as any) && (
+                <div className="form-group">
+                  <label htmlFor="receitaAplicacaoId">Receita de Aplicação</label>
+                  <select id="receitaAplicacaoId" name="receitaAplicacaoId" value={form.receitaAplicacaoId} onChange={handleChange} disabled={loading}>
+                    <option value="">Selecionar receita (opcional)</option>
+                    {receitas.map((r: any) => (
+                      <option key={r.id} value={r.id}>{r.nome} - {r.tipo.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="form-group">
+                  <label htmlFor="horaEntrada">Hora Entrada *</label>
+                  <input type="time" id="horaEntrada" name="horaEntrada" value={form.horaEntrada} onChange={handleChange} required disabled={loading} />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="horaSaida">Hora Saída</label>
+                  <input type="time" id="horaSaida" name="horaSaida" value={form.horaSaida} onChange={handleChange} disabled={loading} />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="status">Status</label>
+                  <select id="status" name="status" value={form.status} onChange={handleChange} disabled={loading}>
+                    <option value="EM_ANDAMENTO">Em Andamento</option>
+                    <option value="CONCLUIDO">Concluído</option>
+                  </select>
+                </div>
+              </div>
+
+              {estaNaSafra && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="passouDiretoAlmoco"
+                      checked={form.passouDiretoAlmoco}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+                    <span className="text-sm font-medium text-amber-800">
+                      Passou direto no almoço (1h conta como hora extra)
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
           </div>
 
           {needsProduto.includes(form.tipoAtividade as any) && (
-            <div className="form-group">
-              <label htmlFor="receitaAplicacaoId">Receita de Aplicação</label>
-              <select id="receitaAplicacaoId" name="receitaAplicacaoId" value={form.receitaAplicacaoId} onChange={handleChange} disabled={loading}>
-                <option value="">Selecionar receita (opcional)</option>
-                {receitas.map((r: any) => (
-                  <option key={r.id} value={r.id}>{r.nome} - {r.tipo.replace(/_/g, ' ')}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="form-group">
-              <label htmlFor="horaEntrada">Hora Entrada *</label>
-              <input type="time" id="horaEntrada" name="horaEntrada" value={form.horaEntrada} onChange={handleChange} required disabled={loading} />
-            </div>
-            <div className="form-group">
-              <label htmlFor="horaSaida">Hora Saída</label>
-              <input type="time" id="horaSaida" name="horaSaida" value={form.horaSaida} onChange={handleChange} disabled={loading} />
-            </div>
-            <div className="form-group">
-              <label htmlFor="status">Status</label>
-              <select id="status" name="status" value={form.status} onChange={handleChange} disabled={loading}>
-                <option value="EM_ANDAMENTO">Em Andamento</option>
-                <option value="CONCLUIDO">Concluído</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Almoço — só aparece na safra e quando não é falta */}
-          {estaNaSafra && !form.isFalta && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="passouDiretoAlmoco"
-                  checked={form.passouDiretoAlmoco}
-                  onChange={handleChange}
-                  disabled={loading}
-                />
-                <span className="text-sm font-medium text-amber-800">
-                  Passou direto no almoço (1h conta como hora extra)
-                </span>
-              </label>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Campos Condicionais */}
-      {needsProduto.includes(form.tipoAtividade as any) && (
-        <div className="card">
-          <h3 className="text-lg font-semibold text-primary mb-4">Aplicação de Produto</h3>
-          <div className="form-group">
-            <label htmlFor="totalBombas">Total de Bombas *</label>
-            <input type="number" id="totalBombas" name="totalBombas" value={form.totalBombas} onChange={handleChange} disabled={loading} placeholder="0" />
-          </div>
-        </div>
-      )}
-
-      {needsAdubo && (
-        <div className="card">
-          <h3 className="text-lg font-semibold text-primary mb-4">Adubação</h3>
-          <div className="space-y-4">
-            <div className="form-group">
-              <label htmlFor="tipoAdubo">Tipo de Adubo</label>
-              <input type="text" id="tipoAdubo" name="tipoAdubo" value={form.tipoAdubo} onChange={handleChange} disabled={loading} placeholder="Ex: NPK 10-10-10" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="quantidadeAdubo">Quantidade (ton/kg)</label>
-              <input type="number" id="quantidadeAdubo" name="quantidadeAdubo" value={form.quantidadeAdubo} onChange={handleChange} disabled={loading} step="0.01" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {needsCorretivo && (
-        <div className="card">
-          <h3 className="text-lg font-semibold text-primary mb-4">Correção de Solo</h3>
-          <div className="space-y-4">
-            <div className="form-group">
-              <label htmlFor="tipoCorretivo">Tipo de Corretivo</label>
-              <input type="text" id="tipoCorretivo" name="tipoCorretivo" value={form.tipoCorretivo} onChange={handleChange} disabled={loading} placeholder="Ex: Calcário" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="quantidadeCorretivo">Quantidade (ton)</label>
-              <input type="number" id="quantidadeCorretivo" name="quantidadeCorretivo" value={form.quantidadeCorretivo} onChange={handleChange} disabled={loading} step="0.01" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Máquina e Implemento */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-primary mb-4">Máquina e Implemento (Opcional)</h3>
-        <div className="space-y-4">
-          <div className="form-group">
-            <label htmlFor="maquinaId">Máquina Utilizada</label>
-            <select id="maquinaId" name="maquinaId" value={form.maquinaId} onChange={handleChange} disabled={loading}>
-              <option value="">Sem máquina</option>
-              {maquinas.map((m: any) => (
-                <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>
-              ))}
-            </select>
-          </div>
-
-          {form.maquinaId && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="card">
+              <h3 className="text-lg font-semibold text-primary mb-4">Aplicação de Produto</h3>
               <div className="form-group">
-                <label htmlFor="horimetroInicial">Horímetro Inicial (h)</label>
-                <input type="number" id="horimetroInicial" name="horimetroInicial" value={form.horimetroInicial} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required={!!form.maquinaId} />
-              </div>
-              <div className="form-group">
-                <label htmlFor="horimetroFinal">Horímetro Final (h)</label>
-                <input type="number" id="horimetroFinal" name="horimetroFinal" value={form.horimetroFinal} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required={!!form.maquinaId} />
+                <label htmlFor="totalBombas">Total de Bombas</label>
+                <input type="number" id="totalBombas" name="totalBombas" value={form.totalBombas} onChange={handleChange} disabled={loading} placeholder="0" />
               </div>
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="implementoUtilizado">Implemento Utilizado</label>
-            <select id="implementoUtilizado" name="implementoUtilizado" value={form.implementoUtilizado} onChange={handleChange} disabled={loading}>
-              <option value="">Sem implemento</option>
-              {implementos.map((imp: any) => (
-                <option key={imp.id} value={imp.nome}>{imp.nome}{imp.tipo ? ` (${imp.tipo})` : ''}</option>
-              ))}
-            </select>
+          {needsAdubo && (
+            <div className="card">
+              <h3 className="text-lg font-semibold text-primary mb-4">Adubação</h3>
+              <div className="space-y-4">
+                <div className="form-group">
+                  <label htmlFor="tipoAdubo">Tipo de Adubo</label>
+                  <input type="text" id="tipoAdubo" name="tipoAdubo" value={form.tipoAdubo} onChange={handleChange} disabled={loading} placeholder="Ex: NPK 10-10-10" />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="quantidadeAdubo">Quantidade (ton/kg)</label>
+                  <input type="number" id="quantidadeAdubo" name="quantidadeAdubo" value={form.quantidadeAdubo} onChange={handleChange} disabled={loading} step="0.01" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {needsCorretivo && (
+            <div className="card">
+              <h3 className="text-lg font-semibold text-primary mb-4">Correção de Solo</h3>
+              <div className="space-y-4">
+                <div className="form-group">
+                  <label htmlFor="tipoCorretivo">Tipo de Corretivo</label>
+                  <input type="text" id="tipoCorretivo" name="tipoCorretivo" value={form.tipoCorretivo} onChange={handleChange} disabled={loading} placeholder="Ex: Calcário" />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="quantidadeCorretivo">Quantidade (ton)</label>
+                  <input type="number" id="quantidadeCorretivo" name="quantidadeCorretivo" value={form.quantidadeCorretivo} onChange={handleChange} disabled={loading} step="0.01" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="card">
+            <h3 className="text-lg font-semibold text-primary mb-4">Máquina e Implemento (Opcional)</h3>
+            <div className="space-y-4">
+              <div className="form-group">
+                <label htmlFor="maquinaId">Máquina Utilizada</label>
+                <select id="maquinaId" name="maquinaId" value={form.maquinaId} onChange={handleChange} disabled={loading}>
+                  <option value="">Sem máquina</option>
+                  {maquinas.map((m: any) => (
+                    <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>
+                  ))}
+                </select>
+              </div>
+
+              {form.maquinaId && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label htmlFor="horimetroInicial">Horímetro Inicial (h)</label>
+                    <input type="number" id="horimetroInicial" name="horimetroInicial" value={form.horimetroInicial} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required={!!form.maquinaId} />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="horimetroFinal">Horímetro Final (h)</label>
+                    <input type="number" id="horimetroFinal" name="horimetroFinal" value={form.horimetroFinal} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required={!!form.maquinaId} />
+                  </div>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label htmlFor="implementoUtilizado">Implemento Utilizado</label>
+                <select id="implementoUtilizado" name="implementoUtilizado" value={form.implementoUtilizado} onChange={handleChange} disabled={loading}>
+                  <option value="">Sem implemento</option>
+                  {implementos.map((imp: any) => (
+                    <option key={imp.id} value={imp.nome}>{imp.nome}{imp.tipo ? ` (${imp.tipo})` : ''}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Observações */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-primary mb-4">Observações</h3>
-        <div className="form-group">
-          <label htmlFor="observacao">Observações Adicionais</label>
-          <textarea id="observacao" name="observacao" value={form.observacao} onChange={handleChange} disabled={loading} placeholder="Descreva detalhes da atividade realizada..." rows={4} />
-        </div>
-      </div>
+          <div className="card">
+            <h3 className="text-lg font-semibold text-primary mb-4">Observações</h3>
+            <div className="form-group">
+              <label htmlFor="observacao">Observações Adicionais</label>
+              <textarea id="observacao" name="observacao" value={form.observacao} onChange={handleChange} disabled={loading} placeholder="Descreva detalhes da atividade realizada..." rows={4} />
+            </div>
+          </div>
 
-      {/* Botões */}
-      <div className="flex gap-4">
-        <button type="submit" disabled={loading} className="btn btn-primary flex-1">
-          {loading ? 'Salvando...' : id ? 'Atualizar' : 'Registrar Atividade'}
-        </button>
-        <button type="button" onClick={() => router.back()} disabled={loading} className="btn btn-outline flex-1">
-          Cancelar
-        </button>
-      </div>
+          <div className="flex gap-4">
+            <button type="submit" disabled={loading} className="btn btn-primary flex-1">
+              {loading ? 'Salvando...' : id ? 'Atualizar' : 'Registrar Atividade'}
+            </button>
+            <button type="button" onClick={() => router.back()} disabled={loading} className="btn btn-outline flex-1">
+              Cancelar
+            </button>
+          </div>
+        </>
+      )}
     </form>
   )
 }
