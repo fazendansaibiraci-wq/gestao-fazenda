@@ -348,7 +348,7 @@ model RegistroAtividade {
   horimetroFinal      Float?
   horasMaquina        Float?
   implementoUtilizado String?
-
+passouDiretoAlmoco Boolean @default(false)
   isFalta         Boolean @default(false)
   motivoFalta     String?
   observacaoFalta String?
