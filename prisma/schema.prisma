@@ -985,3 +985,12 @@ model Implemento {
 
   @@map("implementos")
 }
+model ConfiguracaoGlobal {
+  id                      String    @id @default(cuid())
+  cargaHorariaEntressafra Float     @default(8)
+  inicioSafra             DateTime?
+  fimSafra                DateTime?
+  updatedAt               DateTime  @updatedAt
+
+  @@map("configuracao_global")
+}
