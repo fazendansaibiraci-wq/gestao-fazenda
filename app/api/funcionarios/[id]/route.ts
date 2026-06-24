@@ -28,6 +28,7 @@ export async function GET(
         salarioSafra: true,
         valorHoraExtraEntressafra: true,
         valorHoraExtraSafra: true,
+        cargaHorariaSafra: true,
         bancoHorasAtivo: true,
       },
     })
@@ -61,7 +62,6 @@ export async function PUT(
 
     const body = await request.json()
 
-    // Verificar se funcionário existe
     const funcionarioExistente = await prisma.user.findUnique({
       where: { id: params.id },
     })
@@ -73,7 +73,6 @@ export async function PUT(
       )
     }
 
-    // Se trocar email, verificar se novo email já existe
     if (body.email && body.email !== funcionarioExistente.email) {
       const emailExists = await prisma.user.findUnique({
         where: { email: body.email },
@@ -86,7 +85,6 @@ export async function PUT(
       }
     }
 
-    // Hash da senha se foi fornecida
     let updateData: any = {
       name: body.name || undefined,
       email: body.email || undefined,
@@ -98,6 +96,7 @@ export async function PUT(
       salarioSafra: body.salarioSafra ? parseFloat(body.salarioSafra) : undefined,
       valorHoraExtraEntressafra: body.valorHoraExtraEntressafra ? parseFloat(body.valorHoraExtraEntressafra) : undefined,
       valorHoraExtraSafra: body.valorHoraExtraSafra ? parseFloat(body.valorHoraExtraSafra) : undefined,
+      cargaHorariaSafra: body.cargaHorariaSafra ? parseFloat(body.cargaHorariaSafra) : null,
       bancoHorasAtivo: body.bancoHorasAtivo !== undefined ? body.bancoHorasAtivo : undefined,
     }
 
@@ -105,7 +104,6 @@ export async function PUT(
       updateData.password = await bcrypt.hash(body.password, 10)
     }
 
-    // Atualizar funcionário
     const funcionario = await prisma.user.update({
       where: { id: params.id },
       data: updateData,
@@ -135,7 +133,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Verificar se funcionário existe
     const funcionario = await prisma.user.findUnique({
       where: { id: params.id },
     })
@@ -147,7 +144,6 @@ export async function DELETE(
       )
     }
 
-    // Deleta o funcionário
     await prisma.user.delete({
       where: { id: params.id },
     })
