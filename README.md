@@ -212,4 +212,4 @@ MIT
 
 ---
 
-**Desenvolvido com ❤️ para a gestão agrícola**  
+**Desenvolvido com ❤️ para a gestão agrícola**   
