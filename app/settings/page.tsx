@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { Users, Plus, Edit2, Trash2, Check, X, Eye, EyeOff } from 'lucide-react'
+import { Users, Plus, Edit2, Trash2, Check, X, Eye, EyeOff, Settings, Save } from 'lucide-react'
 
 interface User {
   id: string
@@ -12,6 +12,13 @@ interface User {
   role: 'FUNCIONARIO' | 'GERENTE' | 'AGRONOMO' | 'GESTOR'
   active: boolean
   createdAt: string
+}
+
+interface ConfiguracaoGlobal {
+  id: string
+  cargaHorariaEntressafra: number
+  inicioSafra: string | null
+  fimSafra: string | null
 }
 
 const roleLabels = {
@@ -38,6 +45,16 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
+  // Configurações globais
+  const [config, setConfig] = useState<ConfiguracaoGlobal | null>(null)
+  const [configForm, setConfigForm] = useState({
+    cargaHorariaEntressafra: 8,
+    inicioSafra: '',
+    fimSafra: '',
+  })
+  const [savingConfig, setSavingConfig] = useState(false)
+  const [configSuccess, setConfigSuccess] = useState('')
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -45,12 +62,10 @@ export default function SettingsPage() {
     role: 'FUNCIONARIO' as const,
   })
 
-  // Verificar permissões
   useEffect(() => {
     if (status === 'unauthenticated') {
       redirect('/login')
     }
-
     if (status === 'authenticated') {
       const userRole = (session?.user as any)?.role
       if (userRole !== 'GESTOR' && userRole !== 'GERENTE') {
@@ -59,9 +74,9 @@ export default function SettingsPage() {
     }
   }, [status, session])
 
-  // Carregar usuários
   useEffect(() => {
     loadUsers()
+    loadConfig()
   }, [])
 
   const loadUsers = async () => {
@@ -76,6 +91,45 @@ export default function SettingsPage() {
       setError('Erro ao carregar usuários')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadConfig = async () => {
+    try {
+      const res = await fetch('/api/configuracoes')
+      if (res.ok) {
+        const data = await res.json()
+        setConfig(data.data)
+        setConfigForm({
+          cargaHorariaEntressafra: data.data.cargaHorariaEntressafra,
+          inicioSafra: data.data.inicioSafra ? data.data.inicioSafra.split('T')[0] : '',
+          fimSafra: data.data.fimSafra ? data.data.fimSafra.split('T')[0] : '',
+        })
+      }
+    } catch (err) {
+      console.error('Erro ao carregar configurações')
+    }
+  }
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingConfig(true)
+    setConfigSuccess('')
+    try {
+      const res = await fetch('/api/configuracoes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(configForm),
+      })
+      if (res.ok) {
+        setConfigSuccess('Configurações salvas com sucesso!')
+        loadConfig()
+        setTimeout(() => setConfigSuccess(''), 3000)
+      }
+    } catch (err) {
+      setError('Erro ao salvar configurações')
+    } finally {
+      setSavingConfig(false)
     }
   }
 
@@ -134,7 +188,6 @@ export default function SettingsPage() {
 
   const handleDeactivate = async (userId: string) => {
     if (!confirm('Desativar este usuário?')) return
-
     try {
       const res = await fetch(`/api/users?id=${userId}`, { method: 'DELETE' })
       if (res.ok) {
@@ -150,7 +203,6 @@ export default function SettingsPage() {
 
   const handleReactivate = async (userId: string) => {
     if (!confirm('Reativar este usuário?')) return
-
     try {
       const res = await fetch(`/api/users?id=${userId}&action=reactivate`, { method: 'PATCH' })
       if (res.ok) {
@@ -165,8 +217,7 @@ export default function SettingsPage() {
   }
 
   const handleDeletePermanently = async (userId: string) => {
-    if (!confirm('Tem certeza? Esta ação é irreversível e o usuário será removido permanentemente.')) return
-
+    if (!confirm('Tem certeza? Esta ação é irreversível.')) return
     try {
       const res = await fetch(`/api/users?id=${userId}&action=delete`, { method: 'DELETE' })
       if (res.ok) {
@@ -198,10 +249,10 @@ export default function SettingsPage() {
       {/* Cabeçalho */}
       <div>
         <h1 className="text-3xl font-bold text-primary flex items-center gap-2">
-          <Users className="w-8 h-8" />
-          Gerenciamento de Usuários
+          <Settings className="w-8 h-8" />
+          Configurações
         </h1>
-        <p className="text-gray-600 mt-1">Cadastre, edite e gerencie usuários do sistema</p>
+        <p className="text-gray-600 mt-1">Configurações globais e gerenciamento de usuários</p>
       </div>
 
       {/* Mensagens */}
@@ -213,6 +264,81 @@ export default function SettingsPage() {
       {success && (
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
           {success}
+        </div>
+      )}
+
+      {/* Configurações Globais — só para Gestor */}
+      {isGestor && (
+        <div className="card">
+          <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            Configurações Globais
+          </h2>
+
+          {configSuccess && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              {configSuccess}
+            </div>
+          )}
+
+          <form onSubmit={handleSaveConfig} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Carga Horária Entressafra (horas/dia)
+                </label>
+                <input
+                  type="number"
+                  value={configForm.cargaHorariaEntressafra}
+                  onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafra: parseFloat(e.target.value) })}
+                  className="w-full border rounded-lg px-3 py-2"
+                  step="0.5"
+                  min="1"
+                  max="24"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Início da Safra
+                </label>
+                <input
+                  type="date"
+                  value={configForm.inicioSafra}
+                  onChange={(e) => setConfigForm({ ...configForm, inicioSafra: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Fim da Safra
+                </label>
+                <input
+                  type="date"
+                  value={configForm.fimSafra}
+                  onChange={(e) => setConfigForm({ ...configForm, fimSafra: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
+            </div>
+
+            {config?.inicioSafra && config?.fimSafra && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                <strong>Período safra atual:</strong>{' '}
+                {new Date(config.inicioSafra).toLocaleDateString('pt-BR')} até{' '}
+                {new Date(config.fimSafra).toLocaleDateString('pt-BR')}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={savingConfig}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
+            >
+              <Save className="w-4 h-4" />
+              {savingConfig ? 'Salvando...' : 'Salvar Configurações'}
+            </button>
+          </form>
         </div>
       )}
 
@@ -238,7 +364,6 @@ export default function SettingsPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Nome */}
             <div>
               <label className="block text-sm font-medium mb-1">Nome *</label>
               <input
@@ -251,7 +376,6 @@ export default function SettingsPage() {
               />
             </div>
 
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium mb-1">Email *</label>
               <input
@@ -264,10 +388,9 @@ export default function SettingsPage() {
               />
             </div>
 
-            {/* Senha */}
             <div>
               <label className="block text-sm font-medium mb-1">
-                {editingId ? 'Nova Senha (opcional)' : 'Senha'} *
+                {editingId ? 'Nova Senha (opcional)' : 'Senha *'}
               </label>
               <div className="relative">
                 <input
@@ -275,28 +398,19 @@ export default function SettingsPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full border rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  placeholder={editingId ? 'Deixe em branco para manter a senha atual' : '••••••••'}
+                  placeholder={editingId ? 'Deixe em branco para manter' : '••••••••'}
                   required={!editingId}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-gray-600 hover:text-gray-900 transition-colors"
-                  title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  className="absolute right-3 top-2.5 text-gray-600 hover:text-gray-900"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              {editingId && (
-                <p className="text-xs text-gray-500 mt-1">Deixe em branco para manter a senha atual</p>
-              )}
             </div>
 
-            {/* Perfil */}
             <div>
               <label className="block text-sm font-medium mb-1">Perfil *</label>
               <select
@@ -306,26 +420,16 @@ export default function SettingsPage() {
                 required
               >
                 {roleOptions.map((role) => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
+                  <option key={role.value} value={role.value}>{role.label}</option>
                 ))}
               </select>
             </div>
 
-            {/* Botões */}
             <div className="flex gap-2 pt-4">
-              <button
-                type="submit"
-                className="flex-1 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition font-medium"
-              >
+              <button type="submit" className="flex-1 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition font-medium">
                 {editingId ? 'Atualizar Usuário' : 'Cadastrar Usuário'}
               </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition font-medium"
-              >
+              <button type="button" onClick={handleCancel} className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition font-medium">
                 Cancelar
               </button>
             </div>
@@ -335,7 +439,10 @@ export default function SettingsPage() {
 
       {/* Lista de Usuários */}
       <div className="card">
-        <h2 className="text-xl font-bold mb-4">Usuários ({users.length})</h2>
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          Usuários ({users.length})
+        </h2>
 
         {users.length === 0 ? (
           <p className="text-gray-500 text-center py-8">Nenhum usuário cadastrado</p>
@@ -374,37 +481,21 @@ export default function SettingsPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex gap-2 justify-center">
-                        <button
-                          onClick={() => handleEdit(user)}
-                          className="p-2 hover:bg-blue-50 rounded transition"
-                          title="Editar"
-                        >
+                        <button onClick={() => handleEdit(user)} className="p-2 hover:bg-blue-50 rounded transition" title="Editar">
                           <Edit2 className="w-4 h-4 text-blue-600" />
                         </button>
                         {isGestor && user.active && (
-                          <button
-                            onClick={() => handleDeactivate(user.id)}
-                            className="p-2 hover:bg-orange-50 rounded transition"
-                            title="Desativar"
-                          >
+                          <button onClick={() => handleDeactivate(user.id)} className="p-2 hover:bg-orange-50 rounded transition" title="Desativar">
                             <Trash2 className="w-4 h-4 text-orange-600" />
                           </button>
                         )}
                         {isGestor && !user.active && (
-                          <button
-                            onClick={() => handleReactivate(user.id)}
-                            className="p-2 hover:bg-green-50 rounded transition"
-                            title="Reativar"
-                          >
+                          <button onClick={() => handleReactivate(user.id)} className="p-2 hover:bg-green-50 rounded transition" title="Reativar">
                             <Check className="w-4 h-4 text-green-600" />
                           </button>
                         )}
                         {isGestor && (
-                          <button
-                            onClick={() => handleDeletePermanently(user.id)}
-                            className="p-2 hover:bg-red-50 rounded transition"
-                            title="Excluir permanentemente"
-                          >
+                          <button onClick={() => handleDeletePermanently(user.id)} className="p-2 hover:bg-red-50 rounded transition" title="Excluir permanentemente">
                             <Trash2 className="w-4 h-4 text-red-700" />
                           </button>
                         )}
@@ -416,17 +507,6 @@ export default function SettingsPage() {
             </table>
           </div>
         )}
-      </div>
-
-      {/* Info */}
-      <div className="card bg-blue-50 border-l-4 border-blue-500">
-        <h3 className="font-semibold text-blue-900 mb-2">📝 Permissões</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• <strong>GESTOR:</strong> Pode criar, editar, desativar, reativar e deletar usuários</li>
-          <li>• <strong>GERENTE:</strong> Pode criar e editar usuários (sem desativar/reativar/deletar)</li>
-          <li>• <strong>AGRONOMO:</strong> Acesso apenas para consulta</li>
-          <li>• <strong>FUNCIONARIO:</strong> Acesso restrito ao seu perfil</li>
-        </ul>
       </div>
     </div>
   )
