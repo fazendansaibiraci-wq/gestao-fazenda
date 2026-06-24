@@ -14,12 +14,10 @@ export async function GET(request: NextRequest) {
 
     const where: any = {}
 
-    // Se é funcionário, vê apenas seus registros
     if (session.user?.role === 'FUNCIONARIO') {
       where.funcionarioId = session.user?.id
     }
 
-    // Filtros
     if (data) {
       const dateStart = new Date(data)
       const dateEnd = new Date(data)
@@ -59,12 +57,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    // Validações básicas
     if (!body.data || !body.horaEntrada || !body.talhaoId || !body.safraId) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
     }
 
-    // Validar horímetro se máquina foi selecionada
     if (body.maquinaId) {
       if (!body.horimetroInicial || !body.horimetroFinal) {
         return NextResponse.json(
@@ -80,7 +76,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calcular horas
+    // Calcular horas trabalhadas
     let horasCalculadas = null
     if (body.horaEntrada && body.horaSaida) {
       const [hE, mE] = body.horaEntrada.split(':').map(Number)
@@ -92,15 +88,64 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Buscar funcionário e configurações globais
+    const funcionarioId = body.funcionarioId || session.user?.id as string
+    const [funcionario, config] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: funcionarioId },
+        select: {
+          cargaHorariaSafra: true,
+          valorHoraExtraEntressafra: true,
+          valorHoraExtraSafra: true,
+          salarioEntressafra: true,
+          salarioSafra: true,
+          tipoSalario: true,
+        },
+      }),
+      prisma.configuracaoGlobal.findFirst(),
+    ])
+
+    // Detectar se está na safra
+    let estaНаSafra = false
+    if (config?.inicioSafra && config?.fimSafra) {
+      const dataRegistro = new Date(body.data)
+      estaНаSafra = dataRegistro >= new Date(config.inicioSafra) && dataRegistro <= new Date(config.fimSafra)
+    }
+
+    // Calcular carga horária do dia
+    const cargaHorariaDia = estaНаSafra
+      ? (funcionario?.cargaHorariaSafra || 8)
+      : (config?.cargaHorariaEntressafra || 8)
+
+    // Calcular horas extras e desconto
+    let horasExtras = 0
+    let horasDevidas = 0
+    let ehHoraExtra = false
+    let valorHoraExtra = 0
+
+    if (horasCalculadas !== null && !body.isFalta) {
+      if (horasCalculadas > cargaHorariaDia) {
+        // Horas a mais = hora extra
+        horasExtras = horasCalculadas - cargaHorariaDia
+        ehHoraExtra = true
+        valorHoraExtra = estaНаSafra
+          ? (funcionario?.valorHoraExtraSafra || 0)
+          : (funcionario?.valorHoraExtraEntressafra || 0)
+      } else if (horasCalculadas < cargaHorariaDia) {
+        // Horas a menos = desconto
+        horasDevidas = cargaHorariaDia - horasCalculadas
+      }
+    }
+
     // Criar registro
     const registro = await prisma.registroAtividade.create({
       data: {
-        funcionarioId: body.funcionarioId || session.user?.id as string,
+        funcionarioId,
         data: new Date(body.data),
         horaEntrada: body.horaEntrada,
         horaSaida: body.horaSaida || null,
         horasCalculadas,
-        horasprevistasdia: body.horasprevistasdia || null,
+        horasprevistasdia: cargaHorariaDia,
         talhaoId: body.talhaoId,
         safraId: body.safraId,
         tipoAtividade: body.tipoAtividade,
@@ -119,8 +164,8 @@ export async function POST(request: NextRequest) {
         implementoUtilizado: body.implementoUtilizado || null,
         isFalta: body.isFalta || false,
         motivoFalta: body.motivoFalta || null,
-        ehHoraExtra: false,
-        statusAprovacao: 'pendente',
+        ehHoraExtra,
+        statusAprovacao: ehHoraExtra ? 'pendente' : 'aprovado',
       },
       include: {
         talhao: { select: { nome: true } },
@@ -136,8 +181,18 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Retornar com informações de horas extras e desconto
     return NextResponse.json(
-      { success: true, data: registro, message: 'Atividade registrada com sucesso' },
+      {
+        success: true,
+        data: registro,
+        message: 'Atividade registrada com sucesso',
+        horasExtras: horasExtras > 0 ? horasExtras : null,
+        horasDevidas: horasDevidas > 0 ? horasDevidas : null,
+        valorHoraExtra: horasExtras > 0 ? valorHoraExtra * horasExtras : null,
+        estaНаSafra,
+        cargaHorariaDia,
+      },
       { status: 201 }
     )
   } catch (error) {
