@@ -6,26 +6,37 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || (session.user as any)?.role !== 'GESTOR') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const userRole = (session.user as any)?.role
+    const userId = (session.user as any)?.id
 
     const { searchParams } = new URL(request.url)
     const mes = parseInt(searchParams.get('mes') || String(new Date().getMonth() + 1))
     const ano = parseInt(searchParams.get('ano') || String(new Date().getFullYear()))
+    const funcionarioIdParam = searchParams.get('funcionarioId')
 
     const inicioMes = new Date(ano, mes - 1, 1)
     const fimMes = new Date(ano, mes, 0, 23, 59, 59)
 
-    // Buscar configuração global
     const config = await prisma.configuracaoGlobal.findFirst()
 
-    // Buscar todos os funcionários ativos
+    // Funcionário só vê o próprio resumo
+    const isFuncionario = userRole === 'FUNCIONARIO'
+
+    const whereUser: any = {
+      active: true,
+      role: { in: ['FUNCIONARIO', 'GERENTE', 'AGRONOMO'] },
+    }
+
+    if (isFuncionario) {
+      whereUser.id = userId
+    } else if (funcionarioIdParam) {
+      whereUser.id = funcionarioIdParam
+    }
+
     const funcionarios = await prisma.user.findMany({
-      where: {
-        active: true,
-        role: { in: ['FUNCIONARIO', 'GERENTE', 'AGRONOMO'] },
-      },
+      where: whereUser,
       select: {
         id: true,
         name: true,
@@ -39,22 +50,27 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Buscar registros do mês
     const registros = await prisma.registroAtividade.findMany({
       where: {
         data: { gte: inicioMes, lte: fimMes },
+        ...(isFuncionario ? { funcionarioId: userId } : {}),
       },
       select: {
+        id: true,
         funcionarioId: true,
         data: true,
+        horaEntrada: true,
+        horaSaida: true,
         horasCalculadas: true,
         horasprevistasdia: true,
         isFalta: true,
+        motivoFalta: true,
         ehHoraExtra: true,
+        passouDiretoAlmoco: true,
       },
+      orderBy: { data: 'asc' },
     })
 
-    // Calcular resumo por funcionário
     const resumo = funcionarios.map((func) => {
       const registrosFuncionario = registros.filter(r => r.funcionarioId === func.id)
 
@@ -64,43 +80,79 @@ export async function GET(request: NextRequest) {
       let totalFaltas = 0
       let diasTrabalhados = 0
 
-      registrosFuncionario.forEach((reg) => {
+      const registrosDiarios = registrosFuncionario.map((reg) => {
         if (reg.isFalta) {
           totalFaltas++
-          return
+          return {
+            data: reg.data,
+            horaEntrada: null,
+            horaSaida: null,
+            horasBrutas: 0,
+            descontoAlmoco: 0,
+            horasTrabalhadas: 0,
+            cargaContratual: reg.horasprevistasdia || config?.cargaHorariaEntressafra || 8,
+            horasExtras: 0,
+            horasDevidas: 0,
+            isFalta: true,
+            motivoFalta: reg.motivoFalta,
+            passouDiretoAlmoco: false,
+          }
         }
 
         diasTrabalhados++
         const horas = reg.horasCalculadas || 0
         const cargaDia = reg.horasprevistasdia || config?.cargaHorariaEntressafra || 8
 
-        totalHorasTrabalhadas += horas
+        // Calcular horas brutas (antes do desconto)
+        let horasBrutas = horas
+        let descontoAlmoco = 0
 
-        if (horas > cargaDia) {
-          totalHorasExtras += horas - cargaDia
-        } else if (horas < cargaDia) {
-          totalHorasDevidas += cargaDia - horas
+        if (!reg.passouDiretoAlmoco) {
+          // Teve almoço, então horas brutas = horas + 1h
+          horasBrutas = horas + 1
+          descontoAlmoco = 1
+        }
+
+        const horasExtras = horas > cargaDia ? horas - cargaDia : 0
+        const horasDevidas = horas < cargaDia ? cargaDia - horas : 0
+
+        totalHorasTrabalhadas += horas
+        totalHorasExtras += horasExtras
+        totalHorasDevidas += horasDevidas
+
+        return {
+          data: reg.data,
+          horaEntrada: reg.horaEntrada,
+          horaSaida: reg.horaSaida,
+          horasBrutas: Math.round(horasBrutas * 100) / 100,
+          descontoAlmoco,
+          horasTrabalhadas: Math.round(horas * 100) / 100,
+          cargaContratual: cargaDia,
+          horasExtras: Math.round(horasExtras * 100) / 100,
+          horasDevidas: Math.round(horasDevidas * 100) / 100,
+          isFalta: false,
+          motivoFalta: null,
+          passouDiretoAlmoco: reg.passouDiretoAlmoco,
         }
       })
 
       // Detectar se o mês está na safra
-      let estaНаSafra = false
+      let estaNaSafra = false
       if (config?.inicioSafra && config?.fimSafra) {
         const meioDoMes = new Date(ano, mes - 1, 15)
-        estaНаSafra = meioDoMes >= new Date(config.inicioSafra) && meioDoMes <= new Date(config.fimSafra)
+        estaNaSafra = meioDoMes >= new Date(config.inicioSafra) && meioDoMes <= new Date(config.fimSafra)
       }
 
-      const salarioBase = estaНаSafra
+      const salarioBase = estaNaSafra
         ? (func.salarioSafra || 0)
         : (func.salarioEntressafra || 0)
 
-      const valorHoraExtra = estaНаSafra
+      const valorHoraExtra = estaNaSafra
         ? (func.valorHoraExtraSafra || 0)
         : (func.valorHoraExtraEntressafra || 0)
 
-      // Calcular valor hora para desconto (salário / dias úteis do mês / carga horária)
       const diasUteisDoMes = 26
-      const cargaHorariaDia = estaНаSafra
+      const cargaHorariaDia = estaNaSafra
         ? (func.cargaHorariaSafra || 8)
         : (config?.cargaHorariaEntressafra || 8)
       const valorHoraNormal = salarioBase / (diasUteisDoMes * cargaHorariaDia)
@@ -108,16 +160,11 @@ export async function GET(request: NextRequest) {
       const valorHorasExtras = totalHorasExtras * valorHoraExtra
       const descontoHorasDevidas = totalHorasDevidas * valorHoraNormal
       const descontoFaltas = totalFaltas * (salarioBase / diasUteisDoMes)
-
       const totalAPagar = salarioBase + valorHorasExtras - descontoHorasDevidas - descontoFaltas
 
       return {
-        funcionario: {
-          id: func.id,
-          name: func.name,
-          role: func.role,
-        },
-        estaНаSafra,
+        funcionario: { id: func.id, name: func.name, role: func.role },
+        estaNaSafra,
         salarioBase,
         diasTrabalhados,
         totalFaltas,
@@ -128,17 +175,11 @@ export async function GET(request: NextRequest) {
         descontoHorasDevidas: Math.round(descontoHorasDevidas * 100) / 100,
         descontoFaltas: Math.round(descontoFaltas * 100) / 100,
         totalAPagar: Math.round(totalAPagar * 100) / 100,
+        registrosDiarios,
       }
     })
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        mes,
-        ano,
-        resumo,
-      },
-    })
+    return NextResponse.json({ success: true, data: { mes, ano, resumo } })
   } catch (error) {
     console.error('GET /api/resumo-mensal:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
