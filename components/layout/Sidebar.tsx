@@ -14,7 +14,6 @@ import {
   LogOut,
   Menu,
   X,
-  Bot,
   Fuel,
   ClipboardList,
   Tag,
@@ -39,7 +38,6 @@ const menuItems = [
   { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO' },
-  { label: 'Assistente IA', href: '/modules/assistente', icon: Bot, role: 'GESTOR' },
   { label: 'Configurações', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
 ]
 
