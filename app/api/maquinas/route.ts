@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         modelo: body.modelo,
         ano: body.ano,
         placa: body.placa,
+        valor: body.valor ? parseFloat(body.valor) : null,
         status: body.status || 'ATIVA',
         ultimoHorimetro: 0,
       },
