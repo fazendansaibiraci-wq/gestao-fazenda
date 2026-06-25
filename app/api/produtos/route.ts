@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
     if (!body.nomeComercial || !body.categoria || !body.unidadeMedida) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
     }
-    // Verificar se já existe produto com o mesmo nome
+
     const existente = await prisma.produto.findFirst({
       where: {
-       nomeComercial: body.nomeComercial.trim(),
+        nomeComercial: {
           equals: body.nomeComercial.trim(),
           mode: 'insensitive',
         },
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     const produto = await prisma.produto.create({
       data: {
-        nomeComercial: body.nomeComercial,
+        nomeComercial: body.nomeComercial.trim(),
         categoria: body.categoria,
         unidadeMedida: body.unidadeMedida,
         valorUnitario: body.valorUnitario ? parseFloat(body.valorUnitario) : null,
