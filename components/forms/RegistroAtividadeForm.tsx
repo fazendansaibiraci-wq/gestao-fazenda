@@ -347,7 +347,7 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
                 </select>
               </div>
 
-              {needsProduto.includes(form.tipoAtividade as any) && (
+            {receitas.length > 0 && (
                 <div className="form-group">
                   <label htmlFor="receitaAplicacaoId">Receita de Aplicação</label>
                   <select id="receitaAplicacaoId" name="receitaAplicacaoId" value={form.receitaAplicacaoId} onChange={handleChange} disabled={loading}>
