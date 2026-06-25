@@ -18,7 +18,9 @@ function mapearTipoAtividade(nome: string): string {
     'inseticida de solo': 'INSETICIDA_SOLO',
   }
   return mapa[nome?.toLowerCase()] || 'GERAIS'
-}export async function GET(request: NextRequest) {
+}
+
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
