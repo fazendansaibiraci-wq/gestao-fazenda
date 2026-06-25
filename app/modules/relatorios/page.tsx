@@ -402,11 +402,22 @@ export default function RelatoriosPage() {
             <input type="date" value={filtros.dataFim} onChange={e => setFiltros(p => ({ ...p, dataFim: e.target.value }))} />
           </div>
         </div>
-        <div className="flex justify-between items-center mt-2">
+       <div className="flex justify-between items-center mt-2">
           <p className="text-sm text-gray-500">{registrosFiltrados.length} registros encontrados</p>
-          <button onClick={() => setFiltros({ safraId: '', talhaoId: '', dataInicio: '', dataFim: '', tipoAtividade: '' })} className="btn btn-outline btn-sm">
-            Limpar Filtros
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFiltros({ safraId: '', talhaoId: '', dataInicio: '', dataFim: '', tipoAtividade: '' })}
+              className="btn btn-outline btn-sm"
+            >
+              Limpar Filtros
+            </button>
+            <button
+              onClick={loadDados}
+              className="btn btn-primary btn-sm"
+            >
+              Filtrar
+            </button>
+          </div>
         </div>
       </div>
 
