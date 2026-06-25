@@ -359,7 +359,36 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
 
                   {/* Produtos da receita selecionada */}
                   {form.receitaAplicacaoId && (() => {
-                    const receitaSelecionada = receitas.find((r: any) => r.id === form.receitaAplicacaoId)
+                    {form.receitaAplicacaoId && (() => {
+  const receitaSelecionada = (receitas as any[]).find((r: any) => r.id === form.receitaAplicacaoId)
+  console.log('receita selecionada:', receitaSelecionada)
+  console.log('receitaAplicacaoId:', form.receitaAplicacaoId)
+  console.log('receitas:', receitas)
+  if (!receitaSelecionada?.produtosAplicacao?.length) return null
+  return (
+    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+      <p className="text-sm font-semibold text-green-800 mb-2">Produtos desta receita:</p>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-green-200">
+            <th className="text-left py-1 text-green-700">Produto</th>
+            <th className="text-left py-1 text-green-700">Dosagem</th>
+            <th className="text-left py-1 text-green-700">Unidade</th>
+          </tr>
+        </thead>
+        <tbody>
+          {receitaSelecionada.produtosAplicacao.map((p: any) => (
+            <tr key={p.id} className="border-b border-green-100">
+              <td className="py-1 font-medium text-gray-800">{p.produto?.nomeComercial}</td>
+              <td className="py-1 text-gray-700">{p.dosagem}</td>
+              <td className="py-1 text-gray-700">{p.unidade}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+})()}
                     if (!receitaSelecionada?.produtosAplicacao?.length) return null
                     return (
                       <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
