@@ -66,7 +66,6 @@ export default function RelatoriosPage() {
     { value: 'GERAIS', label: 'Gerais' },
   ]
 
-  // Agrupamentos para relatórios
   const agruparPor = (campo: string) => {
     const grupos: Record<string, any[]> = {}
     registrosFiltrados.forEach(r => {
@@ -209,7 +208,7 @@ export default function RelatoriosPage() {
                       <th className="text-left py-2 px-3 text-gray-600">Tipo de Atividade</th>
                       <th className="text-left py-2 px-3 text-gray-600">Registros</th>
                       <th className="text-left py-2 px-3 text-gray-600">Total Bombas</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Horas</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -241,7 +240,7 @@ export default function RelatoriosPage() {
                       <th className="text-left py-2 px-3 text-gray-600">Atividade</th>
                       <th className="text-left py-2 px-3 text-gray-600">Responsável</th>
                       <th className="text-left py-2 px-3 text-gray-600">Bombas</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Horas</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                       <th className="text-left py-2 px-3 text-gray-600">Implemento</th>
                     </tr>
                   </thead>
@@ -283,7 +282,7 @@ export default function RelatoriosPage() {
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-primary">{calcularHoras(regs)}h</p>
-                      <p className="text-sm text-gray-600">Horas Trabalhadas</p>
+                      <p className="text-sm text-gray-600">Horas Homem</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-primary">{calcularHorasMaquina(regs)}h</p>
@@ -329,7 +328,7 @@ export default function RelatoriosPage() {
                     <tr className="border-b">
                       <th className="text-left py-2 px-3 text-gray-600">Operador</th>
                       <th className="text-left py-2 px-3 text-gray-600">Atividades</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Horas Totais</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                       <th className="text-left py-2 px-3 text-gray-600">Média h/atividade</th>
                       <th className="text-left py-2 px-3 text-gray-600">Faltas</th>
                     </tr>
@@ -364,7 +363,7 @@ export default function RelatoriosPage() {
                     <tr className="border-b">
                       <th className="text-left py-2 px-3 text-gray-600">Máquina</th>
                       <th className="text-left py-2 px-3 text-gray-600">Usos</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Horas Trabalhadas</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                       <th className="text-left py-2 px-3 text-gray-600">Implemento mais usado</th>
                     </tr>
                   </thead>
@@ -413,7 +412,7 @@ export default function RelatoriosPage() {
                     <tr className="border-b">
                       <th className="text-left py-2 px-3 text-gray-600">Talhão</th>
                       <th className="text-left py-2 px-3 text-gray-600">Atividades</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Horas H.O.</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Máquina</th>
                       <th className="text-left py-2 px-3 text-gray-600">Total Bombas</th>
                     </tr>
@@ -439,7 +438,7 @@ export default function RelatoriosPage() {
                     <tr className="border-b">
                       <th className="text-left py-2 px-3 text-gray-600">Safra</th>
                       <th className="text-left py-2 px-3 text-gray-600">Total Atividades</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Horas H.O.</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Máquina</th>
                       <th className="text-left py-2 px-3 text-gray-600">Total Bombas</th>
                     </tr>
