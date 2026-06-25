@@ -22,7 +22,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [receitas, setReceitas] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
   const [estaNaSafra, setEstaNaSafra] = useState(false)
-  const [config, setConfig] = useState<any>(null) const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
+const [config, setConfig] = useState<any>(null)
 const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -33,7 +33,7 @@ const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[
     horaSaida: initialData?.horaSaida || '',
     talhaoId: initialData?.talhaoId || '',
     safraId: initialData?.safraId || '',
-    tipoAtividade: initialData?.tipoAtividade || TipoAtividade.GERAIS,
+    tipoAtividade: initialData?.tipoAtividade || 'GERAIS',
     receitaAplicacaoId: initialData?.receitaAplicacaoId || '',
     status: initialData?.status || 'CONCLUIDO',
     totalBombas: initialData?.totalBombas || '',
