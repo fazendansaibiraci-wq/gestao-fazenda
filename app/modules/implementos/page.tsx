@@ -18,7 +18,7 @@ export default function ImplementosPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editando, setEditando] = useState<Implemento | null>(null)
-  const [form, setForm] = useState({ nome: '', tipo: '', descricao: '' })
+  const [form, setForm] = useState({ nome: '', descricao: '' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -63,7 +63,7 @@ export default function ImplementosPage() {
         throw new Error(data.error || 'Erro ao salvar')
       }
 
-      setForm({ nome: '', tipo: '', descricao: '' })
+      setForm({ nome: '', descricao: '' })
       setShowForm(false)
       setEditando(null)
       loadImplementos()
@@ -78,7 +78,6 @@ export default function ImplementosPage() {
     setEditando(implemento)
     setForm({
       nome: implemento.nome,
-      tipo: implemento.tipo || '',
       descricao: implemento.descricao || '',
     })
     setShowForm(true)
@@ -92,7 +91,7 @@ export default function ImplementosPage() {
 
   const handleNovoForm = () => {
     setEditando(null)
-    setForm({ nome: '', tipo: '', descricao: '' })
+    setForm({ nome: '', descricao: '' })
     setShowForm(true)
   }
 
@@ -122,19 +121,16 @@ export default function ImplementosPage() {
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-group">
-                <label>Nome *</label>
-                <input
-                  type="text"
-                  value={form.nome}
-                  onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
-                  required
-                  disabled={saving}
-                  placeholder="Ex: Arado, Grade, Pulverizador"
-                />
-              </div>
-             
+            <div className="form-group">
+              <label>Nome *</label>
+              <input
+                type="text"
+                value={form.nome}
+                onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
+                required
+                disabled={saving}
+                placeholder="Ex: Arado, Grade, Pulverizador"
+              />
             </div>
             <div className="form-group">
               <label>Descrição</label>
@@ -172,7 +168,6 @@ export default function ImplementosPage() {
             <thead>
               <tr className="border-b">
                 <th className="text-left py-3 px-4 text-gray-600">Nome</th>
-                
                 <th className="text-left py-3 px-4 text-gray-600">Descrição</th>
                 {isGestor && <th className="text-right py-3 px-4 text-gray-600">Ações</th>}
               </tr>
@@ -181,7 +176,6 @@ export default function ImplementosPage() {
               {implementos.map((imp) => (
                 <tr key={imp.id} className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4 font-medium">{imp.nome}</td>
-                 
                   <td className="py-3 px-4 text-gray-600">{imp.descricao || '-'}</td>
                   {isGestor && (
                     <td className="py-3 px-4 text-right">
