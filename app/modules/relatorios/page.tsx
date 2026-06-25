@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { BarChart3, Leaf, DollarSign, ClipboardList, TrendingUp, Filter } from 'lucide-react'
+import { BarChart3, Leaf, DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText } from 'lucide-react'
 
 export default function RelatoriosPage() {
   const { data: session } = useSession()
@@ -11,6 +11,7 @@ export default function RelatoriosPage() {
   const [talhoes, setTalhoes] = useState<any[]>([])
   const [safras, setSafras] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [exportando, setExportando] = useState(false)
 
   const [filtros, setFiltros] = useState({
     safraId: '',
@@ -97,6 +98,266 @@ export default function RelatoriosPage() {
     { id: 'custos', label: 'Custos', icon: DollarSign },
   ]
 
+  const getNomeAba = () => abas.find(a => a.id === aba)?.label || aba
+
+  // ─── Dados por aba para exportação ───────────────────────────────────────
+
+  const getDadosExportacao = () => {
+    switch (aba) {
+      case 'consumo':
+        return {
+          sheets: [
+            {
+              nome: 'Consumo por Talhão',
+              colunas: ['Talhão', 'Atividades', 'Total Bombas', 'Qtd Adubo (kg)', 'Qtd Corretivo (ton)'],
+              linhas: Object.entries(agruparPor('talhaoId')).map(([id, regs]) => [
+                getTalhaoNome(id),
+                regs.length,
+                calcularBombas(regs),
+                regs.reduce((a, r) => a + (r.quantidadeAdubo || 0), 0).toFixed(2),
+                regs.reduce((a, r) => a + (r.quantidadeCorretivo || 0), 0).toFixed(2),
+              ]),
+            },
+            {
+              nome: 'Consumo por Atividade',
+              colunas: ['Tipo de Atividade', 'Registros', 'Total Bombas', 'Horas Homem'],
+              linhas: Object.entries(agruparPor('tipoAtividade')).map(([tipo, regs]) => [
+                getTipoLabel(tipo),
+                regs.length,
+                calcularBombas(regs),
+                `${calcularHoras(regs)}h`,
+              ]),
+            },
+          ],
+        }
+      case 'historico':
+        return {
+          sheets: [
+            {
+              nome: 'Histórico de Aplicações',
+              colunas: ['Data', 'Talhão', 'Safra', 'Atividade', 'Responsável', 'Bombas', 'Horas Homem', 'Implemento'],
+              linhas: registrosFiltrados.map(r => [
+                new Date(r.data).toLocaleDateString('pt-BR'),
+                r.talhao?.nome || '-',
+                r.safra?.nome || '-',
+                getTipoLabel(r.tipoAtividade),
+                r.funcionario?.name || '-',
+                r.totalBombas || '-',
+                r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-',
+                r.implementoUtilizado || '-',
+              ]),
+            },
+          ],
+        }
+      case 'agronomico':
+        return {
+          sheets: Object.entries(agruparPor('talhaoId')).map(([id, regs]) => ({
+            nome: getTalhaoNome(id).substring(0, 31),
+            colunas: ['Data', 'Atividade', 'Bombas', 'Adubo', 'Operador', 'Máquina'],
+            linhas: regs
+              .sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime())
+              .map((r: any) => [
+                new Date(r.data).toLocaleDateString('pt-BR'),
+                getTipoLabel(r.tipoAtividade),
+                r.totalBombas || '-',
+                r.quantidadeAdubo ? `${r.quantidadeAdubo}kg` : '-',
+                r.funcionario?.name || '-',
+                r.maquina?.nome || '-',
+              ]),
+          })),
+        }
+      case 'operacional':
+        return {
+          sheets: [
+            {
+              nome: 'Desempenho por Operador',
+              colunas: ['Operador', 'Atividades', 'Horas Homem', 'Média h/atividade', 'Faltas'],
+              linhas: Object.entries(
+                registrosFiltrados.reduce((acc: any, r) => {
+                  const nome = r.funcionario?.name || 'Desconhecido'
+                  if (!acc[nome]) acc[nome] = []
+                  acc[nome].push(r)
+                  return acc
+                }, {})
+              ).map(([nome, regs]: any) => [
+                nome,
+                regs.length,
+                `${calcularHoras(regs)}h`,
+                `${regs.length > 0 ? (parseFloat(calcularHoras(regs)) / regs.length).toFixed(1) : 0}h`,
+                regs.filter((r: any) => r.isFalta).length,
+              ]),
+            },
+            {
+              nome: 'Desempenho por Equipamento',
+              colunas: ['Máquina', 'Usos', 'Horas Homem', 'Implemento mais usado'],
+              linhas: Object.entries(
+                registrosFiltrados
+                  .filter((r: any) => r.maquinaId)
+                  .reduce((acc: any, r: any) => {
+                    const nome = r.maquina?.nome || r.maquinaId
+                    if (!acc[nome]) acc[nome] = []
+                    acc[nome].push(r)
+                    return acc
+                  }, {})
+              ).map(([nome, regs]: any) => {
+                const implementos = regs.map((r: any) => r.implementoUtilizado).filter(Boolean)
+                const maisUsado = implementos.length > 0
+                  ? implementos.sort((a: string, b: string) =>
+                      implementos.filter((v: string) => v === b).length - implementos.filter((v: string) => v === a).length
+                    )[0]
+                  : '-'
+                return [nome, regs.length, `${calcularHorasMaquina(regs)}h`, maisUsado]
+              }),
+            },
+          ],
+        }
+      case 'custos':
+        return {
+          sheets: [
+            {
+              nome: 'Custos por Talhão',
+              colunas: ['Talhão', 'Atividades', 'Horas Homem', 'Horas Máquina', 'Total Bombas'],
+              linhas: Object.entries(agruparPor('talhaoId')).map(([id, regs]) => [
+                getTalhaoNome(id),
+                regs.length,
+                `${calcularHoras(regs)}h`,
+                `${calcularHorasMaquina(regs)}h`,
+                calcularBombas(regs),
+              ]),
+            },
+            {
+              nome: 'Resumo por Safra',
+              colunas: ['Safra', 'Total Atividades', 'Horas Homem', 'Horas Máquina', 'Total Bombas'],
+              linhas: Object.entries(agruparPor('safraId')).map(([id, regs]) => [
+                getSafraNome(id),
+                regs.length,
+                `${calcularHoras(regs)}h`,
+                `${calcularHorasMaquina(regs)}h`,
+                calcularBombas(regs),
+              ]),
+            },
+          ],
+        }
+      default:
+        return { sheets: [] }
+    }
+  }
+
+  // ─── Exportar Excel ───────────────────────────────────────────────────────
+
+  const exportarExcel = async () => {
+    setExportando(true)
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      wb.creator = 'Gestão Fazenda'
+      wb.created = new Date()
+
+      const { sheets } = getDadosExportacao()
+
+      sheets.forEach(sheet => {
+        const ws = wb.addWorksheet(sheet.nome)
+
+        // Cabeçalho
+        const headerRow = ws.addRow(sheet.colunas)
+        headerRow.eachCell(cell => {
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2d6a4f' } }
+          cell.alignment = { horizontal: 'center' }
+          cell.border = {
+            bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          }
+        })
+
+        // Dados
+        sheet.linhas.forEach((linha, idx) => {
+          const row = ws.addRow(linha)
+          if (idx % 2 === 1) {
+            row.eachCell(cell => {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F7F4' } }
+            })
+          }
+        })
+
+        // Auto-width
+        ws.columns.forEach(col => {
+          let max = 12
+          col.eachCell?.({ includeEmpty: false }, cell => {
+            const len = cell.value ? String(cell.value).length : 0
+            if (len > max) max = len
+          })
+          col.width = Math.min(max + 4, 40)
+        })
+      })
+
+      const buffer = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `relatorio_${aba}_${new Date().toISOString().split('T')[0]}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao exportar Excel')
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  // ─── Exportar PDF ─────────────────────────────────────────────────────────
+
+  const exportarPDF = async () => {
+    setExportando(true)
+    try {
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
+
+      const doc = new jsPDF({ orientation: 'landscape' })
+      const { sheets } = getDadosExportacao()
+      const dataHoje = new Date().toLocaleDateString('pt-BR')
+
+      sheets.forEach((sheet, idx) => {
+        if (idx > 0) doc.addPage()
+
+        // Título
+        doc.setFontSize(16)
+        doc.setTextColor(45, 106, 79)
+        doc.text(`Gestão Fazenda — ${getNomeAba()}`, 14, 16)
+
+        doc.setFontSize(11)
+        doc.setTextColor(100)
+        doc.text(`${sheet.nome}   |   Gerado em: ${dataHoje}`, 14, 23)
+
+        autoTable(doc, {
+          head: [sheet.colunas],
+          body: sheet.linhas,
+          startY: 28,
+          headStyles: {
+            fillColor: [45, 106, 79],
+            textColor: 255,
+            fontStyle: 'bold',
+            fontSize: 9,
+          },
+          bodyStyles: { fontSize: 8 },
+          alternateRowStyles: { fillColor: [240, 247, 244] },
+          styles: { cellPadding: 3 },
+          margin: { left: 14, right: 14 },
+        })
+      })
+
+      doc.save(`relatorio_${aba}_${new Date().toISOString().split('T')[0]}.pdf`)
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao exportar PDF')
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
       <div>
@@ -149,20 +410,41 @@ export default function RelatoriosPage() {
         </div>
       </div>
 
-      {/* Abas */}
-      <div className="flex gap-2 flex-wrap">
-        {abas.map(a => (
+      {/* Abas + Botões de exportação */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2 flex-wrap">
+          {abas.map(a => (
+            <button
+              key={a.id}
+              onClick={() => setAba(a.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                aba === a.id ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <a.icon className="w-4 h-4" />
+              {a.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-2">
           <button
-            key={a.id}
-            onClick={() => setAba(a.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              aba === a.id ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}
+            onClick={exportarExcel}
+            disabled={exportando || registrosFiltrados.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
           >
-            <a.icon className="w-4 h-4" />
-            {a.label}
+            <FileSpreadsheet className="w-4 h-4" />
+            {exportando ? 'Exportando...' : 'Excel'}
           </button>
-        ))}
+          <button
+            onClick={exportarPDF}
+            disabled={exportando || registrosFiltrados.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            {exportando ? 'Exportando...' : 'PDF'}
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -171,7 +453,6 @@ export default function RelatoriosPage() {
         <div className="card text-center py-12 text-gray-500">Nenhum registro encontrado com os filtros selecionados.</div>
       ) : (
         <>
-          {/* Consumo de Produtos */}
           {aba === 'consumo' && (
             <div className="space-y-6">
               <div className="card">
@@ -199,7 +480,6 @@ export default function RelatoriosPage() {
                   </tbody>
                 </table>
               </div>
-
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-4">Consumo por Atividade</h3>
                 <table className="w-full">
@@ -226,7 +506,6 @@ export default function RelatoriosPage() {
             </div>
           )}
 
-          {/* Histórico de Aplicações */}
           {aba === 'historico' && (
             <div className="card">
               <h3 className="text-lg font-semibold text-primary mb-4">Histórico de Aplicações</h3>
@@ -263,14 +542,11 @@ export default function RelatoriosPage() {
             </div>
           )}
 
-          {/* Relatório Agronômico por Talhão */}
           {aba === 'agronomico' && (
             <div className="space-y-4">
               {Object.entries(agruparPor('talhaoId')).map(([talhaoId, regs]) => (
                 <div key={talhaoId} className="card">
-                  <h3 className="text-lg font-semibold text-primary mb-4">
-                    Talhão: {getTalhaoNome(talhaoId)}
-                  </h3>
+                  <h3 className="text-lg font-semibold text-primary mb-4">Talhão: {getTalhaoNome(talhaoId)}</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
                       <p className="text-2xl font-bold text-primary">{regs.length}</p>
@@ -318,7 +594,6 @@ export default function RelatoriosPage() {
             </div>
           )}
 
-          {/* Indicadores Operacionais */}
           {aba === 'operacional' && (
             <div className="space-y-6">
               <div className="card">
@@ -346,16 +621,13 @@ export default function RelatoriosPage() {
                         <td className="py-2 px-3 font-medium">{nome}</td>
                         <td className="py-2 px-3">{regs.length}</td>
                         <td className="py-2 px-3">{calcularHoras(regs)}h</td>
-                        <td className="py-2 px-3">
-                          {regs.length > 0 ? (parseFloat(calcularHoras(regs)) / regs.length).toFixed(1) : 0}h
-                        </td>
+                        <td className="py-2 px-3">{regs.length > 0 ? (parseFloat(calcularHoras(regs)) / regs.length).toFixed(1) : 0}h</td>
                         <td className="py-2 px-3">{regs.filter((r: any) => r.isFalta).length}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-4">Desempenho por Equipamento</h3>
                 <table className="w-full">
@@ -399,14 +671,11 @@ export default function RelatoriosPage() {
             </div>
           )}
 
-          {/* Custos */}
           {aba === 'custos' && (
             <div className="space-y-6">
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-2">Custos por Talhão</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  * Para custos detalhados por produto, cadastre os preços nos Produtos e vincule Receitas de Aplicação às atividades.
-                </p>
+                <p className="text-sm text-gray-500 mb-4">* Para custos detalhados por produto, cadastre os preços nos Produtos e vincule Receitas de Aplicação às atividades.</p>
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
@@ -430,7 +699,6 @@ export default function RelatoriosPage() {
                   </tbody>
                 </table>
               </div>
-
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-4">Resumo por Safra</h3>
                 <table className="w-full">
