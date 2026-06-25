@@ -108,6 +108,7 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
 
   useEffect(() => {
     load()
+    carregarUltimoValorDiesel()
   }, [])
 
   const load = async () => {
@@ -115,6 +116,20 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
       const res = await fetch('/api/abastecimentos')
       const data = await res.json()
       setAbastecimentos(data.data || [])
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const carregarUltimoValorDiesel = async () => {
+    try {
+      const res = await fetch('/api/entradas-diesel')
+      const data = await res.json()
+      const entradas = data.data || []
+      if (entradas.length > 0) {
+        const ultima = entradas[0] // já vem ordenado por data desc
+        setForm(prev => ({ ...prev, valorPorLitro: ultima.valorPorLitro.toString() }))
+      }
     } catch (err) {
       console.error(err)
     }
@@ -206,7 +221,10 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
             />
           </div>
           <div>
-            <label className="text-sm font-medium block mb-1">Valor R$/Litro</label>
+            <label className="text-sm font-medium block mb-1">
+              Valor R$/Litro
+              <span className="text-xs text-gray-400 ml-2">(preenchido da última NF)</span>
+            </label>
             <input
               type="number"
               value={form.valorPorLitro}
