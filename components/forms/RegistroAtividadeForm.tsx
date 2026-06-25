@@ -23,7 +23,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [funcionarios, setFuncionarios] = useState([])
   const [estaNaSafra, setEstaNaSafra] = useState(false)
 const [config, setConfig] = useState<any>(null)
-const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
+  const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
 
@@ -159,7 +159,7 @@ const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[
         // Campos obrigatórios com valores padrão
         talhaoId: form.talhaoId || (talhoes[0] as any)?.id,
         safraId: form.safraId || (safras[0] as any)?.id,
-        tipoAtividade: TipoAtividade.GERAIS,
+        tipoAtividade: 'GERAIS',
         status: 'CONCLUIDO',
         horaEntrada: '00:00',
       } : {
@@ -196,9 +196,9 @@ const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[
 
  
 
-  const needsProduto = [TipoAtividade.PULVERIZACAO, TipoAtividade.HERBICIDA, TipoAtividade.INSETICIDA_SOLO]
-  const needsAdubo = form.tipoAtividade === TipoAtividade.ADUBACAO
-  const needsCorretivo = form.tipoAtividade === TipoAtividade.CORRECAO_SOLO
+  const needsProduto = ['Pulverização', 'Herbicida', 'Inseticida de Solo']
+const needsAdubo = form.tipoAtividade === 'Adubação'
+const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
