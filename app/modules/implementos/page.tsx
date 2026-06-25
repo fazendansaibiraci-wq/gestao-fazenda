@@ -134,24 +134,7 @@ export default function ImplementosPage() {
                   placeholder="Ex: Arado, Grade, Pulverizador"
                 />
               </div>
-              <div className="form-group">
-                <label>Tipo</label>
-                <select
-                  value={form.tipo}
-                  onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
-                  disabled={saving}
-                >
-                  <option value="">Selecionar tipo</option>
-                  <option value="Arado">Arado</option>
-                  <option value="Grade">Grade</option>
-                  <option value="Pulverizador">Pulverizador</option>
-                  <option value="Plantadeira">Plantadeira</option>
-                  <option value="Colhedora">Colhedora</option>
-                  <option value="Roçadeira">Roçadeira</option>
-                  <option value="Subsolador">Subsolador</option>
-                  <option value="Outro">Outro</option>
-                </select>
-              </div>
+             
             </div>
             <div className="form-group">
               <label>Descrição</label>
@@ -189,7 +172,7 @@ export default function ImplementosPage() {
             <thead>
               <tr className="border-b">
                 <th className="text-left py-3 px-4 text-gray-600">Nome</th>
-                <th className="text-left py-3 px-4 text-gray-600">Tipo</th>
+                
                 <th className="text-left py-3 px-4 text-gray-600">Descrição</th>
                 {isGestor && <th className="text-right py-3 px-4 text-gray-600">Ações</th>}
               </tr>
@@ -198,7 +181,7 @@ export default function ImplementosPage() {
               {implementos.map((imp) => (
                 <tr key={imp.id} className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4 font-medium">{imp.nome}</td>
-                  <td className="py-3 px-4 text-gray-600">{imp.tipo || '-'}</td>
+                 
                   <td className="py-3 px-4 text-gray-600">{imp.descricao || '-'}</td>
                   {isGestor && (
                     <td className="py-3 px-4 text-right">
