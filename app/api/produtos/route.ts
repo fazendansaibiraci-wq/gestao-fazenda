@@ -29,6 +29,22 @@ export async function POST(request: NextRequest) {
     if (!body.nomeComercial || !body.categoria || !body.unidadeMedida) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
     }
+    // Verificar se já existe produto com o mesmo nome
+    const existente = await prisma.produto.findFirst({
+      where: {
+       nomeComercial: body.nomeComercial.trim(),
+          equals: body.nomeComercial.trim(),
+          mode: 'insensitive',
+        },
+      },
+    })
+
+    if (existente) {
+      return NextResponse.json(
+        { error: `Já existe um produto cadastrado com o nome "${existente.nomeComercial}"` },
+        { status: 409 }
+      )
+    }
 
     const produto = await prisma.produto.create({
       data: {
