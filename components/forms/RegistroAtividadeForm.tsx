@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { TipoAtividade } from '@prisma/client'
+// TipoAtividade enum removido — agora vem do banco
 
 interface RegistroAtividadeFormProps {
   id?: string
@@ -22,8 +22,8 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [receitas, setReceitas] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
   const [estaNaSafra, setEstaNaSafra] = useState(false)
-  const [config, setConfig] = useState<any>(null)
-
+  const [config, setConfig] = useState<any>(null) const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
+const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
 
@@ -70,28 +70,30 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   }, [form.data, config])
 
   const loadData = async () => {
-    try {
-      const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes, configRes] = await Promise.all([
-        fetch('/api/safras'),
-        fetch('/api/talhoes'),
-        fetch('/api/maquinas'),
-        fetch('/api/receitas'),
-        fetch('/api/implementos'),
-        fetch('/api/funcionarios'),
-        fetch('/api/configuracoes'),
-      ])
+  try {
+    const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes, configRes, tiposRes] = await Promise.all([
+      fetch('/api/safras'),
+      fetch('/api/talhoes'),
+      fetch('/api/maquinas'),
+      fetch('/api/receitas'),
+      fetch('/api/implementos'),
+      fetch('/api/funcionarios'),
+      fetch('/api/configuracoes'),
+      fetch('/api/tipos-atividade?ativo=true'),
+    ])
 
-      if (safrasRes.ok) setSafras((await safrasRes.json()).data)
-      if (talhaoesRes.ok) setTalhoes((await talhaoesRes.json()).data)
-      if (maquinasRes.ok) setMaquinas((await maquinasRes.json()).data)
-      if (receitasRes.ok) setReceitas((await receitasRes.json()).data)
-      if (implementosRes.ok) setImplementos((await implementosRes.json()).data)
-      if (funcionariosRes.ok) setFuncionarios((await funcionariosRes.json()).data)
-      if (configRes.ok) setConfig((await configRes.json()).data)
-    } catch (err) {
-      console.error('Erro ao carregar dados:', err)
-    }
+    if (safrasRes.ok) setSafras((await safrasRes.json()).data)
+    if (talhaoesRes.ok) setTalhoes((await talhaoesRes.json()).data)
+    if (maquinasRes.ok) setMaquinas((await maquinasRes.json()).data)
+    if (receitasRes.ok) setReceitas((await receitasRes.json()).data)
+    if (implementosRes.ok) setImplementos((await implementosRes.json()).data)
+    if (funcionariosRes.ok) setFuncionarios((await funcionariosRes.json()).data)
+    if (configRes.ok) setConfig((await configRes.json()).data)
+    if (tiposRes.ok) setTiposAtividade(await tiposRes.json())
+  } catch (err) {
+    console.error('Erro ao carregar dados:', err)
   }
+}
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -192,20 +194,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     }
   }
 
-  const tiposAtividade = [
-    { value: TipoAtividade.PULVERIZACAO, label: 'Pulverização' },
-    { value: TipoAtividade.HERBICIDA, label: 'Herbicida' },
-    { value: TipoAtividade.ADUBACAO, label: 'Adubação' },
-    { value: TipoAtividade.COLHEITA, label: 'Colheita' },
-    { value: TipoAtividade.CAPINA_MECANICA, label: 'Capina Mecânica' },
-    { value: TipoAtividade.DESBROTA, label: 'Desbrota' },
-    { value: TipoAtividade.CAPINA_MANUAL, label: 'Capina Manual' },
-    { value: TipoAtividade.CHEGAMENTO_TERRA, label: 'Chegamento de Terra' },
-    { value: TipoAtividade.CORRECAO_SOLO, label: 'Correção de Solo' },
-    { value: TipoAtividade.IRRIGACAO, label: 'Irrigação' },
-    { value: TipoAtividade.INSETICIDA_SOLO, label: 'Inseticida de Solo' },
-    { value: TipoAtividade.GERAIS, label: 'Gerais' },
-  ]
+ 
 
   const needsProduto = [TipoAtividade.PULVERIZACAO, TipoAtividade.HERBICIDA, TipoAtividade.INSETICIDA_SOLO]
   const needsAdubo = form.tipoAtividade === TipoAtividade.ADUBACAO
@@ -351,9 +340,10 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               <div className="form-group">
                 <label htmlFor="tipoAtividade">Tipo de Atividade *</label>
                 <select id="tipoAtividade" name="tipoAtividade" value={form.tipoAtividade} onChange={handleChange} disabled={loading}>
-                  {tiposAtividade.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
+                <option value="">Selecionar tipo</option>
+          {tiposAtividade.map((t) => (
+            <option key={t.id} value={t.nome}>{t.nome}</option>
+          ))}
                 </select>
               </div>
 
