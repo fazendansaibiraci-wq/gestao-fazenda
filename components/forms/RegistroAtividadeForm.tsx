@@ -347,7 +347,7 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
                 </select>
               </div>
 
-            {receitas.length > 0 && (
+           {receitas.length > 0 && (
                 <div className="form-group">
                   <label htmlFor="receitaAplicacaoId">Receita de Aplicação</label>
                   <select id="receitaAplicacaoId" name="receitaAplicacaoId" value={form.receitaAplicacaoId} onChange={handleChange} disabled={loading}>
@@ -356,6 +356,35 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
                       <option key={r.id} value={r.id}>{r.nome} - {r.tipo.replace(/_/g, ' ')}</option>
                     ))}
                   </select>
+
+                  {/* Produtos da receita selecionada */}
+                  {form.receitaAplicacaoId && (() => {
+                    const receitaSelecionada = receitas.find((r: any) => r.id === form.receitaAplicacaoId)
+                    if (!receitaSelecionada?.produtosAplicacao?.length) return null
+                    return (
+                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm font-semibold text-green-800 mb-2">Produtos desta receita:</p>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-green-200">
+                              <th className="text-left py-1 text-green-700">Produto</th>
+                              <th className="text-left py-1 text-green-700">Dosagem</th>
+                              <th className="text-left py-1 text-green-700">Unidade</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {receitaSelecionada.produtosAplicacao.map((p: any) => (
+                              <tr key={p.id} className="border-b border-green-100">
+                                <td className="py-1 font-medium text-gray-800">{p.produto?.nomeComercial}</td>
+                                <td className="py-1 text-gray-700">{p.dosagem}</td>
+                                <td className="py-1 text-gray-700">{p.unidade}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
 
