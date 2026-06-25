@@ -358,12 +358,8 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
                   </select>
 
                   {/* Produtos da receita selecionada */}
-                  {form.receitaAplicacaoId && (() => {
-                    {form.receitaAplicacaoId && (() => {
+                 {form.receitaAplicacaoId && (() => {
   const receitaSelecionada = (receitas as any[]).find((r: any) => r.id === form.receitaAplicacaoId)
-  console.log('receita selecionada:', receitaSelecionada)
-  console.log('receitaAplicacaoId:', form.receitaAplicacaoId)
-  console.log('receitas:', receitas)
   if (!receitaSelecionada?.produtosAplicacao?.length) return null
   return (
     <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
