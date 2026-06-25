@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-// TipoAtividade enum removido — agora vem do banco
 
 interface RegistroAtividadeFormProps {
   id?: string
@@ -22,7 +21,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [receitas, setReceitas] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
   const [estaNaSafra, setEstaNaSafra] = useState(false)
-const [config, setConfig] = useState<any>(null)
+  const [config, setConfig] = useState<any>(null)
   const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -70,30 +69,29 @@ const [config, setConfig] = useState<any>(null)
   }, [form.data, config])
 
   const loadData = async () => {
-  try {
-    const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes, configRes, tiposRes] = await Promise.all([
-      fetch('/api/safras'),
-      fetch('/api/talhoes'),
-      fetch('/api/maquinas'),
-      fetch('/api/receitas'),
-      fetch('/api/implementos'),
-      fetch('/api/funcionarios'),
-      fetch('/api/configuracoes'),
-      fetch('/api/tipos-atividade?ativo=true'),
-    ])
-
-    if (safrasRes.ok) setSafras((await safrasRes.json()).data)
-    if (talhaoesRes.ok) setTalhoes((await talhaoesRes.json()).data)
-    if (maquinasRes.ok) setMaquinas((await maquinasRes.json()).data)
-    if (receitasRes.ok) setReceitas((await receitasRes.json()).data)
-    if (implementosRes.ok) setImplementos((await implementosRes.json()).data)
-    if (funcionariosRes.ok) setFuncionarios((await funcionariosRes.json()).data)
-    if (configRes.ok) setConfig((await configRes.json()).data)
-    if (tiposRes.ok) setTiposAtividade(await tiposRes.json())
-  } catch (err) {
-    console.error('Erro ao carregar dados:', err)
+    try {
+      const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes, configRes, tiposRes] = await Promise.all([
+        fetch('/api/safras'),
+        fetch('/api/talhoes'),
+        fetch('/api/maquinas'),
+        fetch('/api/receitas'),
+        fetch('/api/implementos'),
+        fetch('/api/funcionarios'),
+        fetch('/api/configuracoes'),
+        fetch('/api/tipos-atividade?ativo=true'),
+      ])
+      if (safrasRes.ok) setSafras((await safrasRes.json()).data)
+      if (talhaoesRes.ok) setTalhoes((await talhaoesRes.json()).data)
+      if (maquinasRes.ok) setMaquinas((await maquinasRes.json()).data)
+      if (receitasRes.ok) setReceitas((await receitasRes.json()).data)
+      if (implementosRes.ok) setImplementos((await implementosRes.json()).data)
+      if (funcionariosRes.ok) setFuncionarios((await funcionariosRes.json()).data)
+      if (configRes.ok) setConfig((await configRes.json()).data)
+      if (tiposRes.ok) setTiposAtividade(await tiposRes.json())
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err)
+    }
   }
-}
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -118,13 +116,9 @@ const [config, setConfig] = useState<any>(null)
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
-
     if (!validateHorimetro()) return
-
     setLoading(true)
-
     try {
-      // Se é falta, só precisa de data e funcionário
       if (!form.isFalta) {
         if (!form.data || !form.horaEntrada || !form.talhaoId || !form.safraId) {
           setError('Preencha todos os campos obrigatórios')
@@ -132,23 +126,18 @@ const [config, setConfig] = useState<any>(null)
           return
         }
       }
-
       if (isGestor && !form.funcionarioId) {
         setError('Selecione o funcionário para esta atividade')
         setLoading(false)
         return
       }
-
       const horimetroInicial = form.horimetroInicial ? parseFloat(form.horimetroInicial) : null
       const horimetroFinal = form.horimetroFinal ? parseFloat(form.horimetroFinal) : null
       const horasMaquina = horimetroInicial && horimetroFinal
         ? parseFloat((horimetroFinal - horimetroInicial).toFixed(2))
         : null
-
       const method = id ? 'PUT' : 'POST'
       const url = id ? `/api/registros-atividade/${id}` : '/api/registros-atividade'
-
-      // Se é falta, usa valores padrão para campos obrigatórios no banco
       const payload = form.isFalta ? {
         data: new Date(form.data + 'T12:00:00'),
         funcionarioId: form.funcionarioId,
@@ -156,7 +145,6 @@ const [config, setConfig] = useState<any>(null)
         motivoFalta: form.motivoFalta,
         periodoFalta: form.periodoFalta,
         observacao: form.observacao,
-        // Campos obrigatórios com valores padrão
         talhaoId: form.talhaoId || (talhoes[0] as any)?.id,
         safraId: form.safraId || (safras[0] as any)?.id,
         tipoAtividade: 'GERAIS',
@@ -173,18 +161,15 @@ const [config, setConfig] = useState<any>(null)
         horasMaquina,
         passouDiretoAlmoco: estaNaSafra ? form.passouDiretoAlmoco : false,
       }
-
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || 'Erro ao salvar registro')
       }
-
       router.push('/modules/atividades')
       router.refresh()
     } catch (err) {
@@ -194,11 +179,11 @@ const [config, setConfig] = useState<any>(null)
     }
   }
 
- 
-
   const needsProduto = ['Pulverização', 'Herbicida', 'Inseticida de Solo']
-const needsAdubo = form.tipoAtividade === 'Adubação'
-const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
+  const needsAdubo = form.tipoAtividade === 'Adubação'
+  const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
+
+  const receitaSelecionada = (receitas as any[]).find((r: any) => r.id === form.receitaAplicacaoId)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
@@ -208,7 +193,6 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
         </div>
       )}
 
-      {/* Seleção de Funcionário — apenas Gestor/Gerente */}
       {isGestor && (
         <div className="card border-l-4 border-primary">
           <h3 className="text-lg font-semibold text-primary mb-4">Funcionário *</h3>
@@ -224,16 +208,13 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
             >
               <option value="">Selecionar funcionário</option>
               {funcionarios.map((f: any) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} — {f.role}
-                </option>
+                <option key={f.id} value={f.id}>{f.name} — {f.role}</option>
               ))}
             </select>
           </div>
         </div>
       )}
 
-      {/* Data */}
       <div className="card">
         <h3 className="text-lg font-semibold text-primary mb-4">Data *</h3>
         <div className="form-group">
@@ -241,30 +222,17 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
         </div>
       </div>
 
-      {/* Falta */}
       <div className="card border-l-4 border-orange-400">
         <h3 className="text-lg font-semibold text-primary mb-4">Registrar Falta?</h3>
         <label className="flex items-center gap-2 cursor-pointer mb-4">
-          <input
-            type="checkbox"
-            name="isFalta"
-            checked={form.isFalta}
-            onChange={handleChange}
-            disabled={loading}
-          />
+          <input type="checkbox" name="isFalta" checked={form.isFalta} onChange={handleChange} disabled={loading} />
           <span className="text-sm font-medium">Marcar como falta</span>
         </label>
         {form.isFalta && (
           <div className="space-y-4">
             <div className="form-group">
               <label htmlFor="periodoFalta">Período da Falta</label>
-              <select
-                id="periodoFalta"
-                name="periodoFalta"
-                value={form.periodoFalta}
-                onChange={handleChange}
-                disabled={loading}
-              >
+              <select id="periodoFalta" name="periodoFalta" value={form.periodoFalta} onChange={handleChange} disabled={loading}>
                 <option value="DIA_INTEIRO">Dia Inteiro</option>
                 <option value="MANHA">Manhã</option>
                 <option value="TARDE">Tarde</option>
@@ -272,13 +240,7 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
             </div>
             <div className="form-group">
               <label htmlFor="motivoFalta">Motivo da Falta</label>
-              <select
-                id="motivoFalta"
-                name="motivoFalta"
-                value={form.motivoFalta}
-                onChange={handleChange}
-                disabled={loading}
-              >
+              <select id="motivoFalta" name="motivoFalta" value={form.motivoFalta} onChange={handleChange} disabled={loading}>
                 <option value="">Selecionar motivo</option>
                 <option value="atestado_medico">Atestado Médico</option>
                 <option value="pessoal">Pessoal</option>
@@ -287,15 +249,7 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
             </div>
             <div className="form-group">
               <label htmlFor="observacao">Observação</label>
-              <textarea
-                id="observacao"
-                name="observacao"
-                value={form.observacao}
-                onChange={handleChange}
-                disabled={loading}
-                placeholder="Detalhes adicionais sobre a falta..."
-                rows={3}
-              />
+              <textarea id="observacao" name="observacao" value={form.observacao} onChange={handleChange} disabled={loading} placeholder="Detalhes adicionais sobre a falta..." rows={3} />
             </div>
             <div className="flex gap-4 pt-2">
               <button type="submit" disabled={loading} className="btn btn-primary flex-1">
@@ -309,10 +263,8 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
         )}
       </div>
 
-      {/* Campos de atividade — só aparecem quando NÃO é falta */}
       {!form.isFalta && (
         <>
-          {/* Informações Básicas */}
           <div className="card">
             <h3 className="text-lg font-semibold text-primary mb-4">Informações Básicas</h3>
             <div className="space-y-4">
@@ -340,14 +292,14 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
               <div className="form-group">
                 <label htmlFor="tipoAtividade">Tipo de Atividade *</label>
                 <select id="tipoAtividade" name="tipoAtividade" value={form.tipoAtividade} onChange={handleChange} disabled={loading}>
-                <option value="">Selecionar tipo</option>
-          {tiposAtividade.map((t) => (
-            <option key={t.id} value={t.nome}>{t.nome}</option>
-          ))}
+                  <option value="">Selecionar tipo</option>
+                  {tiposAtividade.map((t) => (
+                    <option key={t.id} value={t.nome}>{t.nome}</option>
+                  ))}
                 </select>
               </div>
 
-           {receitas.length > 0 && (
+              {receitas.length > 0 && (
                 <div className="form-group">
                   <label htmlFor="receitaAplicacaoId">Receita de Aplicação</label>
                   <select id="receitaAplicacaoId" name="receitaAplicacaoId" value={form.receitaAplicacaoId} onChange={handleChange} disabled={loading}>
@@ -357,35 +309,29 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
                     ))}
                   </select>
 
-                  {/* Produtos da receita selecionada */}
-                 {form.receitaAplicacaoId && (() => {
-  const receitaSelecionada = (receitas as any[]).find((r: any) => r.id === form.receitaAplicacaoId)
-  if (!receitaSelecionada?.produtosAplicacao?.length) return null
-  return (
-    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-      <p className="text-sm font-semibold text-green-800 mb-2">Produtos desta receita:</p>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-green-200">
-            <th className="text-left py-1 text-green-700">Produto</th>
-            <th className="text-left py-1 text-green-700">Dosagem</th>
-            <th className="text-left py-1 text-green-700">Unidade</th>
-          </tr>
-        </thead>
-        <tbody>
-          {receitaSelecionada.produtosAplicacao.map((p: any) => (
-            <tr key={p.id} className="border-b border-green-100">
-              <td className="py-1 font-medium text-gray-800">{p.produto?.nomeComercial}</td>
-              <td className="py-1 text-gray-700">{p.dosagem}</td>
-              <td className="py-1 text-gray-700">{p.unidade}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-})()}
-                    
+                  {receitaSelecionada?.produtosAplicacao?.length > 0 && (
+                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm font-semibold text-green-800 mb-2">Produtos desta receita:</p>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-green-200">
+                            <th className="text-left py-1 text-green-700">Produto</th>
+                            <th className="text-left py-1 text-green-700">Dosagem</th>
+                            <th className="text-left py-1 text-green-700">Unidade</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {receitaSelecionada.produtosAplicacao.map((p: any) => (
+                            <tr key={p.id} className="border-b border-green-100">
+                              <td className="py-1 font-medium text-gray-800">{p.produto?.nomeComercial}</td>
+                              <td className="py-1 text-gray-700">{p.dosagem}</td>
+                              <td className="py-1 text-gray-700">{p.unidade}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -410,13 +356,7 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
               {estaNaSafra && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="passouDiretoAlmoco"
-                      checked={form.passouDiretoAlmoco}
-                      onChange={handleChange}
-                      disabled={loading}
-                    />
+                    <input type="checkbox" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} />
                     <span className="text-sm font-medium text-amber-800">
                       Passou direto no almoço (1h conta como hora extra)
                     </span>
@@ -480,7 +420,6 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
                   ))}
                 </select>
               </div>
-
               {form.maquinaId && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="form-group">
@@ -493,7 +432,6 @@ const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
                   </div>
                 </div>
               )}
-
               <div className="form-group">
                 <label htmlFor="implementoUtilizado">Implemento Utilizado</label>
                 <select id="implementoUtilizado" name="implementoUtilizado" value={form.implementoUtilizado} onChange={handleChange} disabled={loading}>
