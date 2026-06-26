@@ -26,6 +26,9 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     valorHoraExtraEntressafra: initialData?.valorHoraExtraEntressafra || '',
     valorHoraExtraSafra: initialData?.valorHoraExtraSafra || '',
     cargaHorariaSafra: initialData?.cargaHorariaSafra || '',
+    cargaHorariaSegSex: initialData?.cargaHorariaSegSex || '',
+cargaHorariaSabado: initialData?.cargaHorariaSabado || '',
+cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
     bancoHorasAtivo: initialData?.bancoHorasAtivo || false,
     active: initialData?.active !== undefined ? initialData.active : true,
   })
@@ -295,14 +298,59 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
         </div>
       </div>
 
-      {/* Jornada */}
+     {/* Jornada */}
       <div className="card">
         <h3 className="text-lg font-semibold text-primary mb-4">Jornada de Trabalho</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="form-group">
+              <label htmlFor="cargaHorariaSegSex">Segunda a Sexta (h/dia)</label>
+              <input
+                type="number"
+                id="cargaHorariaSegSex"
+                name="cargaHorariaSegSex"
+                value={form.cargaHorariaSegSex}
+                onChange={handleChange}
+                disabled={loading}
+                step="0.5"
+                min="1"
+                max="24"
+                placeholder="Ex: 10"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="cargaHorariaSabado">Sábado (h/dia)</label>
+              <input
+                type="number"
+                id="cargaHorariaSabado"
+                name="cargaHorariaSabado"
+                value={form.cargaHorariaSabado}
+                onChange={handleChange}
+                disabled={loading}
+                step="0.5"
+                min="0"
+                max="24"
+                placeholder="Ex: 8"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="cargaHorariaDomingo">Domingo (h/dia)</label>
+              <input
+                type="number"
+                id="cargaHorariaDomingo"
+                name="cargaHorariaDomingo"
+                value={form.cargaHorariaDomingo}
+                onChange={handleChange}
+                disabled={loading}
+                step="0.5"
+                min="0"
+                max="24"
+                placeholder="Ex: 6"
+              />
+            </div>
+          </div>
           <div className="form-group">
-            <label htmlFor="cargaHorariaSafra">
-              Carga Horária Safra (horas/dia)
-            </label>
+            <label htmlFor="cargaHorariaSafra">Carga Horária Safra Geral (h/dia)</label>
             <input
               type="number"
               id="cargaHorariaSafra"
@@ -316,7 +364,7 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
               placeholder="Ex: 10"
             />
             <p className="text-xs text-gray-500 mt-1">
-              A carga horária fora da safra é definida nas Configurações Globais.
+              Usado como fallback quando não há carga específica por dia. A carga fora da safra é definida nas Configurações Globais.
             </p>
           </div>
         </div>
