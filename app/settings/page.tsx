@@ -149,8 +149,8 @@ export default function SettingsPage() {
         return
       }
 
-      if (!editingId && !formData.email) {
-        setError('Email é obrigatório para novo usuário')
+     if (!formData.email) {
+        setError('Email é obrigatório')
         return
       }
 
