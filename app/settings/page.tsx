@@ -45,7 +45,6 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  // Configurações globais
   const [config, setConfig] = useState<ConfiguracaoGlobal | null>(null)
   const [configForm, setConfigForm] = useState({
     cargaHorariaEntressafra: 8,
@@ -63,14 +62,10 @@ export default function SettingsPage() {
   })
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      redirect('/login')
-    }
+    if (status === 'unauthenticated') redirect('/login')
     if (status === 'authenticated') {
       const userRole = (session?.user as any)?.role
-      if (userRole !== 'GESTOR' && userRole !== 'GERENTE') {
-        redirect('/dashboard')
-      }
+      if (userRole !== 'GESTOR' && userRole !== 'GERENTE') redirect('/dashboard')
     }
   }, [status, session])
 
@@ -87,7 +82,7 @@ export default function SettingsPage() {
         const data = await res.json()
         setUsers(data.data || [])
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao carregar usuários')
     } finally {
       setLoading(false)
@@ -106,7 +101,7 @@ export default function SettingsPage() {
           fimSafra: data.data.fimSafra ? data.data.fimSafra.split('T')[0] : '',
         })
       }
-    } catch (err) {
+    } catch {
       console.error('Erro ao carregar configurações')
     }
   }
@@ -126,7 +121,7 @@ export default function SettingsPage() {
         loadConfig()
         setTimeout(() => setConfigSuccess(''), 3000)
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao salvar configurações')
     } finally {
       setSavingConfig(false)
@@ -139,19 +134,20 @@ export default function SettingsPage() {
     setSuccess('')
 
     try {
-     
-
       if (!formData.name || !formData.role) {
-        setError('Preencha todos os campos obrigatórios')
+        setError('Nome e perfil são obrigatórios')
         return
       }
 
-   
+      if (!editingId && !formData.password) {
+        setError('Senha é obrigatória para novo usuário')
+        return
+      }
 
       const method = editingId ? 'PUT' : 'POST'
       const payload = editingId
-        ? { 
-            id: editingId, 
+        ? {
+            id: editingId,
             name: formData.name,
             role: formData.role,
             ...(formData.email && { email: formData.email }),
@@ -175,7 +171,7 @@ export default function SettingsPage() {
         const data = await res.json()
         setError(data.error || 'Erro ao salvar usuário')
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao salvar usuário')
     }
   }
@@ -195,45 +191,27 @@ export default function SettingsPage() {
     if (!confirm('Desativar este usuário?')) return
     try {
       const res = await fetch(`/api/users?id=${userId}`, { method: 'DELETE' })
-      if (res.ok) {
-        setSuccess('Usuário desativado com sucesso')
-        loadUsers()
-      } else {
-        setError('Erro ao desativar usuário')
-      }
-    } catch (err) {
-      setError('Erro ao desativar usuário')
-    }
+      if (res.ok) { setSuccess('Usuário desativado com sucesso'); loadUsers() }
+      else setError('Erro ao desativar usuário')
+    } catch { setError('Erro ao desativar usuário') }
   }
 
   const handleReactivate = async (userId: string) => {
     if (!confirm('Reativar este usuário?')) return
     try {
       const res = await fetch(`/api/users?id=${userId}&action=reactivate`, { method: 'PATCH' })
-      if (res.ok) {
-        setSuccess('Usuário reativado com sucesso')
-        loadUsers()
-      } else {
-        setError('Erro ao reativar usuário')
-      }
-    } catch (err) {
-      setError('Erro ao reativar usuário')
-    }
+      if (res.ok) { setSuccess('Usuário reativado com sucesso'); loadUsers() }
+      else setError('Erro ao reativar usuário')
+    } catch { setError('Erro ao reativar usuário') }
   }
 
   const handleDeletePermanently = async (userId: string) => {
     if (!confirm('Tem certeza? Esta ação é irreversível.')) return
     try {
       const res = await fetch(`/api/users?id=${userId}&action=delete`, { method: 'DELETE' })
-      if (res.ok) {
-        setSuccess('Usuário deletado permanentemente')
-        loadUsers()
-      } else {
-        setError('Erro ao deletar usuário')
-      }
-    } catch (err) {
-      setError('Erro ao deletar usuário')
-    }
+      if (res.ok) { setSuccess('Usuário deletado permanentemente'); loadUsers() }
+      else setError('Erro ao deletar usuário')
+    } catch { setError('Erro ao deletar usuário') }
   }
 
   const handleCancel = () => {
@@ -251,7 +229,6 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div>
         <h1 className="text-3xl font-bold text-primary flex items-center gap-2">
           <Settings className="w-8 h-8" />
@@ -260,53 +237,38 @@ export default function SettingsPage() {
         <p className="text-gray-600 mt-1">Configurações globais e gerenciamento de usuários</p>
       </div>
 
-      {/* Mensagens */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>
       )}
       {success && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
-          {success}
-        </div>
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">{success}</div>
       )}
 
-      {/* Configurações Globais — só para Gestor */}
       {isGestor && (
         <div className="card">
           <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
             <Settings className="w-5 h-5" />
             Configurações Globais
           </h2>
-
           {configSuccess && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
               {configSuccess}
             </div>
           )}
-
           <form onSubmit={handleSaveConfig} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Carga Horária Entressafra (horas/dia)
-                </label>
+                <label className="block text-sm font-medium mb-1">Carga Horária Entressafra (horas/dia)</label>
                 <input
                   type="number"
                   value={configForm.cargaHorariaEntressafra}
                   onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafra: parseFloat(e.target.value) })}
                   className="w-full border rounded-lg px-3 py-2"
-                  step="0.5"
-                  min="1"
-                  max="24"
-                  required
+                  step="0.5" min="1" max="24" required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Início da Safra
-                </label>
+                <label className="block text-sm font-medium mb-1">Início da Safra</label>
                 <input
                   type="date"
                   value={configForm.inicioSafra}
@@ -315,9 +277,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Fim da Safra
-                </label>
+                <label className="block text-sm font-medium mb-1">Fim da Safra</label>
                 <input
                   type="date"
                   value={configForm.fimSafra}
@@ -326,7 +286,6 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-
             {config?.inicioSafra && config?.fimSafra && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
                 <strong>Período safra atual:</strong>{' '}
@@ -334,12 +293,7 @@ export default function SettingsPage() {
                 {new Date(config.fimSafra).toLocaleDateString('pt-BR')}
               </div>
             )}
-
-            <button
-              type="submit"
-              disabled={savingConfig}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
-            >
+            <button type="submit" disabled={savingConfig} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
               <Save className="w-4 h-4" />
               {savingConfig ? 'Salvando...' : 'Salvar Configurações'}
             </button>
@@ -347,18 +301,13 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Botão Novo Usuário */}
       {!showForm && (
-        <button
-          onClick={() => setShowForm(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
-        >
+        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
           <Plus className="w-5 h-5" />
           Novo Usuário
         </button>
       )}
 
-      {/* Formulário */}
       {showForm && (
         <div className={`card ${editingId ? 'border-l-4 border-l-blue-500' : ''}`}>
           <div className="flex items-center gap-2 mb-4">
@@ -367,7 +316,6 @@ export default function SettingsPage() {
               {editingId ? `Editar Usuário: ${formData.name}` : 'Novo Usuário'}
             </h2>
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Nome *</label>
@@ -382,7 +330,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Email {!editingId && '*'}</label>
+              <label className="block text-sm font-medium mb-1">Email</label>
               <input
                 type="email"
                 value={formData.email}
@@ -441,13 +389,11 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Lista de Usuários */}
       <div className="card">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <Users className="w-5 h-5" />
           Usuários ({users.length})
         </h2>
-
         {users.length === 0 ? (
           <p className="text-gray-500 text-center py-8">Nenhum usuário cadastrado</p>
         ) : (
