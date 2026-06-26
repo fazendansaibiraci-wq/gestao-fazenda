@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     // Criar usuário
     const newUser = await prisma.user.create({
       data: {
-        email,
+       email: email || `user_${Date.now()}@fazenda.local`,
         name,
         password: hashedPassword,
         role,
