@@ -389,7 +389,6 @@ export default function SettingsPage() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 placeholder="seu@email.com"
-                required={!editingId}
               />
             </div>
 
