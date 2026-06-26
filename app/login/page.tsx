@@ -1,18 +1,31 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
-import { signIn, useSession } from 'next-auth/react'
+import { FormEvent, useEffect, useState } from 'react'
+import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Leaf } from 'lucide-react'
 
+interface Usuario {
+  id: string
+  name: string
+  email: string
+}
+
 export default function LoginPage() {
   const router = useRouter()
-  const { data: session } = useSession()
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/users/public')
+      .then(r => r.json())
+      .then(d => setUsuarios(d.data || []))
+      .catch(() => {})
+  }, [])
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -27,23 +40,22 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        setError(result.error)
+        setError('Nome ou senha incorretos')
       } else if (result?.ok) {
         try {
           const sessionRes = await fetch('/api/auth/session')
           const sessionData = await sessionRes.json()
           const userRole = sessionData?.user?.role
-
           if (userRole === 'FUNCIONARIO') {
             router.push('/modules/atividades')
           } else {
             router.push('/dashboard')
           }
-        } catch (err) {
+        } catch {
           router.push('/dashboard')
         }
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao fazer login. Tente novamente.')
     } finally {
       setLoading(false)
@@ -75,16 +87,21 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="form-group">
-              <label htmlFor="email">Email</label>
-              <input
-                type="email"
-                id="email"
+              <label htmlFor="usuario">Usuário</label>
+              <select
+                id="usuario"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
                 required
                 disabled={loading}
-              />
+              >
+                <option value="">Selecionar usuário</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.email}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">
@@ -122,7 +139,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !email}
               className="w-full btn btn-primary mt-6 justify-center"
             >
               {loading ? 'Entrando...' : 'Entrar'}
