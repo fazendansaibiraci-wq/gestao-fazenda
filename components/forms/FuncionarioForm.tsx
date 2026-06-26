@@ -349,26 +349,7 @@ cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
               />
             </div>
           </div>
-          <div className="form-group">
-            <label htmlFor="cargaHorariaSafra">Carga Horária Safra Geral (h/dia)</label>
-            <input
-              type="number"
-              id="cargaHorariaSafra"
-              name="cargaHorariaSafra"
-              value={form.cargaHorariaSafra}
-              onChange={handleChange}
-              disabled={loading}
-              step="0.5"
-              min="1"
-              max="24"
-              placeholder="Ex: 10"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Usado como fallback quando não há carga específica por dia. A carga fora da safra é definida nas Configurações Globais.
-            </p>
-          </div>
-        </div>
-      </div>
+         
 
       {/* Botões */}
       <div className="flex gap-4">
