@@ -377,14 +377,14 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Email *</label>
+              <label className="block text-sm font-medium mb-1">Email {!editingId && '*'}</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 placeholder="seu@email.com"
-                required
+                required={!editingId}
               />
             </div>
 
