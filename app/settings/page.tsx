@@ -139,10 +139,7 @@ export default function SettingsPage() {
     setSuccess('')
 
     try {
-      if (!formData.name || !formData.email || !formData.role) {
-        setError('Preencha todos os campos obrigatórios')
-        return
-      }
+     
 
       if (!formData.name || !formData.role) {
         setError('Preencha todos os campos obrigatórios')
