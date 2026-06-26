@@ -185,9 +185,15 @@ export default function ReceitasPage() {
                       <option value="">Selecionar produto</option>
                       {prods.map(pr => <option key={pr.id} value={pr.id}>{pr.nomeComercial}</option>)}
                     </select>
-                    <input type="text" placeholder="Dose" value={String(p.dosagem)} onChange={e => updP(i, 'dosagem', e.target.value)} className="w-20 border rounded-lg px-2 py-2 text-sm" />
+                   <input type="number" placeholder="Dose" step="0.001" min="0" value={String(p.dosagem)} onChange={e => updP(i, 'dosagem', e.target.value)} className="w-24 border rounded-lg px-2 py-2 text-sm" />
                   
-                    {form.produtos.length > 1 && <button type="button" onClick={() => remP(i)} className="text-red-400 px-1">×</button>}
+                   <select value={p.unidade} onChange={e => updP(i, 'unidade', e.target.value)} className="w-24 border rounded-lg px-2 py-2 text-sm">
+                      <option value="L">L</option>
+                      <option value="mL">mL</option>
+                      <option value="kg">kg</option>
+                      <option value="g">g</option>
+                      <option value="ton">ton</option>
+                    </select> {form.produtos.length > 1 && <button type="button" onClick={() => remP(i)} className="text-red-400 px-1">×</button>}
                   </div>
                 ))}
               </div>
