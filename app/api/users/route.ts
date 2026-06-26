@@ -51,17 +51,19 @@ export async function POST(request: NextRequest) {
     const { email, name, password, role } = body
 
     // Validar campos obrigatórios
-    if (!email || !name || !password || !role) {
+    if (!name || !password || !role) {
       return NextResponse.json(
-        { error: 'Email, nome, senha e perfil são obrigatórios' },
+        { error: 'Nome, senha e perfil são obrigatórios' },
         { status: 400 }
       )
     }
 
     // Verificar se usuário já existe
-    const existingUser = await prisma.user.findUnique({ where: { email } })
-    if (existingUser) {
-      return NextResponse.json({ error: 'Usuário com este email já existe' }, { status: 400 })
+    if (email) {
+      const existingUser = await prisma.user.findUnique({ where: { email } })
+      if (existingUser) {
+        return NextResponse.json({ error: 'Usuário com este email já existe' }, { status: 400 })
+      }
     }
 
     // Hash da senha
