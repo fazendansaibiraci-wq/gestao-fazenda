@@ -144,8 +144,13 @@ export default function SettingsPage() {
         return
       }
 
-      if (!editingId && !formData.password) {
-        setError('Senha é obrigatória para novo usuário')
+      if (!formData.name || !formData.role) {
+        setError('Preencha todos os campos obrigatórios')
+        return
+      }
+
+      if (!editingId && !formData.email) {
+        setError('Email é obrigatório para novo usuário')
         return
       }
 
