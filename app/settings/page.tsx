@@ -146,10 +146,7 @@ export default function SettingsPage() {
         return
       }
 
-    if (!editingId && !formData.email) {
-        setError('Email é obrigatório para novo usuário')
-        return
-      }
+   
 
       const method = editingId ? 'PUT' : 'POST'
       const payload = editingId
