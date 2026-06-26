@@ -156,7 +156,13 @@ export default function SettingsPage() {
 
       const method = editingId ? 'PUT' : 'POST'
       const payload = editingId
-        ? { id: editingId, ...formData }
+        ? { 
+            id: editingId, 
+            name: formData.name,
+            role: formData.role,
+            ...(formData.email && { email: formData.email }),
+            ...(formData.password && { password: formData.password }),
+          }
         : formData
 
       const res = await fetch('/api/users', {
