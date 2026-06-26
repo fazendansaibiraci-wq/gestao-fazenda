@@ -82,6 +82,9 @@ model User {
   valorHoraExtraSafra       Float?
   bancoHorasAtivo           Boolean      @default(false)
 cargaHorariaSafra         Float?
+cargaHorariaSegSex    Float?
+  cargaHorariaSabado    Float?
+  cargaHorariaDomingo   Float?
   escalasEntressafra  EscalaEntressafra[]
   escalasAfra         EscalaSafra[]
   registrosAtividade  RegistroAtividade[]
