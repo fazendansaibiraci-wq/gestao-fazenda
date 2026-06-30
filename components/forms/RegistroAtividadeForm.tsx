@@ -27,6 +27,10 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
 
+  const [atestadoFile, setAtestadoFile] = useState<File | null>(null)
+  const [atestadoUploading, setAtestadoUploading] = useState(false)
+  const [atestadoError, setAtestadoError] = useState('')
+
   const [form, setForm] = useState({
     data: initialData?.data?.split('T')[0] || new Date().toISOString().split('T')[0],
     horaEntrada: initialData?.horaEntrada || '',
@@ -71,7 +75,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
   const loadData = async () => {
     try {
-     const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes, configRes, tiposRes, produtosRes] = await Promise.all([
+      const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes, configRes, tiposRes, produtosRes] = await Promise.all([
         fetch('/api/safras'),
         fetch('/api/talhoes'),
         fetch('/api/maquinas'),
@@ -114,6 +118,26 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
       }
     }
     return true
+  }
+
+  const uploadAtestado = async (registroId: string) => {
+    if (!atestadoFile) return
+    setAtestadoUploading(true)
+    setAtestadoError('')
+    try {
+      const fd = new FormData()
+      fd.append('file', atestadoFile)
+      fd.append('registroId', registroId)
+      const res = await fetch('/api/registros-atividade/atestado', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const d = await res.json()
+        setAtestadoError(d.error || 'Erro ao enviar atestado')
+      }
+    } catch {
+      setAtestadoError('Erro ao enviar atestado. Tente novamente na lista de atividades.')
+    } finally {
+      setAtestadoUploading(false)
+    }
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -164,15 +188,24 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         horasMaquina,
         passouDiretoAlmoco: estaNaSafra ? form.passouDiretoAlmoco : false,
       }
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      const responseData = await response.json()
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Erro ao salvar registro')
+        throw new Error(responseData.error || 'Erro ao salvar registro')
       }
+
+      if (atestadoFile && form.isFalta && form.motivoFalta === 'atestado_medico' && !id) {
+        const registroId = responseData.data?.id
+        if (registroId) {
+          await uploadAtestado(registroId)
+        }
+      }
+
       router.push('/modules/atividades')
       router.refresh()
     } catch (err) {
@@ -185,7 +218,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const needsProduto = ['Pulverização', 'Herbicida', 'Inseticida de Solo']
   const needsAdubo = form.tipoAtividade === 'Adubação'
   const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
-
   const receitaSelecionada = (receitas as any[]).find((r: any) => r.id === form.receitaAplicacaoId)
 
   return (
@@ -201,14 +233,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
           <h3 className="text-lg font-semibold text-primary mb-4">Funcionário *</h3>
           <div className="form-group">
             <label htmlFor="funcionarioId">Selecione o funcionário desta atividade</label>
-            <select
-              id="funcionarioId"
-              name="funcionarioId"
-              value={form.funcionarioId}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            >
+            <select id="funcionarioId" name="funcionarioId" value={form.funcionarioId} onChange={handleChange} required disabled={loading}>
               <option value="">Selecionar funcionário</option>
               {funcionarios.map((f: any) => (
                 <option key={f.id} value={f.id}>{f.name} — {f.role}</option>
@@ -254,6 +279,48 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               <label htmlFor="observacao">Observação</label>
               <textarea id="observacao" name="observacao" value={form.observacao} onChange={handleChange} disabled={loading} placeholder="Detalhes adicionais sobre a falta..." rows={3} />
             </div>
+
+            {form.motivoFalta === 'atestado_medico' && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+                <div className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                  <span className="text-sm font-semibold text-amber-800">Atestado Médico (PDF)</span>
+                </div>
+                {atestadoFile ? (
+                  <div className="flex items-center gap-2 p-2 bg-white border border-amber-300 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span className="text-xs text-gray-700 flex-1 truncate">{atestadoFile.name}</span>
+                    <span className="text-xs text-gray-400">({(atestadoFile.size / 1024).toFixed(0)} KB)</span>
+                    <button type="button" onClick={() => setAtestadoFile(null)} className="text-red-400 hover:text-red-600 text-xs ml-1">✕</button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-amber-300 rounded-lg cursor-pointer bg-white hover:bg-amber-50 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-amber-400 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                    <span className="text-xs text-amber-600 font-medium">Clique para selecionar PDF</span>
+                    <span className="text-xs text-amber-400">Máximo 5MB</span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      disabled={loading}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        if (f) {
+                          if (f.type !== 'application/pdf') { setAtestadoError('Apenas arquivos PDF são aceitos'); return }
+                          if (f.size > 5 * 1024 * 1024) { setAtestadoError('Arquivo muito grande. Máximo: 5MB'); return }
+                          setAtestadoError('')
+                          setAtestadoFile(f)
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+                {atestadoError && <p className="text-xs text-red-600">{atestadoError}</p>}
+                {atestadoUploading && <p className="text-xs text-amber-600">Enviando atestado...</p>}
+                <p className="text-xs text-amber-600">O atestado será anexado ao registro após salvar.</p>
+              </div>
+            )}
+
             <div className="flex gap-4 pt-2">
               <button type="submit" disabled={loading} className="btn btn-primary flex-1">
                 {loading ? 'Salvando...' : 'Registrar Falta'}
@@ -302,7 +369,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                 </select>
               </div>
 
-            {receitas.length > 0 && !needsAdubo && !needsCorretivo && (
+              {receitas.length > 0 && !needsAdubo && !needsCorretivo && (
                 <div className="form-group">
                   <label htmlFor="receitaAplicacaoId">Receita de Aplicação</label>
                   <select id="receitaAplicacaoId" name="receitaAplicacaoId" value={form.receitaAplicacaoId} onChange={handleChange} disabled={loading}>
@@ -314,6 +381,10 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
                   {receitaSelecionada?.produtosAplicacao?.length > 0 && (
                     <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-start gap-2 mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <p className="text-xs text-blue-700">Quantidades por <strong>bomba de 1000L</strong>. Use o campo "Total de Bombas" para o total utilizado.</p>
+                      </div>
                       <p className="text-sm font-semibold text-green-800 mb-2">Produtos desta receita:</p>
                       <table className="w-full text-sm">
                         <thead>
@@ -358,7 +429,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
               {estaNaSafra && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                 <label className="flex items-start gap-3 cursor-pointer">
+                  <label className="flex items-start gap-3 cursor-pointer">
                     <input type="checkbox" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} className="mt-0.5 flex-shrink-0" />
                     <span className="text-sm font-medium text-amber-800">
                       Passou direto no almoço (1h conta como hora extra)
@@ -379,7 +450,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
             </div>
           )}
 
-         {needsAdubo && (
+          {needsAdubo && (
             <div className="card">
               <h3 className="text-lg font-semibold text-primary mb-4">Adubação</h3>
               <div className="space-y-4">
@@ -387,11 +458,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   <label htmlFor="tipoAdubo">Tipo de Adubo</label>
                   <select id="tipoAdubo" name="tipoAdubo" value={form.tipoAdubo} onChange={handleChange} disabled={loading}>
                     <option value="">Selecionar adubo</option>
-                    {(produtos as any[])
-                      .filter((p: any) => p.categoria === 'Fertilizante' || p.categoria === 'Adubo')
-                      .map((p: any) => (
-                        <option key={p.id} value={p.nomeComercial}>{p.nomeComercial} ({p.unidadeMedida})</option>
-                      ))}
+                    {(produtos as any[]).filter((p: any) => p.categoria === 'Fertilizante' || p.categoria === 'Adubo').map((p: any) => (
+                      <option key={p.id} value={p.nomeComercial}>{p.nomeComercial} ({p.unidadeMedida})</option>
+                    ))}
                   </select>
                 </div>
                 <div className="form-group">
@@ -412,11 +481,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   <label htmlFor="tipoCorretivo">Tipo de Corretivo</label>
                   <select id="tipoCorretivo" name="tipoCorretivo" value={form.tipoCorretivo} onChange={handleChange} disabled={loading}>
                     <option value="">Selecionar corretivo</option>
-                    {(produtos as any[])
-                      .filter((p: any) => p.categoria === 'Corretivo')
-                      .map((p: any) => (
-                        <option key={p.id} value={p.nomeComercial}>{p.nomeComercial} ({p.unidadeMedida})</option>
-                      ))}
+                    {(produtos as any[]).filter((p: any) => p.categoria === 'Corretivo').map((p: any) => (
+                      <option key={p.id} value={p.nomeComercial}>{p.nomeComercial} ({p.unidadeMedida})</option>
+                    ))}
                   </select>
                 </div>
                 <div className="form-group">
