@@ -23,7 +23,6 @@ export async function GET(
 
     if (!registro) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
 
-    // Verificar permissão
     if (session.user?.role === 'FUNCIONARIO' && registro.funcionarioId !== session.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -49,22 +48,66 @@ export async function PUT(
 
     if (!registro) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
 
-    // Verificar permissão (funcionário só edita seus próprios)
     if (session.user?.role === 'FUNCIONARIO' && registro.funcionarioId !== session.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
 
-    // Calcular horas se tempos foram fornecidos
+    const funcionarioId = registro.funcionarioId
+    const [funcionario, config] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: funcionarioId },
+        select: {
+          cargaHorariaSafra: true,
+          cargaHorariaSegSex: true,
+          cargaHorariaSabado: true,
+          cargaHorariaDomingo: true,
+          valorHoraExtraEntressafra: true,
+          valorHoraExtraSafra: true,
+        },
+      }),
+      prisma.configuracaoGlobal.findFirst(),
+    ])
+
+    const dataRegistro = new Date(body.data || registro.data)
+    let estaNaSafra = false
+    if (config?.inicioSafra && config?.fimSafra) {
+      estaNaSafra = dataRegistro >= new Date(config.inicioSafra) && dataRegistro <= new Date(config.fimSafra)
+    }
+
+    const diaSemana = dataRegistro.getUTCDay()
+    let cargaHorariaDia: number
+    if (estaNaSafra) {
+      cargaHorariaDia = funcionario?.cargaHorariaSafra || 8
+    } else {
+      if (diaSemana === 0) {
+        cargaHorariaDia = funcionario?.cargaHorariaDomingo ?? (config?.cargaHorariaEntressafra || 8)
+      } else if (diaSemana === 6) {
+        cargaHorariaDia = funcionario?.cargaHorariaSabado ?? (config?.cargaHorariaEntressafra || 8)
+      } else {
+        cargaHorariaDia = funcionario?.cargaHorariaSegSex ?? (config?.cargaHorariaEntressafra || 8)
+      }
+    }
+
     let horasCalculadas = registro.horasCalculadas
+    let ehHoraExtra = registro.ehHoraExtra
+
     if (body.horaEntrada && body.horaSaida) {
       const [hE, mE] = body.horaEntrada.split(':').map(Number)
       const [hS, mS] = body.horaSaida.split(':').map(Number)
       const entrada = hE * 60 + mE
       const saida = hS * 60 + mS
       if (saida > entrada) {
-        horasCalculadas = (saida - entrada) / 60
+        const horasBrutas = (saida - entrada) / 60
+        if (!body.isFalta) {
+          if (!estaNaSafra) {
+            horasCalculadas = Math.max(0, horasBrutas - 1)
+          } else {
+            horasCalculadas = body.passouDiretoAlmoco ? horasBrutas : Math.max(0, horasBrutas - 1)
+          }
+        }
+        ehHoraExtra = horasCalculadas !== null && horasCalculadas > cargaHorariaDia
       }
     }
 
@@ -73,26 +116,31 @@ export async function PUT(
       data: {
         data: body.data ? new Date(body.data) : undefined,
         horaEntrada: body.horaEntrada || undefined,
-        horaSaida: body.horaSaida,
+        horaSaida: body.horaSaida ?? null,
         horasCalculadas,
+        horasprevistasdia: cargaHorariaDia,
         talhaoId: body.talhaoId || undefined,
         safraId: body.safraId || undefined,
         tipoAtividade: body.tipoAtividade || undefined,
         status: body.status || undefined,
-        observacao: body.observacao,
-        fotoEvidencia: body.fotoEvidencia,
-        totalBombas: body.totalBombas || null,
-        tipoAdubo: body.tipoAdubo,
-        quantidadeAdubo: body.quantidadeAdubo || null,
-        tipoCorretivo: body.tipoCorretivo,
-        quantidadeCorretivo: body.quantidadeCorretivo || null,
-        maquinaId: body.maquinaId,
-        horimetroInicial: body.horimetroInicial || null,
-        horimetroFinal: body.horimetroFinal || null,
-        horasMaquina: body.horasMaquina || null,
-        implementoUtilizado: body.implementoUtilizado,
+        observacao: body.observacao ?? null,
+        fotoEvidencia: body.fotoEvidencia ?? null,
+        totalBombas: body.totalBombas ?? null,
+        tipoAdubo: body.tipoAdubo ?? null,
+        quantidadeAdubo: body.quantidadeAdubo ?? null,
+        tipoCorretivo: body.tipoCorretivo ?? null,
+        quantidadeCorretivo: body.quantidadeCorretivo ?? null,
+        maquinaId: body.maquinaId ?? null,
+        horimetroInicial: body.horimetroInicial ?? null,
+        horimetroFinal: body.horimetroFinal ?? null,
+        horasMaquina: body.horasMaquina ?? null,
+        implementoUtilizado: body.implementoUtilizado ?? null,
         isFalta: body.isFalta !== undefined ? body.isFalta : undefined,
-        motivoFalta: body.motivoFalta,
+        motivoFalta: body.motivoFalta ?? null,
+        periodoFalta: body.periodoFalta ?? null,
+        passouDiretoAlmoco: body.passouDiretoAlmoco !== undefined ? body.passouDiretoAlmoco : undefined,
+        ehHoraExtra,
+        statusAprovacao: ehHoraExtra ? 'pendente' : 'aprovado',
       },
       include: {
         talhao: { select: { nome: true } },
@@ -100,12 +148,11 @@ export async function PUT(
       },
     })
 
-    // Atualizar horímetro da máquina
     if (body.maquinaId && body.horimetroFinal) {
       await prisma.maquina.update({
         where: { id: body.maquinaId },
         data: { ultimoHorimetro: body.horimetroFinal },
-      }).catch(() => {}) // Ignorar erro se máquina não existir
+      }).catch(() => {})
     }
 
     return NextResponse.json({ success: true, data: updated })
@@ -129,7 +176,6 @@ export async function DELETE(
 
     if (!registro) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
 
-    // Verificar permissão (funcionário só deleta seus próprios)
     if (session.user?.role === 'FUNCIONARIO' && registro.funcionarioId !== session.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
