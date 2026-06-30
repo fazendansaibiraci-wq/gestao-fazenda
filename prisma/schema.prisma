@@ -356,6 +356,7 @@ passouDiretoAlmoco Boolean @default(false)
   motivoFalta     String?
 periodoFalta    String?
   observacaoFalta String?
+atestadoUrl     String?
 
   ehHoraExtra     Boolean @default(false)
   statusAprovacao String  @default("pendente")
