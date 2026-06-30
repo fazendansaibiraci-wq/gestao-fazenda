@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, FileText, X } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 interface Atividade {
@@ -16,6 +16,7 @@ interface Atividade {
   isFalta: boolean
   motivoFalta?: string
   periodoFalta?: string
+  atestadoUrl?: string
   talhao: { nome: string }
   safra: { nome: string }
   funcionario?: { name: string }
@@ -27,6 +28,9 @@ export default function AtividadesPage() {
   const [loading, setLoading] = useState(true)
   const [filtroData, setFiltroData] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
+  const [atestadoModal, setAtestadoModal] = useState<{ url: string; nome: string } | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState('')
 
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -74,13 +78,42 @@ export default function AtividadesPage() {
     }
   }
 
+  const handleUploadAtestado = async (registroId: string, file: File) => {
+    if (file.type !== 'application/pdf') { setUploadError('Apenas PDFs são aceitos'); return }
+    if (file.size > 5 * 1024 * 1024) { setUploadError('Arquivo muito grande. Máximo: 5MB'); return }
+    setUploadError('')
+    setUploadingId(registroId)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('registroId', registroId)
+      const res = await fetch('/api/registros-atividade/atestado', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const d = await res.json()
+        setUploadError(d.error || 'Erro ao enviar')
+        return
+      }
+      await load()
+    } catch {
+      setUploadError('Erro ao enviar atestado')
+    } finally {
+      setUploadingId(null)
+    }
+  }
+
+  const handleRemoverAtestado = async (registroId: string) => {
+    if (!confirm('Remover atestado deste registro?')) return
+    try {
+      const res = await fetch(`/api/registros-atividade/atestado?registroId=${registroId}`, { method: 'DELETE' })
+      if (res.ok) await load()
+    } catch {
+      alert('Erro ao remover atestado')
+    }
+  }
+
   const periodoLabel = (periodo?: string) => {
     if (!periodo) return ''
-    const map: Record<string, string> = {
-      DIA_INTEIRO: 'Dia inteiro',
-      MANHA: 'Manhã',
-      TARDE: 'Tarde',
-    }
+    const map: Record<string, string> = { DIA_INTEIRO: 'Dia inteiro', MANHA: 'Manhã', TARDE: 'Tarde' }
     return map[periodo] || periodo
   }
 
@@ -105,7 +138,6 @@ export default function AtividadesPage() {
         </Link>
       </div>
 
-      {/* Filtros */}
       <div className="card space-y-3">
         <h3 className="font-semibold text-primary">Filtros</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -125,9 +157,11 @@ export default function AtividadesPage() {
             <option value="EM_ANDAMENTO">Em Andamento</option>
           </select>
         </div>
+        {uploadError && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{uploadError}</p>
+        )}
       </div>
 
-      {/* Tabela */}
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -164,10 +198,62 @@ export default function AtividadesPage() {
                   )}
                   <td className="px-4 py-3 font-medium">
                     {a.isFalta ? (
-                      <span className="text-red-600">
-                        Falta — {periodoLabel(a.periodoFalta)}
-                        {a.motivoFalta && <span className="text-xs text-gray-500 ml-1">({a.motivoFalta.replace(/_/g, ' ')})</span>}
-                      </span>
+                      <div>
+                        <span className="text-red-600">
+                          Falta — {periodoLabel(a.periodoFalta)}
+                          {a.motivoFalta && (
+                            <span className="text-xs text-gray-500 ml-1">
+                              ({a.motivoFalta.replace(/_/g, ' ')})
+                            </span>
+                          )}
+                        </span>
+                        {a.motivoFalta === 'atestado_medico' && (
+                          <div className="mt-1 flex items-center gap-2 flex-wrap">
+                            {a.atestadoUrl ? (
+                              <>
+                                <button
+                                  onClick={() => setAtestadoModal({
+                                    url: a.atestadoUrl!,
+                                    nome: `Atestado — ${new Date(a.data).toLocaleDateString('pt-BR')}`
+                                  })}
+                                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  Ver atestado
+                                </button>
+                                {isGestor && (
+                                  <button
+                                    onClick={() => handleRemoverAtestado(a.id)}
+                                    className="text-xs text-red-400 hover:text-red-600"
+                                  >
+                                    remover
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              <label className="inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 cursor-pointer font-medium">
+                                {uploadingId === a.id ? (
+                                  <span className="text-gray-400">Enviando...</span>
+                                ) : (
+                                  <>
+                                    <FileText className="w-3 h-3" />
+                                    Anexar atestado
+                                    <input
+                                      type="file"
+                                      accept="application/pdf"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const f = e.target.files?.[0]
+                                        if (f) handleUploadAtestado(a.id, f)
+                                      }}
+                                    />
+                                  </>
+                                )}
+                              </label>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       a.talhao?.nome
                     )}
@@ -213,11 +299,43 @@ export default function AtividadesPage() {
         </table>
       </div>
 
-      {/* Resumo */}
       <div className="card">
         <p className="text-gray-600 text-sm">Total de Registros</p>
         <p className="text-3xl font-bold text-primary mt-2">{atividades.length}</p>
       </div>
+
+      {atestadoModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex flex-col">
+          <div className="flex items-center justify-between bg-white px-4 py-3 border-b shadow">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-red-500" />
+              <span className="font-semibold text-gray-800 text-sm">{atestadoModal.nome}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              
+                href={atestadoModal.url}
+                download="atestado.pdf"
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Baixar PDF
+              </a>
+              <button
+                onClick={() => setAtestadoModal(null)}
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 bg-gray-200">
+            <iframe
+              src={atestadoModal.url}
+              className="w-full h-full border-0"
+              title="Atestado Médico"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
