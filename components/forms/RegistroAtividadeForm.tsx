@@ -167,7 +167,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const needsProduto = ['Pulverização', 'Herbicida', 'Inseticida de Solo']
   const needsAdubo = form.tipoAtividade === 'Adubação'
   const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
-  const receitaSelecionada = (receitas as any[]).find((r: any) => r.id === form.receitaAplicacaoId)return (
+  const receitaSelecionada = (receitas as any[]).find((r: any) => r.id === form.receitaAplicacaoId)
+
+  return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600 text-sm">{error}</p></div>}
 
