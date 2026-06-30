@@ -224,8 +224,8 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
       <div className="card border-l-4 border-orange-400">
         <h3 className="text-lg font-semibold text-primary mb-4">Registrar Falta?</h3>
-        <label className="flex items-center gap-2 cursor-pointer mb-4">
-          <input type="checkbox" name="isFalta" checked={form.isFalta} onChange={handleChange} disabled={loading} />
+        <label className="flex items-start gap-3 cursor-pointer mb-4">
+          <input type="checkbox" name="isFalta" checked={form.isFalta} onChange={handleChange} disabled={loading} className="mt-0.5 flex-shrink-0" />
           <span className="text-sm font-medium">Marcar como falta</span>
         </label>
         {form.isFalta && (
@@ -355,8 +355,8 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
               {estaNaSafra && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} />
+                 <label className="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} className="mt-0.5 flex-shrink-0" />
                     <span className="text-sm font-medium text-amber-800">
                       Passou direto no almoço (1h conta como hora extra)
                     </span>
