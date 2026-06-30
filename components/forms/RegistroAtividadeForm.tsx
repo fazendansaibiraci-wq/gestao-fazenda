@@ -252,7 +252,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
       <div className="card border-l-4 border-orange-400">
         <h3 className="text-lg font-semibold text-primary mb-4">Registrar Falta?</h3>
-        <label className="flex items-start gap-3 cursor-pointer mb-4">
+      <label className="flex items-center gap-3 cursor-pointer mb-4">
           <input type="checkbox" name="isFalta" checked={form.isFalta} onChange={handleChange} disabled={loading} className="mt-0.5 flex-shrink-0" />
           <span className="text-sm font-medium">Marcar como falta</span>
         </label>
