@@ -22,6 +22,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [funcionarios, setFuncionarios] = useState([])
   const [estaNaSafra, setEstaNaSafra] = useState(false)
   const [config, setConfig] = useState<any>(null)
+  const [produtos, setProdutos] = useState([])
   const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -70,7 +71,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
   const loadData = async () => {
     try {
-      const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes, configRes, tiposRes] = await Promise.all([
+     const [safrasRes, talhaoesRes, maquinasRes, receitasRes, implementosRes, funcionariosRes, configRes, tiposRes, produtosRes] = await Promise.all([
         fetch('/api/safras'),
         fetch('/api/talhoes'),
         fetch('/api/maquinas'),
@@ -79,6 +80,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         fetch('/api/funcionarios'),
         fetch('/api/configuracoes'),
         fetch('/api/tipos-atividade?ativo=true'),
+        fetch('/api/produtos'),
       ])
       if (safrasRes.ok) setSafras((await safrasRes.json()).data)
       if (talhaoesRes.ok) setTalhoes((await talhaoesRes.json()).data)
@@ -88,6 +90,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
       if (funcionariosRes.ok) setFuncionarios((await funcionariosRes.json()).data)
       if (configRes.ok) setConfig((await configRes.json()).data)
       if (tiposRes.ok) setTiposAtividade(await tiposRes.json())
+      if (produtosRes.ok) setProdutos((await produtosRes.json()).data)
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
     }
@@ -299,7 +302,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                 </select>
               </div>
 
-              {receitas.length > 0 && (
+            {receitas.length > 0 && !needsAdubo && !needsCorretivo && (
                 <div className="form-group">
                   <label htmlFor="receitaAplicacaoId">Receita de Aplicação</label>
                   <select id="receitaAplicacaoId" name="receitaAplicacaoId" value={form.receitaAplicacaoId} onChange={handleChange} disabled={loading}>
@@ -376,17 +379,26 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
             </div>
           )}
 
-          {needsAdubo && (
+         {needsAdubo && (
             <div className="card">
               <h3 className="text-lg font-semibold text-primary mb-4">Adubação</h3>
               <div className="space-y-4">
                 <div className="form-group">
                   <label htmlFor="tipoAdubo">Tipo de Adubo</label>
-                  <input type="text" id="tipoAdubo" name="tipoAdubo" value={form.tipoAdubo} onChange={handleChange} disabled={loading} placeholder="Ex: NPK 10-10-10" />
+                  <select id="tipoAdubo" name="tipoAdubo" value={form.tipoAdubo} onChange={handleChange} disabled={loading}>
+                    <option value="">Selecionar adubo</option>
+                    {(produtos as any[])
+                      .filter((p: any) => p.categoria === 'Fertilizante' || p.categoria === 'Adubo')
+                      .map((p: any) => (
+                        <option key={p.id} value={p.nomeComercial}>{p.nomeComercial} ({p.unidadeMedida})</option>
+                      ))}
+                  </select>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="quantidadeAdubo">Quantidade (ton/kg)</label>
-                  <input type="number" id="quantidadeAdubo" name="quantidadeAdubo" value={form.quantidadeAdubo} onChange={handleChange} disabled={loading} step="0.01" />
+                  <label htmlFor="quantidadeAdubo">
+                    Quantidade {form.tipoAdubo ? `(${(produtos as any[]).find((p: any) => p.nomeComercial === form.tipoAdubo)?.unidadeMedida || ''})` : ''}
+                  </label>
+                  <input type="number" id="quantidadeAdubo" name="quantidadeAdubo" value={form.quantidadeAdubo} onChange={handleChange} disabled={loading} step="0.001" placeholder="0" />
                 </div>
               </div>
             </div>
@@ -398,11 +410,20 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               <div className="space-y-4">
                 <div className="form-group">
                   <label htmlFor="tipoCorretivo">Tipo de Corretivo</label>
-                  <input type="text" id="tipoCorretivo" name="tipoCorretivo" value={form.tipoCorretivo} onChange={handleChange} disabled={loading} placeholder="Ex: Calcário" />
+                  <select id="tipoCorretivo" name="tipoCorretivo" value={form.tipoCorretivo} onChange={handleChange} disabled={loading}>
+                    <option value="">Selecionar corretivo</option>
+                    {(produtos as any[])
+                      .filter((p: any) => p.categoria === 'Corretivo')
+                      .map((p: any) => (
+                        <option key={p.id} value={p.nomeComercial}>{p.nomeComercial} ({p.unidadeMedida})</option>
+                      ))}
+                  </select>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="quantidadeCorretivo">Quantidade (ton)</label>
-                  <input type="number" id="quantidadeCorretivo" name="quantidadeCorretivo" value={form.quantidadeCorretivo} onChange={handleChange} disabled={loading} step="0.01" />
+                  <label htmlFor="quantidadeCorretivo">
+                    Quantidade {form.tipoCorretivo ? `(${(produtos as any[]).find((p: any) => p.nomeComercial === form.tipoCorretivo)?.unidadeMedida || ''})` : ''}
+                  </label>
+                  <input type="number" id="quantidadeCorretivo" name="quantidadeCorretivo" value={form.quantidadeCorretivo} onChange={handleChange} disabled={loading} step="0.001" placeholder="0" />
                 </div>
               </div>
             </div>
