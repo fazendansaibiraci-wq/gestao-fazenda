@@ -27,9 +27,8 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     valorHoraExtraSafra: initialData?.valorHoraExtraSafra || '',
     cargaHorariaSafra: initialData?.cargaHorariaSafra || '',
     cargaHorariaSegSex: initialData?.cargaHorariaSegSex || '',
-cargaHorariaSabado: initialData?.cargaHorariaSabado || '',
-cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
-    bancoHorasAtivo: initialData?.bancoHorasAtivo || false,
+    cargaHorariaSabado: initialData?.cargaHorariaSabado || '',
+    cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
     active: initialData?.active !== undefined ? initialData.active : true,
   })
 
@@ -101,61 +100,23 @@ cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-group">
               <label htmlFor="name">Nome Completo *</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                required
-                disabled={loading}
-                placeholder="João da Silva"
-              />
+              <input type="text" id="name" name="name" value={form.name} onChange={handleChange} required disabled={loading} placeholder="João da Silva" />
             </div>
             <div className="form-group">
               <label htmlFor="email">Email *</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                required
-                disabled={loading}
-                placeholder="joao@fazenda.com"
-              />
+              <input type="email" id="email" name="email" value={form.email} onChange={handleChange} required disabled={loading} placeholder="joao@fazenda.com" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-group">
-              <label htmlFor="password">
-                {id ? 'Nova Senha (deixe em branco para manter)' : 'Senha *'}
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                required={!id}
-                disabled={loading}
-                placeholder="••••••••"
-              />
+              <label htmlFor="password">{id ? 'Nova Senha (deixe em branco para manter)' : 'Senha *'}</label>
+              <input type="password" id="password" name="password" value={form.password} onChange={handleChange} required={!id} disabled={loading} placeholder="••••••••" />
             </div>
             {!id && (
               <div className="form-group">
                 <label htmlFor="confirmPassword">Confirmar Senha *</label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={form.confirmPassword}
-                  onChange={handleChange}
-                  required={!id}
-                  disabled={loading}
-                  placeholder="••••••••"
-                />
+                <input type="password" id="confirmPassword" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} required={!id} disabled={loading} placeholder="••••••••" />
               </div>
             )}
           </div>
@@ -163,25 +124,11 @@ cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-group">
               <label htmlFor="phone">Telefone</label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                disabled={loading}
-                placeholder="11 99999-9999"
-              />
+              <input type="tel" id="phone" name="phone" value={form.phone} onChange={handleChange} disabled={loading} placeholder="11 99999-9999" />
             </div>
             <div className="form-group">
               <label htmlFor="role">Perfil *</label>
-              <select
-                id="role"
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                disabled={loading}
-              >
+              <select id="role" name="role" value={form.role} onChange={handleChange} disabled={loading}>
                 <option value={UserRole.FUNCIONARIO}>Funcionário</option>
                 <option value={UserRole.GERENTE}>Gerente</option>
                 <option value={UserRole.AGRONOMO}>Agrônomo</option>
@@ -191,27 +138,10 @@ cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                name="bancoHorasAtivo"
-                checked={form.bancoHorasAtivo}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <span className="text-sm font-medium">Banco de Horas Ativo</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                name="active"
-                checked={form.active}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <span className="text-sm font-medium">Ativo</span>
-            </label>
+            <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+              <input type="checkbox" id="active" name="active" checked={form.active} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
+              <label htmlFor="active" style={{fontSize:'14px', fontWeight:500, cursor:'pointer', margin:0}}>Ativo</label>
+            </div>
           </div>
         </div>
       </div>
@@ -222,13 +152,7 @@ cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
         <div className="space-y-4">
           <div className="form-group">
             <label htmlFor="tipoSalario">Tipo de Salário *</label>
-            <select
-              id="tipoSalario"
-              name="tipoSalario"
-              value={form.tipoSalario}
-              onChange={handleChange}
-              disabled={loading}
-            >
+            <select id="tipoSalario" name="tipoSalario" value={form.tipoSalario} onChange={handleChange} disabled={loading}>
               <option value="MENSAL">Mensal</option>
               <option value="DIARIO">Diário</option>
             </select>
@@ -237,137 +161,54 @@ cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-group">
               <label htmlFor="salarioEntressafra">Salário Entressafra (R$)</label>
-              <input
-                type="number"
-                id="salarioEntressafra"
-                name="salarioEntressafra"
-                value={form.salarioEntressafra}
-                onChange={handleChange}
-                disabled={loading}
-                step="0.01"
-                placeholder="0,00"
-              />
+              <input type="number" id="salarioEntressafra" name="salarioEntressafra" value={form.salarioEntressafra} onChange={handleChange} disabled={loading} step="0.01" placeholder="0,00" />
             </div>
             <div className="form-group">
               <label htmlFor="salarioSafra">Salário Safra (R$)</label>
-              <input
-                type="number"
-                id="salarioSafra"
-                name="salarioSafra"
-                value={form.salarioSafra}
-                onChange={handleChange}
-                disabled={loading}
-                step="0.01"
-                placeholder="0,00"
-              />
+              <input type="number" id="salarioSafra" name="salarioSafra" value={form.salarioSafra} onChange={handleChange} disabled={loading} step="0.01" placeholder="0,00" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-group">
-              <label htmlFor="valorHoraExtraEntressafra">
-                Valor Hora Extra Entressafra (R$/h)
-              </label>
-              <input
-                type="number"
-                id="valorHoraExtraEntressafra"
-                name="valorHoraExtraEntressafra"
-                value={form.valorHoraExtraEntressafra}
-                onChange={handleChange}
-                disabled={loading}
-                step="0.01"
-                placeholder="0,00"
-              />
+              <label htmlFor="valorHoraExtraEntressafra">Valor Hora Extra Entressafra (R$/h)</label>
+              <input type="number" id="valorHoraExtraEntressafra" name="valorHoraExtraEntressafra" value={form.valorHoraExtraEntressafra} onChange={handleChange} disabled={loading} step="0.01" placeholder="0,00" />
             </div>
             <div className="form-group">
-              <label htmlFor="valorHoraExtraSafra">
-                Valor Hora Extra Safra (R$/h)
-              </label>
-              <input
-                type="number"
-                id="valorHoraExtraSafra"
-                name="valorHoraExtraSafra"
-                value={form.valorHoraExtraSafra}
-                onChange={handleChange}
-                disabled={loading}
-                step="0.01"
-                placeholder="0,00"
-              />
+              <label htmlFor="valorHoraExtraSafra">Valor Hora Extra Safra (R$/h)</label>
+              <input type="number" id="valorHoraExtraSafra" name="valorHoraExtraSafra" value={form.valorHoraExtraSafra} onChange={handleChange} disabled={loading} step="0.01" placeholder="0,00" />
             </div>
           </div>
         </div>
       </div>
 
-     {/* Jornada */}
+      {/* Jornada */}
       <div className="card">
         <h3 className="text-lg font-semibold text-primary mb-4">Jornada de Trabalho</h3>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="form-group">
               <label htmlFor="cargaHorariaSegSex">Segunda a Sexta (h/dia)</label>
-              <input
-                type="number"
-                id="cargaHorariaSegSex"
-                name="cargaHorariaSegSex"
-                value={form.cargaHorariaSegSex}
-                onChange={handleChange}
-                disabled={loading}
-                step="0.5"
-                min="1"
-                max="24"
-                placeholder="Ex: 10"
-              />
+              <input type="number" id="cargaHorariaSegSex" name="cargaHorariaSegSex" value={form.cargaHorariaSegSex} onChange={handleChange} disabled={loading} step="0.5" min="1" max="24" placeholder="Ex: 10" />
             </div>
             <div className="form-group">
               <label htmlFor="cargaHorariaSabado">Sábado (h/dia)</label>
-              <input
-                type="number"
-                id="cargaHorariaSabado"
-                name="cargaHorariaSabado"
-                value={form.cargaHorariaSabado}
-                onChange={handleChange}
-                disabled={loading}
-                step="0.5"
-                min="0"
-                max="24"
-                placeholder="Ex: 8"
-              />
+              <input type="number" id="cargaHorariaSabado" name="cargaHorariaSabado" value={form.cargaHorariaSabado} onChange={handleChange} disabled={loading} step="0.5" min="0" max="24" placeholder="Ex: 8" />
             </div>
             <div className="form-group">
               <label htmlFor="cargaHorariaDomingo">Domingo (h/dia)</label>
-              <input
-                type="number"
-                id="cargaHorariaDomingo"
-                name="cargaHorariaDomingo"
-                value={form.cargaHorariaDomingo}
-                onChange={handleChange}
-                disabled={loading}
-                step="0.5"
-                min="0"
-                max="24"
-                placeholder="Ex: 6"
-              />
+              <input type="number" id="cargaHorariaDomingo" name="cargaHorariaDomingo" value={form.cargaHorariaDomingo} onChange={handleChange} disabled={loading} step="0.5" min="0" max="24" placeholder="Ex: 6" />
             </div>
           </div>
         </div>
       </div>
-         
 
       {/* Botões */}
       <div className="flex gap-4">
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn btn-primary flex-1"
-        >
+        <button type="submit" disabled={loading} className="btn btn-primary flex-1">
           {loading ? 'Salvando...' : id ? 'Atualizar' : 'Criar Funcionário'}
         </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          disabled={loading}
-          className="btn btn-outline flex-1"
-        >
+        <button type="button" onClick={() => router.back()} disabled={loading} className="btn btn-outline flex-1">
           Cancelar
         </button>
       </div>
