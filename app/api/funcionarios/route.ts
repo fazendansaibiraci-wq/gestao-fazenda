@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    // Validações
     if (!body.name || !body.email || !body.password) {
       return NextResponse.json(
         { error: 'Nome, email e senha são obrigatórios' },
@@ -59,7 +58,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verificar se email já existe
     const existingUser = await prisma.user.findUnique({
       where: { email: body.email },
     })
@@ -71,10 +69,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hash da senha com bcrypt
     const hashedPassword = await bcrypt.hash(body.password, 10)
 
-    // Criar funcionário
     const funcionario = await prisma.user.create({
       data: {
         name: body.name,
@@ -88,7 +84,10 @@ export async function POST(request: NextRequest) {
         salarioSafra: body.salarioSafra ? parseFloat(body.salarioSafra) : null,
         valorHoraExtraEntressafra: body.valorHoraExtraEntressafra ? parseFloat(body.valorHoraExtraEntressafra) : null,
         valorHoraExtraSafra: body.valorHoraExtraSafra ? parseFloat(body.valorHoraExtraSafra) : null,
-        bancoHorasAtivo: body.bancoHorasAtivo || false,
+        cargaHorariaSegSex: body.cargaHorariaSegSex ? parseFloat(body.cargaHorariaSegSex) : null,
+        cargaHorariaSabado: body.cargaHorariaSabado ? parseFloat(body.cargaHorariaSabado) : null,
+        cargaHorariaDomingo: body.cargaHorariaDomingo ? parseFloat(body.cargaHorariaDomingo) : null,
+        bancoHorasAtivo: false,
       },
     })
 
