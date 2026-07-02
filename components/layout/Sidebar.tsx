@@ -50,6 +50,7 @@ export function Sidebar() {
 
   const cadastroItems = [
     { label: 'Cadastro de Produtos', href: '/modules/produtos', icon: Package, excludeRoles: 'FUNCIONARIO' },
+    { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Receitas', href: '/modules/receitas', icon: Beaker, role: 'GESTOR|GERENTE|AGRONOMO' },
     { label: 'Tipos de Atividade', href: '/modules/tipos-atividade', icon: Tag, role: 'GESTOR' },
     { label: 'Implementos', href: '/modules/implementos', icon: Tractor, role: 'GESTOR|GERENTE' },
@@ -62,7 +63,6 @@ export function Sidebar() {
     { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Registro de Atividades', href: '/modules/atividades', icon: ClipboardList, excludeRoles: 'AGRONOMO' },
     { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
-    { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   ].filter(item => show(item.role, item.excludeRoles))
 
@@ -71,7 +71,6 @@ export function Sidebar() {
     { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO' },
   ].filter(item => show(item.role, item.excludeRoles))
 
-  // Abrir cadastros automaticamente se rota atual for de cadastro
   const cadastroAtivo = cadastroItems.some(i => isActive(i.href))
 
   return (
@@ -131,7 +130,7 @@ export function Sidebar() {
             </>
           )}
 
-          {/* Relatórios */}
+          {/* Financeiro */}
           {relatorioItems.length > 0 && (
             <>
               {isOpen && <p className="text-xs text-white/40 uppercase font-semibold px-2 pt-4 pb-1">Financeiro</p>}
