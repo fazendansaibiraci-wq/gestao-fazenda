@@ -193,9 +193,11 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         </div>
       </div>
 
-      <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'16px'}}>
-          <input type="checkbox" id="isFalta" name="isFalta" checked={form.isFalta} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0}} />
-          <label htmlFor="isFalta" style={{fontSize:'14px', fontWeight:500, cursor:'pointer'}}>Marcar como falta</label>
+      <div className="card border-l-4 border-orange-400">
+        <h3 className="text-lg font-semibold text-primary mb-4">Registrar Falta?</h3>
+        <div style={{display:'flex', flexDirection:'row', alignItems:'center', gap:'12px', marginBottom:'16px', width:'100%'}}>
+          <input type="checkbox" id="isFalta" name="isFalta" checked={form.isFalta} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
+          <label htmlFor="isFalta" style={{fontSize:'14px', fontWeight:500, cursor:'pointer', margin:0}}>Marcar como falta</label>
         </div>
         {form.isFalta && (
           <div className="space-y-4">
@@ -255,9 +257,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
             </div>
           </div>
         )}
-      </div>
-
-      {!form.isFalta && (
+      </div>{!form.isFalta && (
         <>
           <div className="card">
             <h3 className="text-lg font-semibold text-primary mb-4">Informações Básicas</h3>
@@ -333,9 +333,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               </div>
               {estaNaSafra && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                    <input type="checkbox" id="passouDiretoAlmoco" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0}} />
-                    <label htmlFor="passouDiretoAlmoco" style={{fontSize:'14px', fontWeight:500, color:'#92400e', cursor:'pointer'}}>Passou direto no almoço (1h conta como hora extra)</label>
+                  <div style={{display:'flex', flexDirection:'row', alignItems:'center', gap:'12px', width:'100%'}}>
+                    <input type="checkbox" id="passouDiretoAlmoco" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
+                    <label htmlFor="passouDiretoAlmoco" style={{fontSize:'14px', fontWeight:500, color:'#92400e', cursor:'pointer', margin:0}}>Passou direto no almoço (1h conta como hora extra)</label>
                   </div>
                 </div>
               )}
