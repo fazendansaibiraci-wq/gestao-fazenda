@@ -193,11 +193,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         </div>
       </div>
 
-      <div className="card border-l-4 border-orange-400">
-        <h3 className="text-lg font-semibold text-primary mb-4">Registrar Falta?</h3>
-        <div className="flex items-center gap-3 mb-4">
-          <input type="checkbox" id="isFalta" name="isFalta" checked={form.isFalta} onChange={handleChange} disabled={loading} className="w-4 h-4 flex-shrink-0" />
-          <label htmlFor="isFalta" className="text-sm font-medium cursor-pointer">Marcar como falta</label>
+      <div style={{display:'flex', alignItems:'center', gap:'12px', marginBottom:'16px'}}>
+          <input type="checkbox" id="isFalta" name="isFalta" checked={form.isFalta} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0}} />
+          <label htmlFor="isFalta" style={{fontSize:'14px', fontWeight:500, cursor:'pointer'}}>Marcar como falta</label>
         </div>
         {form.isFalta && (
           <div className="space-y-4">
@@ -335,9 +333,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               </div>
               {estaNaSafra && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <input type="checkbox" id="passouDiretoAlmoco" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} className="w-4 h-4 flex-shrink-0" />
-                    <label htmlFor="passouDiretoAlmoco" className="text-sm font-medium text-amber-800 cursor-pointer">Passou direto no almoço (1h conta como hora extra)</label>
+                  <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                    <input type="checkbox" id="passouDiretoAlmoco" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0}} />
+                    <label htmlFor="passouDiretoAlmoco" style={{fontSize:'14px', fontWeight:500, color:'#92400e', cursor:'pointer'}}>Passou direto no almoço (1h conta como hora extra)</label>
                   </div>
                 </div>
               )}
