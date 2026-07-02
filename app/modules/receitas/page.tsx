@@ -28,7 +28,6 @@ export default function ReceitasPage() {
   const [filterTipo, setFilterTipo] = useState<TipoReceita | 'TODOS'>('TODOS')
   const [search, setSearch] = useState('')
 
-  // Mini modal de novo produto
   const [showNovoProduto, setShowNovoProduto] = useState(false)
   const [novoProduto, setNovoProduto] = useState({ nomeComercial: '', categoria: '', unidadeMedida: 'L', valorUnitario: '' })
   const [savingProduto, setSavingProduto] = useState(false)
@@ -168,6 +167,13 @@ export default function ReceitasPage() {
 
               {/* Produtos */}
               <div>
+                {/* Aviso bomba 1000L */}
+                <div className="flex items-start gap-2 mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <p className="text-xs text-blue-700">
+                    <strong>Atenção:</strong> As dosagens são baseadas em <strong>bomba de 1000L</strong>. Se usar bomba de 2000L, multiplique o número de bombas por 2. <strong>Ex:</strong> 2 bombas de 2000L = anotar 4 bombas de 1000L.
+                  </p>
+                </div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-sm font-medium">Produtos *</label>
                   <div className="flex gap-2">
@@ -185,15 +191,15 @@ export default function ReceitasPage() {
                       <option value="">Selecionar produto</option>
                       {prods.map(pr => <option key={pr.id} value={pr.id}>{pr.nomeComercial}</option>)}
                     </select>
-                   <input type="number" placeholder="Dose" step="0.001" min="0" value={String(p.dosagem)} onChange={e => updP(i, 'dosagem', e.target.value)} className="w-24 border rounded-lg px-2 py-2 text-sm" />
-                  
-                   <select value={p.unidade} onChange={e => updP(i, 'unidade', e.target.value)} className="w-24 border rounded-lg px-2 py-2 text-sm">
+                    <input type="number" placeholder="Dose" step="0.001" min="0" value={String(p.dosagem)} onChange={e => updP(i, 'dosagem', e.target.value)} className="w-24 border rounded-lg px-2 py-2 text-sm" />
+                    <select value={p.unidade} onChange={e => updP(i, 'unidade', e.target.value)} className="w-24 border rounded-lg px-2 py-2 text-sm">
                       <option value="L">L</option>
                       <option value="mL">mL</option>
                       <option value="kg">kg</option>
                       <option value="g">g</option>
                       <option value="ton">ton</option>
-                    </select> {form.produtos.length > 1 && <button type="button" onClick={() => remP(i)} className="text-red-400 px-1">×</button>}
+                    </select>
+                    {form.produtos.length > 1 && <button type="button" onClick={() => remP(i)} className="text-red-400 px-1">×</button>}
                   </div>
                 ))}
               </div>
