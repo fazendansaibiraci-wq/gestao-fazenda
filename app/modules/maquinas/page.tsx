@@ -105,10 +105,8 @@ export default function MaquinasPage() {
             onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
             className="border rounded-lg px-3 py-2"
           >
-            <option>Trator</option>
-            <option>Pulverizador</option>
-            <option>Colhedora</option>
-            <option>Implemento</option>
+            <option value="Trator">Trator</option>
+            <option value="Máquina">Máquina</option>
           </select>
           <input
             type="text"
@@ -143,7 +141,6 @@ export default function MaquinasPage() {
             placeholder="Valor (R$)"
             value={formData.valor}
             onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
-            step="0.01"
             className="border rounded-lg px-3 py-2"
           />
           <select
@@ -155,8 +152,10 @@ export default function MaquinasPage() {
             <option value="MANUTENCAO">Manutenção</option>
             <option value="INATIVA">Inativa</option>
           </select>
-          <button type="submit" className="btn btn-primary col-span-1">
-            {editingId ? 'Atualizar' : 'Adicionar'}
+        </div>
+        <div className="flex gap-2">
+          <button type="submit" className="btn btn-primary">
+            {editingId ? 'Salvar' : 'Adicionar'}
           </button>
           {editingId && (
             <button
