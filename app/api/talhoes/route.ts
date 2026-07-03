@@ -34,15 +34,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    if (!body.nome || !body.area) {
-      return NextResponse.json({ error: 'Nome e área são obrigatórios' }, { status: 400 })
+    if (!body.nome) {
+      return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
     }
 
     const talhao = await prisma.talhao.create({
       data: {
         nome: body.nome,
-        area: parseFloat(body.area),
-        variedade: body.variedade,
+        area: body.area ? parseFloat(body.area) : null,
+        variedade: body.variedade || null,
         status: body.status || 'ATIVO',
       },
     })
