@@ -20,6 +20,32 @@ function mapearTipoAtividade(nome: string): string {
   return mapa[nome?.toLowerCase()] || 'GERAIS'
 }
 
+// Verifica se o domingo é um dos domingos que o funcionário trabalha no mês
+// Ex: domingosPorMes = 2 → trabalha no 1º e 3º domingo do mês
+function funcionarioTrabalhaEsteDomingo(data: Date, domingosPorMes: number): boolean {
+  if (domingosPorMes === 0) return false
+  if (domingosPorMes >= 4) return true
+
+  // Descobrir qual domingo do mês é este (1º, 2º, 3º ou 4º)
+  const dia = data.getUTCDate()
+  const numeroDoDomingo = Math.ceil(dia / 7) // 1, 2, 3 ou 4
+
+  // Domingos que trabalha: os primeiros N domingos do mês
+  // domingosPorMes = 1 → só o 1º
+  // domingosPorMes = 2 → 1º e 3º (alternado)
+  // domingosPorMes = 3 → 1º, 2º e 3º
+  if (domingosPorMes === 2) {
+    return numeroDoMes % 2 !== 0 // 1º e 3º domingo
+  }
+  return numeroDoDomingo <= domingosPorMes
+}
+
+// Calcula qual número de domingo é este no mês (1º, 2º, 3º ou 4º)
+function getNumeroDomingoNoMes(data: Date): number {
+  const dia = data.getUTCDate()
+  return Math.ceil(dia / 7)
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -39,10 +65,7 @@ export async function GET(request: NextRequest) {
       const dateStart = new Date(data)
       const dateEnd = new Date(data)
       dateEnd.setDate(dateEnd.getDate() + 1)
-      where.data = {
-        gte: dateStart,
-        lt: dateEnd,
-      }
+      where.data = { gte: dateStart, lt: dateEnd }
     }
 
     if (status) {
@@ -93,13 +116,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Buscar funcionário e configurações globais
     const funcionarioId = body.funcionarioId || session.user?.id as string
     const [funcionario, config] = await Promise.all([
       prisma.user.findUnique({
         where: { id: funcionarioId },
         select: {
           cargaHorariaSafra: true,
+          cargaHorariaSegSex: true,
+          cargaHorariaSabado: true,
+          cargaHorariaDomingo: true,
+          domingosPorMes: true,
           valorHoraExtraEntressafra: true,
           valorHoraExtraSafra: true,
           salarioEntressafra: true,
@@ -110,14 +136,14 @@ export async function POST(request: NextRequest) {
       prisma.configuracaoGlobal.findFirst(),
     ])
 
-    // Detectar se está na safra
+    // Detectar safra
     let estaNaSafra = false
     if (config?.inicioSafra && config?.fimSafra) {
       const dataRegistro = new Date(body.data)
       estaNaSafra = dataRegistro >= new Date(config.inicioSafra) && dataRegistro <= new Date(config.fimSafra)
     }
 
-    // Calcular horas brutas (saída - entrada)
+    // Calcular horas brutas
     let horasBrutas = null
     if (body.horaEntrada && body.horaSaida) {
       const [hE, mE] = body.horaEntrada.split(':').map(Number)
@@ -129,35 +155,58 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Aplicar desconto de almoço
-    // - Fora da safra: sempre desconta 1h
-    // - Na safra: desconta 1h, EXCETO se passouDiretoAlmoco = true (nesse caso a 1h vira hora extra)
+    // Desconto de almoço
     let horasCalculadas = horasBrutas
     let horaAlmocoComoExtra = false
 
     if (horasBrutas !== null && !body.isFalta) {
       if (!estaNaSafra) {
-        // Fora da safra: sempre desconta 1h
         horasCalculadas = Math.max(0, horasBrutas - 1)
       } else {
-        // Na safra
         if (body.passouDiretoAlmoco) {
-          // Passou direto: não desconta, a 1h de almoço vira hora extra
           horasCalculadas = horasBrutas
           horaAlmocoComoExtra = true
         } else {
-          // Teve almoço: desconta 1h normalmente
           horasCalculadas = Math.max(0, horasBrutas - 1)
         }
       }
     }
 
-    // Calcular carga horária do dia
-    const cargaHorariaDia = estaNaSafra
-      ? (funcionario?.cargaHorariaSafra || 8)
-      : (config?.cargaHorariaEntressafra || 8)
+    // Carga horária por dia da semana
+    const dataRegistro = new Date(body.data)
+    const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 6=Sab
+    const domingosPorMes = funcionario?.domingosPorMes ?? 2
 
-    // Calcular horas extras e devidas
+    let cargaHorariaDia: number
+    if (estaNaSafra) {
+      cargaHorariaDia = funcionario?.cargaHorariaSafra || 8
+    } else if (diaSemana === 0) {
+      // Domingo — verificar se este domingo é dia de trabalho
+      const numeroDomingo = getNumeroDomingoNoMes(dataRegistro)
+      let trabalhaEsteDomingo = false
+
+      if (domingosPorMes === 0) {
+        trabalhaEsteDomingo = false
+      } else if (domingosPorMes >= 4) {
+        trabalhaEsteDomingo = true
+      } else if (domingosPorMes === 2) {
+        // Trabalha no 1º e 3º domingo (alternado)
+        trabalhaEsteDomingo = numeroDomingo === 1 || numeroDomingo === 3
+      } else {
+        // 1 ou 3 domingos: trabalha nos primeiros N
+        trabalhaEsteDomingo = numeroDomingo <= domingosPorMes
+      }
+
+      cargaHorariaDia = trabalhaEsteDomingo
+        ? (funcionario?.cargaHorariaDomingo ?? (config?.cargaHorariaEntressafra || 8))
+        : 0 // Domingo de folga: carga = 0, logo qualquer hora é extra
+    } else if (diaSemana === 6) {
+      cargaHorariaDia = funcionario?.cargaHorariaSabado ?? (config?.cargaHorariaEntressafra || 8)
+    } else {
+      cargaHorariaDia = funcionario?.cargaHorariaSegSex ?? (config?.cargaHorariaEntressafra || 8)
+    }
+
+    // Horas extras e devidas
     let horasExtras = 0
     let horasDevidas = 0
     let ehHoraExtra = false
@@ -175,18 +224,17 @@ export async function POST(request: NextRequest) {
       ? (funcionario?.valorHoraExtraSafra || 0)
       : (funcionario?.valorHoraExtraEntressafra || 0)
 
-    // Criar registro
     const registro = await prisma.registroAtividade.create({
       data: {
         funcionarioId,
-      data: new Date(new Date(body.data).toISOString().split('T')[0] + 'T12:00:00.000Z'),
+        data: new Date(new Date(body.data).toISOString().split('T')[0] + 'T12:00:00.000Z'),
         horaEntrada: body.horaEntrada,
         horaSaida: body.horaSaida || null,
         horasCalculadas,
         horasprevistasdia: cargaHorariaDia,
         talhaoId: body.talhaoId,
         safraId: body.safraId,
-       tipoAtividade: mapearTipoAtividade(body.tipoAtividade),
+        tipoAtividade: mapearTipoAtividade(body.tipoAtividade),
         status: body.status || 'CONCLUIDO',
         observacao: body.observacao || null,
         fotoEvidencia: body.fotoEvidencia || null,
@@ -202,6 +250,7 @@ export async function POST(request: NextRequest) {
         implementoUtilizado: body.implementoUtilizado || null,
         isFalta: body.isFalta || false,
         motivoFalta: body.motivoFalta || null,
+        periodoFalta: body.periodoFalta || null,
         passouDiretoAlmoco: body.passouDiretoAlmoco || false,
         ehHoraExtra,
         statusAprovacao: ehHoraExtra ? 'pendente' : 'aprovado',
@@ -212,7 +261,6 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Atualizar horímetro da máquina
     if (body.maquinaId && body.horimetroFinal) {
       await prisma.maquina.update({
         where: { id: body.maquinaId },
@@ -231,6 +279,7 @@ export async function POST(request: NextRequest) {
         estaNaSafra,
         cargaHorariaDia,
         horaAlmocoComoExtra,
+        diaSemana: ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][diaSemana],
       },
       { status: 201 }
     )
