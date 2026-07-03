@@ -33,8 +33,8 @@ export function TalhaoForm({ id, initialData }: TalhaoFormProps) {
     setLoading(true)
 
     try {
-      if (!form.nome || !form.area) {
-        setError('Nome e área são obrigatórios')
+      if (!form.nome) {
+        setError('Nome é obrigatório')
         setLoading(false)
         return
       }
@@ -47,7 +47,7 @@ export function TalhaoForm({ id, initialData }: TalhaoFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          area: parseFloat(form.area),
+          area: form.area ? parseFloat(form.area) : null,
         }),
       })
 
@@ -91,14 +91,13 @@ export function TalhaoForm({ id, initialData }: TalhaoFormProps) {
               />
             </div>
             <div className="form-group">
-              <label htmlFor="area">Área (hectares) *</label>
+              <label htmlFor="area">Área (hectares)</label>
               <input
                 type="number"
                 id="area"
                 name="area"
                 value={form.area}
                 onChange={handleChange}
-                required
                 disabled={loading}
                 step="0.01"
                 placeholder="50,50"
