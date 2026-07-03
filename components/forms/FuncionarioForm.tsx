@@ -29,7 +29,7 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     cargaHorariaSegSex: initialData?.cargaHorariaSegSex || '',
     cargaHorariaSabado: initialData?.cargaHorariaSabado || '',
     cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
-    domingosPorMes: initialData?.domingosPorMes || '2',
+   domingosPorMes: String(initialData?.domingosPorMes ?? '2'),
     active: initialData?.active !== undefined ? initialData.active : true,
   })
 
