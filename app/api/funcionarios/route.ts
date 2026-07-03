@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
         tipoSalario: true,
         salarioEntressafra: true,
         salarioSafra: true,
+        cargaHorariaSegSex: true,
+        cargaHorariaSabado: true,
+        cargaHorariaDomingo: true,
+        domingosPorMes: true,
       },
       orderBy: { name: 'asc' },
     })
@@ -87,6 +91,7 @@ export async function POST(request: NextRequest) {
         cargaHorariaSegSex: body.cargaHorariaSegSex ? parseFloat(body.cargaHorariaSegSex) : null,
         cargaHorariaSabado: body.cargaHorariaSabado ? parseFloat(body.cargaHorariaSabado) : null,
         cargaHorariaDomingo: body.cargaHorariaDomingo ? parseFloat(body.cargaHorariaDomingo) : null,
+        domingosPorMes: body.domingosPorMes ? parseInt(body.domingosPorMes) : 2,
         bancoHorasAtivo: false,
       },
     })
