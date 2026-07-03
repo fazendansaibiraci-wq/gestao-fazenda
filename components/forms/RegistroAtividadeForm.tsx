@@ -162,7 +162,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   }
 
   const needsAdubo = form.tipoAtividade === 'Adubação'
-  const needsCorretivo = form.tipoAtividade === 'Correção de Solo'return (
+  const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
+
+  return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600 text-sm">{error}</p></div>}
 
