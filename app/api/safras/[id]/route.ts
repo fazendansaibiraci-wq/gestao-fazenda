@@ -21,8 +21,8 @@ export async function PUT(
       where: { id: params.id },
       data: {
         nome: body.nome || undefined,
-        dataInicio: body.dataInicio ? new Date(body.dataInicio) : undefined,
-        dataFim: body.dataFim ? new Date(body.dataFim) : null,
+        dataInicio: body.dataInicio ? new Date(body.dataInicio + 'T12:00:00') : undefined,
+        dataFim: body.dataFim ? new Date(body.dataFim + 'T12:00:00') : null,
         status: body.status,
       },
     })
