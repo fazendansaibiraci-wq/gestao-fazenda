@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
     const safra = await prisma.safra.create({
       data: {
         nome: body.nome,
-        dataInicio: new Date(body.dataInicio),
-        dataFim: body.dataFim ? new Date(body.dataFim) : null,
+        dataInicio: new Date(body.dataInicio + 'T12:00:00'),
+        dataFim: body.dataFim ? new Date(body.dataFim + 'T12:00:00') : null,
         status: body.status || 'ATIVA',
       },
     })
