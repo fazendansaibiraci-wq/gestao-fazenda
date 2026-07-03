@@ -30,8 +30,9 @@ export async function GET(
         valorHoraExtraSafra: true,
         cargaHorariaSafra: true,
         cargaHorariaSegSex: true,
-cargaHorariaSabado: true,
-cargaHorariaDomingo: true,
+        cargaHorariaSabado: true,
+        cargaHorariaDomingo: true,
+        domingosPorMes: true,
         bancoHorasAtivo: true,
       },
     })
@@ -101,8 +102,9 @@ export async function PUT(
       valorHoraExtraSafra: body.valorHoraExtraSafra ? parseFloat(body.valorHoraExtraSafra) : undefined,
       cargaHorariaSafra: body.cargaHorariaSafra ? parseFloat(body.cargaHorariaSafra) : null,
       cargaHorariaSegSex: body.cargaHorariaSegSex ? parseFloat(body.cargaHorariaSegSex) : null,
-cargaHorariaSabado: body.cargaHorariaSabado ? parseFloat(body.cargaHorariaSabado) : null,
-cargaHorariaDomingo: body.cargaHorariaDomingo ? parseFloat(body.cargaHorariaDomingo) : null,
+      cargaHorariaSabado: body.cargaHorariaSabado ? parseFloat(body.cargaHorariaSabado) : null,
+      cargaHorariaDomingo: body.cargaHorariaDomingo ? parseFloat(body.cargaHorariaDomingo) : null,
+      domingosPorMes: body.domingosPorMes !== undefined ? parseInt(body.domingosPorMes) : 2,
       bancoHorasAtivo: body.bancoHorasAtivo !== undefined ? body.bancoHorasAtivo : undefined,
     }
 
