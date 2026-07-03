@@ -81,10 +81,10 @@ model User {
   valorHoraExtraEntressafra Float?
   valorHoraExtraSafra       Float?
   bancoHorasAtivo           Boolean      @default(false)
-cargaHorariaSafra         Float?
-cargaHorariaSegSex    Float?
-  cargaHorariaSabado    Float?
-  cargaHorariaDomingo   Float?
+  cargaHorariaSafra         Float?
+  cargaHorariaSegSex        Float?
+  cargaHorariaSabado        Float?
+  cargaHorariaDomingo       Float?
   escalasEntressafra  EscalaEntressafra[]
   escalasAfra         EscalaSafra[]
   registrosAtividade  RegistroAtividade[]
@@ -181,7 +181,7 @@ model AprovacaoHoraExtra {
 model Talhao {
   id                String       @id @default(cuid())
   nome              String
-  area              Float
+  area              Float?
   variedade         String?
   status            TalhaoStatus @default(ATIVO)
   dataCriacao       DateTime     @default(now())
@@ -351,12 +351,12 @@ model RegistroAtividade {
   horimetroFinal      Float?
   horasMaquina        Float?
   implementoUtilizado String?
-passouDiretoAlmoco Boolean @default(false)
-  isFalta         Boolean @default(false)
-  motivoFalta     String?
-periodoFalta    String?
-  observacaoFalta String?
-atestadoUrl     String?
+  passouDiretoAlmoco  Boolean @default(false)
+  isFalta             Boolean @default(false)
+  motivoFalta         String?
+  periodoFalta        String?
+  observacaoFalta     String?
+  atestadoUrl         String?
 
   ehHoraExtra     Boolean @default(false)
   statusAprovacao String  @default("pendente")
@@ -523,9 +523,7 @@ model AjusteReceita {
 
   @@index([receitaId])
   @@map("ajustes_receita")
-}
-
-model AplicacaoInsumo {
+}model AplicacaoInsumo {
   id        String      @id @default(cuid())
   receita   ReceitaBase @relation(fields: [receitaId], references: [id])
   receitaId String
@@ -671,12 +669,12 @@ model Lote {
 }
 
 model ChegadaTerreiro {
-  id     String  @id @default(cuid())
-  lote   Lote?   @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  loteId String?
-  safra  Safra   @relation(fields: [safraId], references: [id])
+  id      String  @id @default(cuid())
+  lote    Lote?   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  loteId  String?
+  safra   Safra   @relation(fields: [safraId], references: [id])
   safraId String
-  talhao  Talhao @relation(fields: [talhaoId], references: [id])
+  talhao  Talhao  @relation(fields: [talhaoId], references: [id])
   talhaoId String
 
   tipoColheita     TipoColheita
@@ -979,6 +977,7 @@ model TipoAtividadeCadastro {
 
   @@map("tipos_atividade")
 }
+
 model Implemento {
   id                String   @id @default(cuid())
   nome              String
@@ -990,6 +989,7 @@ model Implemento {
 
   @@map("implementos")
 }
+
 model ConfiguracaoGlobal {
   id                      String    @id @default(cuid())
   cargaHorariaEntressafra Float     @default(8)
