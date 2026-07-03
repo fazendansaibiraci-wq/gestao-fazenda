@@ -18,7 +18,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [talhoes, setTalhoes] = useState([])
   const [maquinas, setMaquinas] = useState([])
   const [implementos, setImplementos] = useState([])
-  const [receitas, setReceitas] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
   const [estaNaSafra, setEstaNaSafra] = useState(false)
   const [config, setConfig] = useState<any>(null)
@@ -37,7 +36,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     talhaoId: initialData?.talhaoId || '',
     safraId: initialData?.safraId || '',
     tipoAtividade: initialData?.tipoAtividade || 'GERAIS',
-    receitaAplicacaoId: initialData?.receitaAplicacaoId || '',
     status: initialData?.status || 'CONCLUIDO',
     totalBombas: initialData?.totalBombas || '',
     tipoAdubo: initialData?.tipoAdubo || '',
@@ -70,20 +68,19 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
   const loadData = async () => {
     try {
-      const [r1,r2,r3,r4,r5,r6,r7,r8,r9] = await Promise.all([
+      const [r1,r2,r3,r4,r5,r6,r7,r8] = await Promise.all([
         fetch('/api/safras'), fetch('/api/talhoes'), fetch('/api/maquinas'),
-        fetch('/api/receitas'), fetch('/api/implementos'), fetch('/api/funcionarios'),
+        fetch('/api/implementos'), fetch('/api/funcionarios'),
         fetch('/api/configuracoes'), fetch('/api/tipos-atividade?ativo=true'), fetch('/api/produtos'),
       ])
       if (r1.ok) setSafras((await r1.json()).data)
       if (r2.ok) setTalhoes((await r2.json()).data)
       if (r3.ok) setMaquinas((await r3.json()).data)
-      if (r4.ok) setReceitas((await r4.json()).data)
-      if (r5.ok) setImplementos((await r5.json()).data)
-      if (r6.ok) setFuncionarios((await r6.json()).data)
-      if (r7.ok) setConfig((await r7.json()).data)
-      if (r8.ok) setTiposAtividade(await r8.json())
-      if (r9.ok) setProdutos((await r9.json()).data)
+      if (r4.ok) setImplementos((await r4.json()).data)
+      if (r5.ok) setFuncionarios((await r5.json()).data)
+      if (r6.ok) setConfig((await r6.json()).data)
+      if (r7.ok) setTiposAtividade(await r7.json())
+      if (r8.ok) setProdutos((await r8.json()).data)
     } catch (err) { console.error(err) }
   }
 
@@ -164,12 +161,8 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     }
   }
 
-  const needsProduto = ['Pulverização', 'Herbicida', 'Inseticida de Solo']
   const needsAdubo = form.tipoAtividade === 'Adubação'
-  const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
-  const receitaSelecionada = (receitas as any[]).find((r: any) => r.id === form.receitaAplicacaoId)
-
-  return (
+  const needsCorretivo = form.tipoAtividade === 'Correção de Solo'return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600 text-sm">{error}</p></div>}
 
@@ -257,7 +250,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
             </div>
           </div>
         )}
-      </div>{!form.isFalta && (
+      </div>
+
+      {!form.isFalta && (
         <>
           <div className="card">
             <h3 className="text-lg font-semibold text-primary mb-4">Informações Básicas</h3>
@@ -285,35 +280,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   {tiposAtividade.map((t) => <option key={t.id} value={t.nome}>{t.nome}</option>)}
                 </select>
               </div>
-              {receitas.length > 0 && !needsAdubo && !needsCorretivo && (
-                <div className="form-group">
-                  <label htmlFor="receitaAplicacaoId">Receita de Aplicação</label>
-                  <select id="receitaAplicacaoId" name="receitaAplicacaoId" value={form.receitaAplicacaoId} onChange={handleChange} disabled={loading}>
-                    <option value="">Selecionar receita (opcional)</option>
-                    {receitas.map((r: any) => <option key={r.id} value={r.id}>{r.nome} - {r.tipo.replace(/_/g, ' ')}</option>)}
-                  </select>
-                  {receitaSelecionada?.produtosAplicacao?.length > 0 && (
-                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-start gap-2 mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
-                        <p className="text-xs text-blue-700">Quantidades por <strong>bomba de 1000L</strong>. Use o campo "Total de Bombas" para o total utilizado.</p>
-                      </div>
-                      <p className="text-sm font-semibold text-green-800 mb-2">Produtos desta receita:</p>
-                      <table className="w-full text-sm">
-                        <thead><tr className="border-b border-green-200"><th className="text-left py-1 text-green-700">Produto</th><th className="text-left py-1 text-green-700">Dosagem</th><th className="text-left py-1 text-green-700">Unidade</th></tr></thead>
-                        <tbody>
-                          {receitaSelecionada.produtosAplicacao.map((p: any) => (
-                            <tr key={p.id} className="border-b border-green-100">
-                              <td className="py-1 font-medium">{p.produto?.nomeComercial}</td>
-                              <td className="py-1">{p.dosagem}</td>
-                              <td className="py-1">{p.unidade}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="form-group">
                   <label htmlFor="horaEntrada">Hora Entrada *</label>
@@ -341,16 +307,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               )}
             </div>
           </div>
-
-          {needsProduto.includes(form.tipoAtividade as any) && (
-            <div className="card">
-              <h3 className="text-lg font-semibold text-primary mb-4">Aplicação de Produto</h3>
-              <div className="form-group">
-                <label htmlFor="totalBombas">Total de Bombas</label>
-                <input type="number" id="totalBombas" name="totalBombas" value={form.totalBombas} onChange={handleChange} disabled={loading} placeholder="0" />
-              </div>
-            </div>
-          )}
 
           {needsAdubo && (
             <div className="card">
