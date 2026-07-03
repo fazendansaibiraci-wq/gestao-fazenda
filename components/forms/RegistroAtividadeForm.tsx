@@ -163,8 +163,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
   const needsAdubo = form.tipoAtividade === 'Adubação'
   const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
-
-  return (
+  const totalHorasMaquina = form.horimetroInicial && form.horimetroFinal && parseFloat(form.horimetroFinal) > parseFloat(form.horimetroInicial)
+    ? (parseFloat(form.horimetroFinal) - parseFloat(form.horimetroInicial)).toFixed(1)
+    : nullreturn (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600 text-sm">{error}</p></div>}
 
@@ -359,16 +360,25 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                 </select>
               </div>
               {form.maquinaId && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="form-group">
-                    <label>Horímetro Inicial (h)</label>
-                    <input type="number" name="horimetroInicial" value={form.horimetroInicial} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required />
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="form-group">
+                      <label>Horímetro Inicial (h)</label>
+                      <input type="number" name="horimetroInicial" value={form.horimetroInicial} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Horímetro Final (h)</label>
+                      <input type="number" name="horimetroFinal" value={form.horimetroFinal} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Horímetro Final (h)</label>
-                    <input type="number" name="horimetroFinal" value={form.horimetroFinal} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required />
-                  </div>
-                </div>
+                  {totalHorasMaquina && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800">
+                        <strong>Total de horas da máquina:</strong> {totalHorasMaquina}h
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
               <div className="form-group">
                 <label>Implemento Utilizado</label>
