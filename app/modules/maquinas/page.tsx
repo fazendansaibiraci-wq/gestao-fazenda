@@ -86,7 +86,7 @@ export default function MaquinasPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-primary">Máquinas e Implementos</h1>
+     <h1 className="text-3xl font-bold text-primary">Máquinas</h1>
 
       {/* Formulário */}
       <form onSubmit={handleSubmit} className="card space-y-4">
