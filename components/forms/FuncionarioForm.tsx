@@ -29,6 +29,7 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     cargaHorariaSegSex: initialData?.cargaHorariaSegSex || '',
     cargaHorariaSabado: initialData?.cargaHorariaSabado || '',
     cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
+    domingosPorMes: initialData?.domingosPorMes || '2',
     active: initialData?.active !== undefined ? initialData.active : true,
   })
 
@@ -199,6 +200,22 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
               <label htmlFor="cargaHorariaDomingo">Domingo (h/dia)</label>
               <input type="number" id="cargaHorariaDomingo" name="cargaHorariaDomingo" value={form.cargaHorariaDomingo} onChange={handleChange} disabled={loading} step="0.5" min="0" max="24" placeholder="Ex: 6" />
             </div>
+          </div>
+          <div className="form-group">
+            <label htmlFor="domingosPorMes">Domingos trabalhados por mês</label>
+            <select id="domingosPorMes" name="domingosPorMes" value={form.domingosPorMes} onChange={handleChange} disabled={loading}>
+              <option value="0">Não trabalha aos domingos</option>
+              <option value="1">1 domingo por mês</option>
+              <option value="2">2 domingos por mês</option>
+              <option value="3">3 domingos por mês</option>
+              <option value="4">4 domingos por mês</option>
+            </select>
+          </div>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs text-blue-700">
+              <strong>Como funciona:</strong> O sistema verifica se o domingo em questão é um dos domingos que o funcionário trabalha no mês. 
+              Ex: se trabalha 2 domingos por mês, o 1º e 3º domingo serão considerados dia de trabalho. Os demais, qualquer hora trabalhada conta como hora extra.
+            </p>
           </div>
         </div>
       </div>
