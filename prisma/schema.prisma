@@ -85,6 +85,7 @@ model User {
   cargaHorariaSegSex        Float?
   cargaHorariaSabado        Float?
   cargaHorariaDomingo       Float?
+domingosPorMes        Int?   @default(2)
   escalasEntressafra  EscalaEntressafra[]
   escalasAfra         EscalaSafra[]
   registrosAtividade  RegistroAtividade[]
