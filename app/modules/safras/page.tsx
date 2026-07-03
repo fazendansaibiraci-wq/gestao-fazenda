@@ -47,8 +47,8 @@ export default function SafrasPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          dataInicio: new Date(formData.dataInicio),
-          dataFim: formData.dataFim ? new Date(formData.dataFim) : null,
+          dataInicio: formData.dataInicio,
+          dataFim: formData.dataFim || null,
         }),
       })
       if (!res.ok) throw new Error('Erro')
@@ -111,6 +111,8 @@ export default function SafrasPage() {
               <option value="ATIVA">Ativa</option>
               <option value="ENCERRADA">Encerrada</option>
             </select>
+          </div>
+          <div className="flex gap-2">
             <button type="submit" className="btn btn-primary col-span-1">
               {editingId ? 'Atualizar' : 'Adicionar'}
             </button>
