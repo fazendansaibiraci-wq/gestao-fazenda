@@ -30,7 +30,6 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Usuário inativo')
         }
 
-        // Comparar senha com bcrypt
         const passwordMatch = await bcrypt.compare(credentials.password, user.password)
         if (!passwordMatch) {
           throw new Error('Senha incorreta')
@@ -57,9 +56,18 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     session: async ({ session, token }) => {
-      if (session.user) {
+      if (session.user && token.id) {
+        // Buscar nome atualizado do banco a cada sessão
+        const userAtualizado = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { name: true, role: true },
+        })
         session.user.role = token.role as string
         session.user.id = token.id as string
+        if (userAtualizado) {
+          session.user.name = userAtualizado.name
+          session.user.role = userAtualizado.role
+        }
       }
       return session
     },
@@ -67,6 +75,6 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
 }
