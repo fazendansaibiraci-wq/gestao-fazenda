@@ -176,7 +176,7 @@ export default function ResumoMensalPage() {
               </div>
 
               {isFuncionario ? (
-                /* Visão simplificada do funcionário: só salário fixo + horas extras */
+                /* Visão simplificada do funcionário: salário fixo + horas extras + horas devidas */
                 <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 text-sm">
@@ -194,6 +194,18 @@ export default function ResumoMensalPage() {
                       {r.valorHorasExtras > 0 ? `+ ${fmt(r.valorHorasExtras)}` : fmt(0)}
                     </span>
                   </div>
+
+                  {r.totalHorasDevidas > 0 && (
+                    <div className="border-t pt-3 flex justify-between items-center">
+                      <span className="text-orange-600 flex items-center gap-1 text-sm">
+                        <TrendingDown className="w-4 h-4" />
+                        Horas devidas
+                      </span>
+                      <span className="font-bold text-orange-600">
+                        {fmtH(r.totalHorasDevidas)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* Visão completa do gestor/gerente */
