@@ -178,9 +178,7 @@ export async function POST(request: NextRequest) {
     const domingosPorMes = funcionario?.domingosPorMes ?? 2
 
     let cargaHorariaDia: number
-    if (estaNaSafra) {
-      cargaHorariaDia = funcionario?.cargaHorariaSafra || 8
-    } else if (diaSemana === 0) {
+    if (diaSemana === 0) {
       // Domingo — verificar se este domingo é dia de trabalho
       const numeroDomingo = getNumeroDomingoNoMes(dataRegistro)
       let trabalhaEsteDomingo = false
