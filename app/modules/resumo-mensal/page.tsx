@@ -142,9 +142,7 @@ export default function ResumoMensalPage() {
           <p className="text-4xl font-bold mt-1">{fmt(totalAcumuladoGeral)}</p>
           <p className="text-sm opacity-80 mt-1">{resumo.length} funcionários</p>
         </div>
-      )}
-
-      {/* Cards por funcionário */}
+      )}{/* Cards por funcionário */}
       {resumo.length === 0 ? (
         <div className="card text-center py-12 text-gray-500">
           Nenhum registro encontrado para este período
@@ -166,57 +164,83 @@ export default function ResumoMensalPage() {
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Salário base</p>
-                  <p className="text-sm font-medium text-gray-700">{fmt(r.salarioBase)}</p>
-                  <p className="text-xs text-gray-400">{fmt(r.valorDia)}/dia · {fmt(r.valorHoraNormal)}/hora</p>
-                </div>
+
+                {/* Detalhe de salário/dia/hora só aparece para quem administra */}
+                {!isFuncionario && (
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Salário base</p>
+                    <p className="text-sm font-medium text-gray-700">{fmt(r.salarioBase)}</p>
+                    <p className="text-xs text-gray-400">{fmt(r.valorDia)}/dia · {fmt(r.valorHoraNormal)}/hora</p>
+                  </div>
+                )}
               </div>
 
-              {/* Resumo acumulado simples */}
-              <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">
-                    {r.diasTrabalhados} dia(s) trabalhado(s) × {fmt(r.valorDia)}
-                  </span>
-                  <span className="font-medium">{fmt(r.diasTrabalhados * r.valorDia)}</span>
+              {isFuncionario ? (
+                /* Visão simplificada do funcionário: só salário fixo + horas extras */
+                <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">
+                      {r.estaNaSafra ? 'Salário Safra' : 'Salário Entressafra'}
+                    </span>
+                    <span className="font-bold text-lg text-primary">{fmt(r.salarioBase)}</span>
+                  </div>
+
+                  <div className="border-t pt-3 flex justify-between items-center">
+                    <span className="text-green-600 flex items-center gap-1 text-sm">
+                      <TrendingUp className="w-4 h-4" />
+                      Horas extras ({fmtH(r.totalHorasExtras)})
+                    </span>
+                    <span className="font-bold text-green-600">
+                      {r.valorHorasExtras > 0 ? `+ ${fmt(r.valorHorasExtras)}` : fmt(0)}
+                    </span>
+                  </div>
                 </div>
-
-                {r.valorHorasExtras > 0 && (
+              ) : (
+                /* Visão completa do gestor/gerente */
+                <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-green-600 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3" />
-                      {fmtH(r.totalHorasExtras)} extras × {fmt(r.valorHoraExtra)}
+                    <span className="text-gray-600">
+                      {r.diasTrabalhados} dia(s) trabalhado(s) × {fmt(r.valorDia)}
                     </span>
-                    <span className="font-medium text-green-600">+ {fmt(r.valorHorasExtras)}</span>
+                    <span className="font-medium">{fmt(r.diasTrabalhados * r.valorDia)}</span>
                   </div>
-                )}
 
-                {r.descontoHorasDevidas > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-orange-600 flex items-center gap-1">
-                      <TrendingDown className="w-3 h-3" />
-                      {fmtH(r.totalHorasDevidas)} devidas × {fmt(r.valorHoraNormal)}
-                    </span>
-                    <span className="font-medium text-orange-600">- {fmt(r.descontoHorasDevidas)}</span>
+                  {r.valorHorasExtras > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-600 flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3" />
+                        {fmtH(r.totalHorasExtras)} extras × {fmt(r.valorHoraExtra)}
+                      </span>
+                      <span className="font-medium text-green-600">+ {fmt(r.valorHorasExtras)}</span>
+                    </div>
+                  )}
+
+                  {r.descontoHorasDevidas > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-orange-600 flex items-center gap-1">
+                        <TrendingDown className="w-3 h-3" />
+                        {fmtH(r.totalHorasDevidas)} devidas × {fmt(r.valorHoraNormal)}
+                      </span>
+                      <span className="font-medium text-orange-600">- {fmt(r.descontoHorasDevidas)}</span>
+                    </div>
+                  )}
+
+                  {r.descontoFaltas > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {r.totalFaltas} falta(s) × {fmt(r.valorDia)}
+                      </span>
+                      <span className="font-medium text-red-600">- {fmt(r.descontoFaltas)}</span>
+                    </div>
+                  )}
+
+                  <div className="border-t pt-2 flex justify-between font-bold text-base">
+                    <span>Total acumulado</span>
+                    <span className="text-primary text-lg">{fmt(r.totalAcumulado)}</span>
                   </div>
-                )}
-
-                {r.descontoFaltas > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-red-600 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {r.totalFaltas} falta(s) × {fmt(r.valorDia)}
-                    </span>
-                    <span className="font-medium text-red-600">- {fmt(r.descontoFaltas)}</span>
-                  </div>
-                )}
-
-                <div className="border-t pt-2 flex justify-between font-bold text-base">
-                  <span>Total acumulado</span>
-                  <span className="text-primary text-lg">{fmt(r.totalAcumulado)}</span>
                 </div>
-              </div>
+              )}
 
               {/* Botão expandir */}
               <button
