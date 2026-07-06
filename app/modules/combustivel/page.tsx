@@ -23,7 +23,7 @@ export default function CombustivelPage() {
     try {
       const res = await fetch('/api/maquinas')
       const data = await res.json()
-      setMaquinas(data.data?.filter((m: any) => m.tipo === 'Trator') || [])
+      setMaquinas(data.data?.filter((m: any) => m.status === 'ATIVA') || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -172,7 +172,7 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
         <h3 className="font-semibold text-primary">Novo Abastecimento</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="text-sm font-medium block mb-1">Máquina (Trator)</label>
+            <label className="text-sm font-medium block mb-1">Máquina</label>
             <select
               value={form.maquinaId}
               onChange={(e) => setForm({ ...form, maquinaId: e.target.value })}
