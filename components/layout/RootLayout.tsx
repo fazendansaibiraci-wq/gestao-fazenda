@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { MobileNavigation } from './MobileNavigation'
 import { usePathname } from 'next/navigation'
+import { signOut } from 'next-auth/react'
+import { LogOut } from 'lucide-react'
 
 export function RootLayout({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false)
@@ -46,8 +48,22 @@ export function RootLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop Sidebar */}
       {isDesktop && <Sidebar />}
 
+      {/* Mobile Top Bar */}
+      {!isDesktop && (
+        <div className="fixed top-0 left-0 right-0 lg:hidden bg-primary text-white z-50 flex items-center justify-between px-4 py-3 shadow-sm">
+          <span className="font-semibold text-sm truncate">Gestão Fazenda</span>
+          <button
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors rounded-lg px-3 py-1.5"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="text-sm font-medium">Sair</span>
+          </button>
+        </div>
+      )}
+
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden pb-20 lg:pb-0">
+      <main className="flex-1 flex flex-col overflow-hidden pb-20 lg:pb-0 pt-14 lg:pt-0">
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 lg:p-6">
             {children}
