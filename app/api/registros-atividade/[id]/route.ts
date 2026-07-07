@@ -98,18 +98,19 @@ export async function PUT(
       const [hE, mE] = body.horaEntrada.split(':').map(Number)
       const [hS, mS] = body.horaSaida.split(':').map(Number)
       const entrada = hE * 60 + mE
-      const saida = hS * 60 + mS
-      if (saida > entrada) {
-        const horasBrutas = (saida - entrada) / 60
-        if (!body.isFalta) {
-          if (!estaNaSafra) {
-            horasCalculadas = Math.max(0, horasBrutas - 1)
-          } else {
-            horasCalculadas = body.passouDiretoAlmoco ? horasBrutas : Math.max(0, horasBrutas - 1)
-          }
-        }
-        ehHoraExtra = horasCalculadas !== null && horasCalculadas > cargaHorariaDia
+      let saida = hS * 60 + mS
+      if (saida <= entrada) {
+        saida += 1440 // turno atravessou a meia-noite
       }
+      const horasBrutas = (saida - entrada) / 60
+      if (!body.isFalta) {
+        if (!estaNaSafra) {
+          horasCalculadas = Math.max(0, horasBrutas - 1)
+        } else {
+          horasCalculadas = body.passouDiretoAlmoco ? horasBrutas : Math.max(0, horasBrutas - 1)
+        }
+      }
+      ehHoraExtra = horasCalculadas !== null && horasCalculadas > cargaHorariaDia
     }
 
     const updated = await prisma.registroAtividade.update({
