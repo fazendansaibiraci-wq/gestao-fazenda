@@ -29,7 +29,8 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: registro })
   } catch (error) {
-    console.error('GET /api/registros-atividade/[id]:', error)
+    console.error('GET /api/registros-atividade/[id]:', error instanceof Error ? error.message : error)
+    console.error(error instanceof Error ? error.stack : 'Sem stack disponível')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -130,7 +131,7 @@ export async function PUT(
         quantidadeAdubo: body.quantidadeAdubo ?? null,
         tipoCorretivo: body.tipoCorretivo ?? null,
         quantidadeCorretivo: body.quantidadeCorretivo ?? null,
-        maquinaId: body.maquinaId ?? null,
+        maquinaId: body.maquinaId || null,
         horimetroInicial: body.horimetroInicial ?? null,
         horimetroFinal: body.horimetroFinal ?? null,
         horasMaquina: body.horasMaquina ?? null,
@@ -157,7 +158,8 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
-    console.error('PUT /api/registros-atividade/[id]:', error)
+    console.error('PUT /api/registros-atividade/[id]:', error instanceof Error ? error.message : error)
+    console.error(error instanceof Error ? error.stack : 'Sem stack disponível')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -186,7 +188,8 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: 'Deletado com sucesso' })
   } catch (error) {
-    console.error('DELETE /api/registros-atividade/[id]:', error)
+    console.error('DELETE /api/registros-atividade/[id]:', error instanceof Error ? error.message : error)
+    console.error(error instanceof Error ? error.stack : 'Sem stack disponível')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
