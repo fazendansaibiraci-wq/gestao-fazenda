@@ -19,6 +19,7 @@ import {
   Tag,
   Beaker,
   Users,
+  UserPlus,
   DollarSign,
   ChevronDown,
   ChevronRight,
@@ -64,6 +65,7 @@ export function Sidebar() {
     { label: 'Registro de Atividades', href: '/modules/atividades', icon: ClipboardList, excludeRoles: 'AGRONOMO' },
     { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO|GERENTE' },
     { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
+    { label: 'Turmas', href: '/modules/turmas', icon: UserPlus, role: 'GESTOR|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
 
   const relatorioItems = [
