@@ -8,6 +8,14 @@ const withPWA = require('next-pwa')({
   dynamicStartUrl: true,
   reloadOnOnline: true,
   cacheOnFrontEndNav: true,
+  buildExcludes: [
+    /app-build-manifest\.json$/,
+    /build-manifest\.json$/,
+    /_buildManifest\.js$/,
+    /_ssgManifest\.js$/,
+    /middleware-manifest\.json$/,
+    /^.*\/server\/.*$/,
+  ],
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
