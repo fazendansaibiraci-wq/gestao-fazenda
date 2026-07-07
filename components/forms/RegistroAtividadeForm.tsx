@@ -284,7 +284,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   {tiposAtividade.map((t) => <option key={t.id} value={t.nome}>{t.nome}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label htmlFor="horaEntrada">Hora Entrada *</label>
                   <input type="time" id="horaEntrada" name="horaEntrada" value={form.horaEntrada} onChange={handleChange} required disabled={loading} />
@@ -292,12 +292,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                 <div className="form-group">
                   <label htmlFor="horaSaida">Hora Saída</label>
                   <input type="time" id="horaSaida" name="horaSaida" value={form.horaSaida} onChange={handleChange} disabled={loading} />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="status">Status</label>
-                  <select id="status" name="status" value={form.status} onChange={handleChange} disabled={loading}>
-                    <option value="CONCLUIDO">Concluído</option>
-                  </select>
                 </div>
               </div>
               {estaNaSafra && (
