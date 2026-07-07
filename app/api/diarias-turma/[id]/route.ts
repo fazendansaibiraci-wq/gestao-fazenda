@@ -22,6 +22,7 @@ export async function GET(
       const diaria = await prisma.diariaTurma.findUnique({
               where: { id: params.id },
               include: {
+                        turma: true,
                         talhao: true,
                         safra: true,
                         criadoPor: { select: { name: true } },
@@ -62,7 +63,7 @@ export async function PUT(
               where: { id: params.id },
               data: {
                         data: body.data ? new Date(new Date(body.data).toISOString().split('T')[0] + 'T12:00:00.000Z') : undefined,
-                        responsavelTurma: body.responsavelTurma || undefined,
+                        turmaId: body.turmaId || undefined,
                         quantidadePessoas,
                         talhaoId: body.talhaoId || undefined,
                         safraId: body.safraId || undefined,
@@ -72,6 +73,7 @@ export async function PUT(
                         observacao: body.observacao ?? null,
               },
               include: {
+                        turma: { select: { nome: true } },
                         talhao: { select: { nome: true } },
                         safra: { select: { nome: true } },
               },
