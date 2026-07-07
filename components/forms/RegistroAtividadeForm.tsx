@@ -165,7 +165,8 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
   const totalHorasMaquina = form.horimetroInicial && form.horimetroFinal && parseFloat(form.horimetroFinal) > parseFloat(form.horimetroInicial)
     ? (parseFloat(form.horimetroFinal) - parseFloat(form.horimetroInicial)).toFixed(1)
-   : nullreturn (
+   : null
+  return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600 text-sm">{error}</p></div>}
 
