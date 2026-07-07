@@ -36,7 +36,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     talhaoId: initialData?.talhaoId || '',
     safraId: initialData?.safraId || '',
     tipoAtividade: initialData?.tipoAtividade || 'GERAIS',
-    status: initialData?.status || 'CONCLUIDO',
+    status: 'CONCLUIDO',
     totalBombas: initialData?.totalBombas || '',
     tipoAdubo: initialData?.tipoAdubo || '',
     quantidadeAdubo: initialData?.quantidadeAdubo || '',
