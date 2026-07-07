@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
       const diarias = await prisma.diariaTurma.findMany({
               where,
               include: {
+                        turma: { select: { nome: true } },
                         talhao: { select: { nome: true } },
                         safra: { select: { nome: true } },
                         criadoPor: { select: { name: true } },
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
 
       const body = await request.json()
 
-      if (!body.data || !body.responsavelTurma || !body.quantidadePessoas || !body.talhaoId || !body.safraId || !body.valorDiaria) {
+      if (!body.data || !body.turmaId || !body.quantidadePessoas || !body.talhaoId || !body.safraId || !body.valorDiaria) {
               return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
       }
 
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
       const diaria = await prisma.diariaTurma.create({
               data: {
                         data: new Date(new Date(body.data).toISOString().split('T')[0] + 'T12:00:00.000Z'),
-                        responsavelTurma: body.responsavelTurma,
+                        turmaId: body.turmaId,
                         quantidadePessoas,
                         talhaoId: body.talhaoId,
                         safraId: body.safraId,
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
                         criadoPorId: session.user?.id as string,
               },
               include: {
+                        turma: { select: { nome: true } },
                         talhao: { select: { nome: true } },
                         safra: { select: { nome: true } },
               },
