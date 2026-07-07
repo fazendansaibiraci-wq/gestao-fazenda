@@ -87,11 +87,15 @@ export async function GET(request: NextRequest) {
         ? (func.valorHoraExtraSafra || 0)
         : (func.valorHoraExtraEntressafra || 0)
 
-      // Valor hora normal = salário ÷ 220
-      const valorHoraNormal = salarioBase / 220
+      // Valor dia: DIARIO usa o valor cadastrado diretamente; MENSAL divide por 30
+      const valorDia = func.tipoSalario === 'DIARIO'
+        ? salarioBase
+        : salarioBase / 30
 
-      // Valor dia = salário ÷ 30
-      const valorDia = salarioBase / 30
+      // Valor hora normal: DIARIO divide pela carga horária do dia; MENSAL divide por 220
+      const valorHoraNormal = func.tipoSalario === 'DIARIO'
+        ? salarioBase / (config?.cargaHorariaEntressafra || 8)
+        : salarioBase / 220
 
       let totalHorasTrabalhadas = 0
       let totalHorasExtras = 0
