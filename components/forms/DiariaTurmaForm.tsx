@@ -168,4 +168,3 @@ export function DiariaTurmaForm({ id, initialData }: DiariaTurmaFormProps) {
         </form>
       )
 }
-</form>
