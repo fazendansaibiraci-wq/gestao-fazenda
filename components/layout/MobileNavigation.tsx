@@ -32,6 +32,7 @@ const menuItems = [
   { label: 'Receitas', href: '/modules/receitas', icon: Beaker, role: 'GESTOR|AGRONOMO' },
   { label: 'Tipos', href: '/modules/tipos-atividade', icon: Tag, role: 'GESTOR' },
   { label: 'Implementos', href: '/modules/implementos', icon: Tractor, role: 'GESTOR' },
+  { label: 'Turmas (Cadastro)', href: '/modules/turmas-cadastro', icon: Users, role: 'GESTOR' },
   { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR' },
   { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO|GERENTE' },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO|GERENTE' },
