@@ -55,6 +55,7 @@ export function Sidebar() {
     { label: 'Receitas', href: '/modules/receitas', icon: Beaker, role: 'GESTOR|AGRONOMO' },
     { label: 'Tipos de Atividade', href: '/modules/tipos-atividade', icon: Tag, role: 'GESTOR' },
     { label: 'Implementos', href: '/modules/implementos', icon: Tractor, role: 'GESTOR' },
+    { label: 'Turmas (Cadastro)', href: '/modules/turmas-cadastro', icon: Users, role: 'GESTOR' },
     { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR' },
     { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO|GERENTE' },
     { label: 'Cadastro Usuários', href: '/settings', icon: Settings, role: 'GESTOR' },
