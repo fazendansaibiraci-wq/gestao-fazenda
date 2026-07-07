@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { Fuel, BarChart3, Droplet } from 'lucide-react'
+import { Fuel, BarChart3, Droplet, Trash2 } from 'lucide-react'
 
 export default function CombustivelPage() {
   const { data: session, status } = useSession()
@@ -286,6 +286,8 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
 
 // Aba 2: Entrada de Diesel
 function AbaEntrada() {
+  const { data: session } = useSession()
+  const isGestor = session?.user?.role === 'GESTOR'
   const [entradas, setEntradas] = useState([])
   const [form, setForm] = useState({
     data: new Date().toISOString().split('T')[0],
@@ -307,6 +309,20 @@ function AbaEntrada() {
       setEntradas(data.data || [])
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta entrada?')) return
+    try {
+      const res = await fetch(`/api/entradas-diesel/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Erro ao excluir')
+      }
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao excluir')
     }
   }
 
@@ -413,6 +429,7 @@ function AbaEntrada() {
                 <th className="px-4 py-2 text-left">R$/Litro</th>
                 <th className="px-4 py-2 text-left">Custo Total</th>
                 <th className="px-4 py-2 text-left">NF</th>
+                {isGestor && <th className="px-4 py-2 text-left">Ações</th>}
               </tr>
             </thead>
             <tbody>
@@ -423,6 +440,13 @@ function AbaEntrada() {
                   <td className="px-4 py-2">R$ {e.valorPorLitro.toFixed(2)}</td>
                   <td className="px-4 py-2">R$ {e.custoTotal?.toFixed(2) || (e.litrosRecebidos * e.valorPorLitro).toFixed(2)}</td>
                   <td className="px-4 py-2">{e.nf || '-'}</td>
+                  {isGestor && (
+                    <td className="px-4 py-2">
+                      <button onClick={() => handleDelete(e.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition-colors" title="Excluir">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -526,7 +550,6 @@ function AbaPainelEstoque() {
               </span>
             </div>
           </div>
-        </div>
       </div>
     </div>
   )
