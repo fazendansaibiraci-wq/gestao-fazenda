@@ -14,11 +14,12 @@ export function DiariaTurmaForm({ id, initialData }: DiariaTurmaFormProps) {
     const [error, setError] = useState('')
     const [safras, setSafras] = useState([])
     const [talhoes, setTalhoes] = useState([])
+    const [turmas, setTurmas] = useState<{id: string, nome: string}[]>([])
     const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
 
   const [form, setForm] = useState({
         data: initialData?.data?.split('T')[0] || new Date().toISOString().split('T')[0],
-        responsavelTurma: initialData?.responsavelTurma || '',
+        turmaId: initialData?.turmaId || '',
         quantidadePessoas: initialData?.quantidadePessoas?.toString() || '',
         talhaoId: initialData?.talhaoId || '',
         safraId: initialData?.safraId || '',
@@ -31,14 +32,16 @@ export function DiariaTurmaForm({ id, initialData }: DiariaTurmaFormProps) {
 
   const loadData = async () => {
         try {
-                const [r1, r2, r3] = await Promise.all([
+                const [r1, r2, r3, r4] = await Promise.all([
                           fetch('/api/safras'),
                           fetch('/api/talhoes'),
                           fetch('/api/tipos-atividade?ativo=true'),
+                          fetch('/api/turmas?ativo=true'),
                         ])
                 if (r1.ok) setSafras((await r1.json()).data)
                 if (r2.ok) setTalhoes((await r2.json()).data)
                 if (r3.ok) setTiposAtividade(await r3.json())
+                if (r4.ok) setTurmas(await r4.json())
         } catch (err) { console.error(err) }
   }
 
@@ -53,7 +56,7 @@ export function DiariaTurmaForm({ id, initialData }: DiariaTurmaFormProps) {
         e.preventDefault()
         setError('')
 
-        if (!form.data || !form.responsavelTurma || !form.quantidadePessoas || !form.talhaoId || !form.safraId || !form.valorDiaria) {
+        if (!form.data || !form.turmaId || !form.quantidadePessoas || !form.talhaoId || !form.safraId || !form.valorDiaria) {
                 setError('Preencha todos os campos obrigatórios')
                 return
         }
@@ -97,8 +100,11 @@ export function DiariaTurmaForm({ id, initialData }: DiariaTurmaFormProps) {
                                                           <input type="date" id="data" name="data" value={form.data} onChange={handleChange} required disabled={loading} />
                                             </div>
                                             <div className="form-group">
-                                                          <label htmlFor="responsavelTurma">Responsável da Turma *</label>
-                                                          <input type="text" id="responsavelTurma" name="responsavelTurma" value={form.responsavelTurma} onChange={handleChange} required disabled={loading} placeholder="Nome do responsável" />
+                                                          <label htmlFor="turmaId">Turma *</label>
+                                                          <select id="turmaId" name="turmaId" value={form.turmaId} onChange={handleChange} required disabled={loading}>
+                                                                          <option value="">Selecionar turma</option>
+                                                            {turmas.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                                                          </select>
                                             </div>
                                 </div>
                       
