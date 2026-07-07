@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation'
 interface DiariaTurma {
     id: string
     data: string
-    responsavelTurma: string
+    turma: { nome: string }
     quantidadePessoas: number
     tipoAtividade: string
     valorDiaria: number
@@ -123,7 +123,7 @@ export default function TurmasPage() {
                                           <thead>
                                                       <tr className="border-b bg-gray-50">
                                                                     <th className="px-4 py-3 text-left font-semibold">Data</th>
-                                                                    <th className="px-4 py-3 text-left font-semibold">Responsavel</th>
+                                                                    <th className="px-4 py-3 text-left font-semibold">Turma</th>
                                                                     <th className="px-4 py-3 text-left font-semibold">Talhao</th>
                                                                     <th className="px-4 py-3 text-left font-semibold">Safra</th>
                                                                     <th className="px-4 py-3 text-left font-semibold">Atividade</th>
@@ -144,7 +144,7 @@ export default function TurmasPage() {
                                   diarias.map((d) => (
                                                     <tr key={d.id} className="border-b hover:bg-gray-50">
                                                                       <td className="px-4 py-3">{new Date(d.data).toLocaleDateString('pt-BR')}</td>
-                                                                      <td className="px-4 py-3 font-medium">{d.responsavelTurma}</td>
+                                                                      <td className="px-4 py-3 font-medium">{d.turma?.nome}</td>
                                                                       <td className="px-4 py-3">{d.talhao?.nome}</td>
                                                                       <td className="px-4 py-3">{d.safra?.nome}</td>
                                                                       <td className="px-4 py-3 text-gray-600">{d.tipoAtividade?.replace(/_/g, ' ')}</td>
