@@ -149,10 +149,11 @@ export async function POST(request: NextRequest) {
       const [hE, mE] = body.horaEntrada.split(':').map(Number)
       const [hS, mS] = body.horaSaida.split(':').map(Number)
       const entrada = hE * 60 + mE
-      const saida = hS * 60 + mS
-      if (saida > entrada) {
-        horasBrutas = (saida - entrada) / 60
+      let saida = hS * 60 + mS
+      if (saida <= entrada) {
+        saida += 1440 // turno atravessou a meia-noite
       }
+      horasBrutas = (saida - entrada) / 60
     }
 
     // Desconto de almoço
