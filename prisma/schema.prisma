@@ -376,10 +376,23 @@ model RegistroAtividade {
   @@map("registros_atividade")
 }
 
+model Turma {
+  id        String   @id @default(cuid())
+  nome      String   @unique
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  diariasTurma DiariaTurma[]
+
+  @@map("turmas")
+}
+
 model DiariaTurma {
   id                String   @id @default(cuid())
   data              DateTime
-  responsavelTurma  String
+  turma             Turma    @relation(fields: [turmaId], references: [id])
+  turmaId           String
   quantidadePessoas Int
 
   talhao   Talhao @relation(fields: [talhaoId], references: [id])
@@ -400,6 +413,7 @@ model DiariaTurma {
 
   @@index([data])
   @@index([talhaoId])
+  @@index([turmaId])
   @@map("diarias_turma")
 }
 
