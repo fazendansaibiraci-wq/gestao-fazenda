@@ -552,5 +552,6 @@ function AbaPainelEstoque() {
           </div>
       </div>
     </div>
+    </div>
   )
 }
