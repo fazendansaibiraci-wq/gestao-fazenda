@@ -2,12 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-
-// Calcula qual número de domingo é este no mês (1º, 2º, 3º ou 4º)
-function getNumeroDomingoNoMes(data: Date): number {
-  const dia = data.getUTCDate()
-  return Math.ceil(dia / 7)
-}
+import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 
 export async function GET(request: NextRequest) {
   try {
@@ -146,34 +141,7 @@ export async function POST(request: NextRequest) {
     // Carga horária por dia da semana
     const dataRegistro = new Date(body.data)
     const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 6=Sab
-    const domingosPorMes = funcionario?.domingosPorMes ?? 2
-
-    let cargaHorariaDia: number
-    if (diaSemana === 0) {
-      // Domingo — verificar se este domingo é dia de trabalho
-      const numeroDomingo = getNumeroDomingoNoMes(dataRegistro)
-      let trabalhaEsteDomingo = false
-
-      if (domingosPorMes === 0) {
-        trabalhaEsteDomingo = false
-      } else if (domingosPorMes >= 4) {
-        trabalhaEsteDomingo = true
-      } else if (domingosPorMes === 2) {
-        // Trabalha no 1º e 3º domingo (alternado)
-        trabalhaEsteDomingo = numeroDomingo === 1 || numeroDomingo === 3
-      } else {
-        // 1 ou 3 domingos: trabalha nos primeiros N
-        trabalhaEsteDomingo = numeroDomingo <= domingosPorMes
-      }
-
-      cargaHorariaDia = trabalhaEsteDomingo
-        ? (funcionario?.cargaHorariaDomingo ?? (config?.cargaHorariaEntressafra || 8))
-        : 0 // Domingo de folga: carga = 0, logo qualquer hora é extra
-    } else if (diaSemana === 6) {
-      cargaHorariaDia = funcionario?.cargaHorariaSabado ?? (config?.cargaHorariaEntressafra || 8)
-    } else {
-      cargaHorariaDia = funcionario?.cargaHorariaSegSex ?? (config?.cargaHorariaEntressafra || 8)
-    }
+    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config)
 
     // Horas extras e devidas
     let horasExtras = 0
