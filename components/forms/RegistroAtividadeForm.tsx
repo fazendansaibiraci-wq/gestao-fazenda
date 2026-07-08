@@ -35,7 +35,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     horaSaida: initialData?.horaSaida || '',
     talhaoId: initialData?.talhaoId || '',
     safraId: initialData?.safraId || '',
-    tipoAtividade: initialData?.tipoAtividade || 'GERAIS',
+    tipoAtividade: initialData?.tipoAtividade || '',
     status: 'CONCLUIDO',
     totalBombas: initialData?.totalBombas || '',
     tipoAdubo: initialData?.tipoAdubo || '',
@@ -279,7 +279,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               </div>
               <div className="form-group">
                 <label htmlFor="tipoAtividade">Tipo de Atividade *</label>
-                <select id="tipoAtividade" name="tipoAtividade" value={form.tipoAtividade} onChange={handleChange} disabled={loading}>
+                <select id="tipoAtividade" name="tipoAtividade" value={form.tipoAtividade} onChange={handleChange} required disabled={loading}>
                   <option value="">Selecionar tipo</option>
                   {tiposAtividade.map((t) => <option key={t.id} value={t.nome}>{t.nome}</option>)}
                 </select>
