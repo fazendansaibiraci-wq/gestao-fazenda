@@ -335,7 +335,7 @@ model RegistroAtividade {
   safra    Safra  @relation(fields: [safraId], references: [id])
   safraId  String
 
-  tipoAtividade TipoAtividade
+  tipoAtividade String
   status        StatusRegistroAtividade @default(PENDENTE)
   observacao    String?
   fotoEvidencia String?
@@ -400,7 +400,7 @@ model DiariaTurma {
   safra    Safra  @relation(fields: [safraId], references: [id])
   safraId  String
 
-  tipoAtividade TipoAtividade
+  tipoAtividade String
   valorDiaria   Float
   valorTotal    Float
   observacao    String?
