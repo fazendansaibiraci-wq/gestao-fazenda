@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
         valorHoraExtraEntressafra: true,
         valorHoraExtraSafra: true,
         cargaHorariaSafra: true,
+        pagamentoProporcionalDiario: true,
       },
     })
 
@@ -102,6 +103,7 @@ export async function GET(request: NextRequest) {
       let totalHorasDevidas = 0
       let totalFaltas = 0
       let diasTrabalhados = 0
+      let acumuladoProporcional = 0
 
       const registrosDiarios = registrosFuncionario.map((reg) => {
         if (reg.isFalta) {
@@ -141,6 +143,14 @@ export async function GET(request: NextRequest) {
         totalHorasExtras += horasExtras
         totalHorasDevidas += horasDevidas
 
+        if (func.pagamentoProporcionalDiario) {
+          const valorHoraDoDia = valorDia / cargaDia
+          const pagamentoDoDia = horas < cargaDia
+            ? horas * valorHoraDoDia
+            : valorDia + (horas - cargaDia) * valorHoraExtra
+          acumuladoProporcional += pagamentoDoDia
+        }
+
         return {
           data: reg.data,
           horaEntrada: reg.horaEntrada,
@@ -167,6 +177,12 @@ export async function GET(request: NextRequest) {
       const acumuladoDiasTrabalhados = diasTrabalhados * valorDia
       const totalAcumulado = acumuladoDiasTrabalhados + valorHorasExtras - totalDescontos
 
+      // Para funcionários com pagamento proporcional por hora, o total acumulado é
+      // recalculado dia a dia (acumuladoProporcional), descontando as faltas normalmente.
+      const totalAcumuladoFinal = func.pagamentoProporcionalDiario
+        ? acumuladoProporcional - descontoFaltas
+        : totalAcumulado
+
       return {
         funcionario: { id: func.id, name: func.name, role: func.role },
         estaNaSafra,
@@ -182,7 +198,7 @@ export async function GET(request: NextRequest) {
         valorHorasExtras: Math.round(valorHorasExtras * 100) / 100,
         descontoHorasDevidas: Math.round(descontoHorasDevidas * 100) / 100,
         descontoFaltas: Math.round(descontoFaltas * 100) / 100,
-        totalAcumulado: Math.round(totalAcumulado * 100) / 100,
+        totalAcumulado: Math.round(totalAcumuladoFinal * 100) / 100,
         registrosDiarios,
       }
     })
