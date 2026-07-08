@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const data = searchParams.get('data')
     const status = searchParams.get('status')
+    const funcionarioNome = searchParams.get('funcionario')
 
     const where: any = {}
 
@@ -70,6 +71,12 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       where.status = status
+    }
+
+    if (funcionarioNome) {
+      where.funcionario = {
+        name: { contains: funcionarioNome, mode: 'insensitive' },
+      }
     }
 
     const registros = await prisma.registroAtividade.findMany({
