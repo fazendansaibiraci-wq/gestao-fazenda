@@ -227,7 +227,7 @@ export default function AtividadesPage() {
                       a.talhao?.nome
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{a.isFalta ? '—' : a.tipoAtividade.replace(/_/g, ' ')}</td>
+                  <td className="px-4 py-3 text-gray-600">{a.isFalta ? '—' : a.tipoAtividade}</td>
                   <td className="px-4 py-3">
                     {a.isFalta ? (
                       <span className="text-xs px-2 py-1 rounded-full font-semibold bg-red-100 text-red-800">Falta</span>
