@@ -3,23 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-function mapearTipoAtividade(nome: string): string {
-    const mapa: Record<string, string> = {
-          'pulverização': 'PULVERIZACAO',
-          'herbicida': 'HERBICIDA',
-          'adubação': 'ADUBACAO',
-          'colheita': 'COLHEITA',
-          'capina mecânica': 'CAPINA_MECANICA',
-          'desbrota': 'DESBROTA',
-          'capina manual': 'CAPINA_MANUAL',
-          'chegamento de terra': 'CHEGAMENTO_TERRA',
-          'correção de solo': 'CORRECAO_SOLO',
-          'irrigação': 'IRRIGACAO',
-          'inseticida de solo': 'INSETICIDA_SOLO',
-    }
-    return mapa[nome?.toLowerCase()] || 'GERAIS'
-}
-
 function podeAcessarTurmas(role?: string) {
     return role === 'GESTOR' || role === 'GERENTE'
 }
@@ -94,7 +77,7 @@ export async function POST(request: NextRequest) {
                         quantidadePessoas,
                         talhaoId: body.talhaoId,
                         safraId: body.safraId,
-                        tipoAtividade: mapearTipoAtividade(body.tipoAtividade) as any,
+                        tipoAtividade: body.tipoAtividade,
                         valorDiaria,
                         valorTotal,
                         observacao: body.observacao || null,
