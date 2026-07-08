@@ -31,6 +31,7 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
    domingosPorMes: String(initialData?.domingosPorMes ?? '2'),
     active: initialData?.active !== undefined ? initialData.active : true,
+    pagamentoProporcionalDiario: initialData?.pagamentoProporcionalDiario || false,
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -179,6 +180,11 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
               <label htmlFor="valorHoraExtraSafra">Valor Hora Extra Safra (R$/h)</label>
               <input type="number" id="valorHoraExtraSafra" name="valorHoraExtraSafra" value={form.valorHoraExtraSafra} onChange={handleChange} disabled={loading} step="0.01" placeholder="0,00" />
             </div>
+          </div>
+
+          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+            <input type="checkbox" id="pagamentoProporcionalDiario" name="pagamentoProporcionalDiario" checked={form.pagamentoProporcionalDiario} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
+            <label htmlFor="pagamentoProporcionalDiario" style={{fontSize:'14px', fontWeight:500, cursor:'pointer', margin:0}}>Pagamento proporcional por hora (desconta/paga exatamente pelas horas trabalhadas no dia, sem regra de falta de horas)</label>
           </div>
         </div>
       </div>
