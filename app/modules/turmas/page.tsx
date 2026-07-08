@@ -147,7 +147,7 @@ export default function TurmasPage() {
                                                                       <td className="px-4 py-3 font-medium">{d.turma?.nome}</td>
                                                                       <td className="px-4 py-3">{d.talhao?.nome}</td>
                                                                       <td className="px-4 py-3">{d.safra?.nome}</td>
-                                                                      <td className="px-4 py-3 text-gray-600">{d.tipoAtividade?.replace(/_/g, ' ')}</td>
+                                                                      <td className="px-4 py-3 text-gray-600">{d.tipoAtividade}</td>
                                                                       <td className="px-4 py-3 text-right">{d.quantidadePessoas}</td>
                                                                       <td className="px-4 py-3 text-right">R$ {Number(d.valorDiaria).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                                                       <td className="px-4 py-3 text-right font-semibold">R$ {Number(d.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
