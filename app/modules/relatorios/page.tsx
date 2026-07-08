@@ -10,6 +10,7 @@ export default function RelatoriosPage() {
   const [registros, setRegistros] = useState<any[]>([])
   const [talhoes, setTalhoes] = useState<any[]>([])
   const [safras, setSafras] = useState<any[]>([])
+  const [tiposAtividade, setTiposAtividade] = useState<{ id: string; nome: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [exportando, setExportando] = useState(false)
 
@@ -28,14 +29,16 @@ export default function RelatoriosPage() {
   const loadDados = async () => {
     try {
       setLoading(true)
-      const [regRes, talRes, safRes] = await Promise.all([
+      const [regRes, talRes, safRes, tipRes] = await Promise.all([
         fetch('/api/registros-atividade'),
         fetch('/api/talhoes'),
         fetch('/api/safras'),
+        fetch('/api/tipos-atividade?ativo=true'),
       ])
       if (regRes.ok) setRegistros((await regRes.json()).data || [])
       if (talRes.ok) setTalhoes((await talRes.json()).data || [])
       if (safRes.ok) setSafras((await safRes.json()).data || [])
+      if (tipRes.ok) setTiposAtividade(await tipRes.json())
     } catch (err) {
       console.error(err)
     } finally {
@@ -51,21 +54,6 @@ export default function RelatoriosPage() {
     if (filtros.dataFim && new Date(r.data) > new Date(filtros.dataFim)) return false
     return true
   })
-
-  const tiposAtividade = [
-    { value: 'PULVERIZACAO', label: 'Pulverização' },
-    { value: 'HERBICIDA', label: 'Herbicida' },
-    { value: 'ADUBACAO', label: 'Adubação' },
-    { value: 'COLHEITA', label: 'Colheita' },
-    { value: 'CAPINA_MECANICA', label: 'Capina Mecânica' },
-    { value: 'DESBROTA', label: 'Desbrota' },
-    { value: 'CAPINA_MANUAL', label: 'Capina Manual' },
-    { value: 'CHEGAMENTO_TERRA', label: 'Chegamento de Terra' },
-    { value: 'CORRECAO_SOLO', label: 'Correção de Solo' },
-    { value: 'IRRIGACAO', label: 'Irrigação' },
-    { value: 'INSETICIDA_SOLO', label: 'Inseticida de Solo' },
-    { value: 'GERAIS', label: 'Gerais' },
-  ]
 
   const agruparPor = (campo: string) => {
     const grupos: Record<string, any[]> = {}
@@ -88,7 +76,7 @@ export default function RelatoriosPage() {
 
   const getTalhaoNome = (id: string) => talhoes.find(t => t.id === id)?.nome || id
   const getSafraNome = (id: string) => safras.find(s => s.id === id)?.nome || id
-  const getTipoLabel = (tipo: string) => tiposAtividade.find(t => t.value === tipo)?.label || tipo
+  const getTipoLabel = (tipo: string) => tiposAtividade.find(t => t.nome === tipo)?.nome || tipo
 
   const abas = [
     { id: 'consumo', label: 'Consumo de Produtos', icon: Leaf },
@@ -390,7 +378,7 @@ export default function RelatoriosPage() {
             <label>Tipo de Atividade</label>
             <select value={filtros.tipoAtividade} onChange={e => setFiltros(p => ({ ...p, tipoAtividade: e.target.value }))}>
               <option value="">Todos</option>
-              {tiposAtividade.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              {tiposAtividade.map(t => <option key={t.id} value={t.nome}>{t.nome}</option>)}
             </select>
           </div>
           <div className="form-group">
