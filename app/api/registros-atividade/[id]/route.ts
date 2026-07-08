@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 
 export async function GET(
   request: NextRequest,
@@ -60,10 +61,10 @@ export async function PUT(
       prisma.user.findUnique({
         where: { id: funcionarioId },
         select: {
-          cargaHorariaSafra: true,
           cargaHorariaSegSex: true,
           cargaHorariaSabado: true,
           cargaHorariaDomingo: true,
+          domingosPorMes: true,
           valorHoraExtraEntressafra: true,
           valorHoraExtraSafra: true,
         },
@@ -77,19 +78,7 @@ export async function PUT(
       estaNaSafra = dataRegistro >= new Date(config.inicioSafra) && dataRegistro <= new Date(config.fimSafra)
     }
 
-    const diaSemana = dataRegistro.getUTCDay()
-    let cargaHorariaDia: number
-    if (estaNaSafra) {
-      cargaHorariaDia = funcionario?.cargaHorariaSafra || 8
-    } else {
-      if (diaSemana === 0) {
-        cargaHorariaDia = funcionario?.cargaHorariaDomingo ?? (config?.cargaHorariaEntressafra || 8)
-      } else if (diaSemana === 6) {
-        cargaHorariaDia = funcionario?.cargaHorariaSabado ?? (config?.cargaHorariaEntressafra || 8)
-      } else {
-        cargaHorariaDia = funcionario?.cargaHorariaSegSex ?? (config?.cargaHorariaEntressafra || 8)
-      }
-    }
+    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config)
 
     let horasCalculadas = registro.horasCalculadas
     let ehHoraExtra = registro.ehHoraExtra
