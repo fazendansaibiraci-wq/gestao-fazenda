@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
         cargaHorariaSabado: true,
         cargaHorariaDomingo: true,
         domingosPorMes: true,
+        pagamentoProporcionalDiario: true,
       },
       orderBy: { name: 'asc' },
     })
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
         cargaHorariaDomingo: body.cargaHorariaDomingo ? parseFloat(body.cargaHorariaDomingo) : null,
         domingosPorMes: body.domingosPorMes ? parseInt(body.domingosPorMes) : 2,
         bancoHorasAtivo: false,
+        pagamentoProporcionalDiario: body.pagamentoProporcionalDiario === true,
       },
     })
 
