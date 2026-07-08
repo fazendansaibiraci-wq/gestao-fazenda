@@ -81,6 +81,7 @@ model User {
   valorHoraExtraEntressafra Float?
   valorHoraExtraSafra       Float?
   bancoHorasAtivo           Boolean      @default(false)
+  pagamentoProporcionalDiario Boolean    @default(false)
   cargaHorariaSafra         Float?
   cargaHorariaSegSex        Float?
   cargaHorariaSabado        Float?
