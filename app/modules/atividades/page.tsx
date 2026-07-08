@@ -28,6 +28,7 @@ export default function AtividadesPage() {
   const [loading, setLoading] = useState(true)
   const [filtroData, setFiltroData] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
+  const [filtroFuncionario, setFiltroFuncionario] = useState('')
   const [atestadoModal, setAtestadoModal] = useState<{ url: string; nome: string } | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState('')
@@ -46,6 +47,7 @@ export default function AtividadesPage() {
       const params = new URLSearchParams()
       if (filtroData) params.append('data', filtroData)
       if (filtroStatus) params.append('status', filtroStatus)
+      if (filtroFuncionario) params.append('funcionario', filtroFuncionario)
       if (params.toString()) url += '?' + params.toString()
       const response = await fetch(url)
       if (!response.ok) throw new Error('Erro')
@@ -61,7 +63,7 @@ export default function AtividadesPage() {
   useEffect(() => {
     setLoading(true)
     load()
-  }, [filtroData, filtroStatus])
+  }, [filtroData, filtroStatus, filtroFuncionario])
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este lançamento?')) return
@@ -144,6 +146,13 @@ export default function AtividadesPage() {
             <option value="CONCLUIDO">Concluído</option>
             <option value="EM_ANDAMENTO">Em Andamento</option>
           </select>
+          <input
+              type="text"
+              value={filtroFuncionario}
+              onChange={(e) => setFiltroFuncionario(e.target.value)}
+              placeholder="Buscar funcionário..."
+              className="border rounded-lg px-3 py-2 text-sm"
+            />
         </div>
         {uploadError && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{uploadError}</p>
