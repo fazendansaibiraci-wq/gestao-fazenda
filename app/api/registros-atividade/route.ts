@@ -3,23 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-function mapearTipoAtividade(nome: string): string {
-  const mapa: Record<string, string> = {
-    'pulverização': 'PULVERIZACAO',
-    'herbicida': 'HERBICIDA',
-    'adubação': 'ADUBACAO',
-    'colheita': 'COLHEITA',
-    'capina mecânica': 'CAPINA_MECANICA',
-    'desbrota': 'DESBROTA',
-    'capina manual': 'CAPINA_MANUAL',
-    'chegamento de terra': 'CHEGAMENTO_TERRA',
-    'correção de solo': 'CORRECAO_SOLO',
-    'irrigação': 'IRRIGACAO',
-    'inseticida de solo': 'INSETICIDA_SOLO',
-  }
-  return mapa[nome?.toLowerCase()] || 'GERAIS'
-}
-
 // Calcula qual número de domingo é este no mês (1º, 2º, 3º ou 4º)
 function getNumeroDomingoNoMes(data: Date): number {
   const dia = data.getUTCDate()
@@ -220,7 +203,7 @@ export async function POST(request: NextRequest) {
         horasprevistasdia: cargaHorariaDia,
         talhaoId: body.talhaoId,
         safraId: body.safraId,
-        tipoAtividade: mapearTipoAtividade(body.tipoAtividade),
+        tipoAtividade: body.tipoAtividade,
         status: body.status || 'CONCLUIDO',
         observacao: body.observacao || null,
         fotoEvidencia: body.fotoEvidencia || null,
