@@ -20,26 +20,6 @@ function mapearTipoAtividade(nome: string): string {
   return mapa[nome?.toLowerCase()] || 'GERAIS'
 }
 
-// Verifica se o domingo é um dos domingos que o funcionário trabalha no mês
-// Ex: domingosPorMes = 2 → trabalha no 1º e 3º domingo do mês
-function funcionarioTrabalhaEsteDomingo(data: Date, domingosPorMes: number): boolean {
-  if (domingosPorMes === 0) return false
-  if (domingosPorMes >= 4) return true
-
-  // Descobrir qual domingo do mês é este (1º, 2º, 3º ou 4º)
-  const dia = data.getUTCDate()
-  const numeroDoDomingo = Math.ceil(dia / 7) // 1, 2, 3 ou 4
-
-  // Domingos que trabalha: os primeiros N domingos do mês
-  // domingosPorMes = 1 → só o 1º
-  // domingosPorMes = 2 → 1º e 3º (alternado)
-  // domingosPorMes = 3 → 1º, 2º e 3º
-  if (domingosPorMes === 2) {
-    return numeroDoMes % 2 !== 0 // 1º e 3º domingo
-  }
-  return numeroDoDomingo <= domingosPorMes
-}
-
 // Calcula qual número de domingo é este no mês (1º, 2º, 3º ou 4º)
 function getNumeroDomingoNoMes(data: Date): number {
   const dia = data.getUTCDate()
