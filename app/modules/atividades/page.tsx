@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { Plus, Trash2, FileText, X } from 'lucide-react'
@@ -47,7 +47,6 @@ export default function AtividadesPage() {
       const params = new URLSearchParams()
       if (filtroData) params.append('data', filtroData)
       if (filtroStatus) params.append('status', filtroStatus)
-      if (filtroFuncionario) params.append('funcionario', filtroFuncionario)
       if (params.toString()) url += '?' + params.toString()
       const response = await fetch(url)
       if (!response.ok) throw new Error('Erro')
@@ -63,7 +62,7 @@ export default function AtividadesPage() {
   useEffect(() => {
     setLoading(true)
     load()
-  }, [filtroData, filtroStatus, filtroFuncionario])
+  }, [filtroData, filtroStatus])
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este lançamento?')) return
@@ -117,6 +116,13 @@ export default function AtividadesPage() {
     const map: Record<string, string> = { DIA_INTEIRO: 'Dia inteiro', MANHA: 'Manhã', TARDE: 'Tarde' }
     return map[periodo] || periodo
   }
+
+  // Lista filtrada por nome do funcionário (busca client-side, "contém", case-insensitive).
+  const atividadesFiltradas = useMemo(() => {
+    if (!filtroFuncionario) return atividades
+    const termo = filtroFuncionario.toLowerCase()
+    return atividades.filter((a) => a.funcionario?.name?.toLowerCase().includes(termo))
+  }, [atividades, filtroFuncionario])
 
   if (status === 'loading' || loading) {
     return <div className="flex items-center justify-center h-64"><div className="spinner"></div></div>
@@ -173,14 +179,14 @@ export default function AtividadesPage() {
             </tr>
           </thead>
           <tbody>
-            {atividades.length === 0 ? (
+            {atividadesFiltradas.length === 0 ? (
               <tr>
                 <td colSpan={isGestor ? 7 : 6} className="px-4 py-8 text-center text-gray-500">
                   Nenhuma atividade registrada
                 </td>
               </tr>
             ) : (
-              atividades.map((a) => (
+              atividadesFiltradas.map((a) => (
                 <tr key={a.id} className={`border-b hover:bg-gray-50 ${a.isFalta ? 'bg-red-50' : ''}`}>
                   <td className="px-4 py-3">{new Date(a.data).toLocaleDateString('pt-BR')}</td>
                   <td className="px-4 py-3">{a.isFalta ? '—' : `${a.horaEntrada}${a.horaSaida ? ` - ${a.horaSaida}` : ''}`}</td>
@@ -256,7 +262,7 @@ export default function AtividadesPage() {
 
       <div className="card">
         <p className="text-gray-600 text-sm">Total de Registros</p>
-        <p className="text-3xl font-bold text-primary mt-2">{atividades.length}</p>
+        <p className="text-3xl font-bold text-primary mt-2">{atividadesFiltradas.length}</p>
       </div>
 
       {atestadoModal && (
