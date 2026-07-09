@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
 
       for (const [chaveData, regsDoDia] of gruposPorData) {
         const somaHorasDia = regsDoDia.reduce((acc, r) => acc + (r.horasCalculadas || 0), 0)
-        const cargaDia = regsDoDia[0].horasprevistasdia || config?.cargaHorariaEntressafra || 8
+        const cargaDia = regsDoDia[0].horasprevistasdia ?? (config?.cargaHorariaEntressafra || 8)
         const horasExtrasDia = somaHorasDia > cargaDia ? somaHorasDia - cargaDia : 0
         const horasDevidasDia = somaHorasDia < cargaDia ? cargaDia - somaHorasDia : 0
 
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
             horasBrutas: 0,
             descontoAlmoco: 0,
             horasTrabalhadas: 0,
-            cargaContratual: reg.horasprevistasdia || config?.cargaHorariaEntressafra || 8,
+            cargaContratual: reg.horasprevistasdia ?? (config?.cargaHorariaEntressafra || 8),
             horasExtras: 0,
             horasDevidas: 0,
             isFalta: true,
