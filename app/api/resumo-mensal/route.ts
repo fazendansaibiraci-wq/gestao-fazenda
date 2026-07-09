@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         ehHoraExtra: true,
         passouDiretoAlmoco: true,
       },
-      orderBy: { data: 'asc' },
+      orderBy: [{ data: 'asc' }, { horaEntrada: 'asc' }],
     })
 
     const resumo = funcionarios.map((func) => {
@@ -105,6 +105,55 @@ export async function GET(request: NextRequest) {
       let diasTrabalhados = 0
       let acumuladoProporcional = 0
 
+      // Agrupar registros não-falta por data (chave de dia, já que a hora é
+      // sempre fixada ao meio-dia) para evitar desconto/extra duplicado quando
+      // o funcionário tem mais de um registro (ex: dois turnos) no mesmo dia.
+      const gruposPorData = new Map<string, typeof registrosFuncionario>()
+      for (const reg of registrosFuncionario) {
+        if (reg.isFalta) continue
+        const chaveData = reg.data.toISOString().split('T')[0]
+        if (!gruposPorData.has(chaveData)) gruposPorData.set(chaveData, [])
+        gruposPorData.get(chaveData)!.push(reg)
+      }
+
+      const agregadosPorData = new Map<string, {
+        somaHorasDia: number
+        cargaDia: number
+        horasExtrasDia: number
+        horasDevidasDia: number
+        ultimoRegistroId: string
+      }>()
+
+      for (const [chaveData, regsDoDia] of gruposPorData) {
+        const somaHorasDia = regsDoDia.reduce((acc, r) => acc + (r.horasCalculadas || 0), 0)
+        const cargaDia = regsDoDia[0].horasprevistasdia || config?.cargaHorariaEntressafra || 8
+        const horasExtrasDia = somaHorasDia > cargaDia ? somaHorasDia - cargaDia : 0
+        const horasDevidasDia = somaHorasDia < cargaDia ? cargaDia - somaHorasDia : 0
+
+        // O último registro do dia (por horaEntrada, com id como desempate) é
+        // quem exibe o resultado líquido combinado (horasExtras/horasDevidas).
+        const regsOrdenados = [...regsDoDia].sort((a, b) => {
+          const cmpHora = a.horaEntrada.localeCompare(b.horaEntrada)
+          return cmpHora !== 0 ? cmpHora : a.id.localeCompare(b.id)
+        })
+        const ultimoRegistroId = regsOrdenados[regsOrdenados.length - 1].id
+
+        agregadosPorData.set(chaveData, { somaHorasDia, cargaDia, horasExtrasDia, horasDevidasDia, ultimoRegistroId })
+
+        diasTrabalhados++
+        totalHorasTrabalhadas += somaHorasDia
+        totalHorasExtras += horasExtrasDia
+        totalHorasDevidas += horasDevidasDia
+
+        if (func.pagamentoProporcionalDiario) {
+          const valorHoraDoDia = valorDia / cargaDia
+          const pagamentoDoDia = somaHorasDia < cargaDia
+            ? somaHorasDia * valorHoraDoDia
+            : valorDia + (somaHorasDia - cargaDia) * valorHoraExtra
+          acumuladoProporcional += pagamentoDoDia
+        }
+      }
+
       const registrosDiarios = registrosFuncionario.map((reg) => {
         if (reg.isFalta) {
           totalFaltas++
@@ -124,9 +173,9 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        diasTrabalhados++
+        const chaveData = reg.data.toISOString().split('T')[0]
+        const agregado = agregadosPorData.get(chaveData)!
         const horas = reg.horasCalculadas || 0
-        const cargaDia = reg.horasprevistasdia || config?.cargaHorariaEntressafra || 8
 
         let horasBrutas = horas
         let descontoAlmoco = 0
@@ -136,20 +185,11 @@ export async function GET(request: NextRequest) {
           descontoAlmoco = 1
         }
 
-        const horasExtras = horas > cargaDia ? horas - cargaDia : 0
-        const horasDevidas = horas < cargaDia ? cargaDia - horas : 0
-
-        totalHorasTrabalhadas += horas
-        totalHorasExtras += horasExtras
-        totalHorasDevidas += horasDevidas
-
-        if (func.pagamentoProporcionalDiario) {
-          const valorHoraDoDia = valorDia / cargaDia
-          const pagamentoDoDia = horas < cargaDia
-            ? horas * valorHoraDoDia
-            : valorDia + (horas - cargaDia) * valorHoraExtra
-          acumuladoProporcional += pagamentoDoDia
-        }
+        // Só o último registro do dia carrega horasExtras/horasDevidas do
+        // grupo, pra não exibir "devidas"/"extras" duplicado em cada turno.
+        const ehUltimoRegistroDoDia = reg.id === agregado.ultimoRegistroId
+        const horasExtras = ehUltimoRegistroDoDia ? agregado.horasExtrasDia : 0
+        const horasDevidas = ehUltimoRegistroDoDia ? agregado.horasDevidasDia : 0
 
         return {
           data: reg.data,
@@ -158,7 +198,7 @@ export async function GET(request: NextRequest) {
           horasBrutas: Math.round(horasBrutas * 100) / 100,
           descontoAlmoco,
           horasTrabalhadas: Math.round(horas * 100) / 100,
-          cargaContratual: cargaDia,
+          cargaContratual: agregado.cargaDia,
           horasExtras: Math.round(horasExtras * 100) / 100,
           horasDevidas: Math.round(horasDevidas * 100) / 100,
           isFalta: false,
