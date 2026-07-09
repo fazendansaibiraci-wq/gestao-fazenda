@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
         : totalAcumulado
 
       return {
-        funcionario: { id: func.id, name: func.name, role: func.role },
+        funcionario: { id: func.id, name: func.name, role: func.role, pagamentoProporcionalDiario: func.pagamentoProporcionalDiario },
         estaNaSafra,
         salarioBase,
         valorDia: Math.round(valorDia * 100) / 100,
