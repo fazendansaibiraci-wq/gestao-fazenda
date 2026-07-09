@@ -24,7 +24,7 @@ interface RegistroDiario {
 }
 
 interface ResumoFuncionario {
-  funcionario: { id: string; name: string; role: string }
+  funcionario: { id: string; name: string; role: string; pagamentoProporcionalDiario?: boolean }
   estaNaSafra: boolean
   salarioBase: number
   valorDia: number
@@ -415,7 +415,7 @@ export default function ResumoMensalPage() {
                                           ? 'bg-red-50 border border-red-100'
                                           : dia.horasExtras > 0
                                           ? 'bg-green-50 border border-green-100'
-                                          : dia.horasDevidas > 0
+                                          : dia.horasDevidas > 0 && !r.funcionario.pagamentoProporcionalDiario
                                           ? 'bg-orange-50 border border-orange-100'
                                           : 'bg-gray-50 border border-gray-100'
                                       }`}
@@ -434,9 +434,13 @@ export default function ResumoMensalPage() {
                                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                             +{fmtH(dia.horasExtras)} extras
                                           </span>
-                                        ) : dia.horasDevidas > 0 ? (
+                                        ) : dia.horasDevidas > 0 && !r.funcionario.pagamentoProporcionalDiario ? (
                                           <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
                                             -{fmtH(dia.horasDevidas)} devidas
+                                          </span>
+                                        ) : dia.horasDevidas > 0 && r.funcionario.pagamentoProporcionalDiario ? (
+                                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                            {fmtH(dia.horasTrabalhadas)} trabalhadas
                                           </span>
                                         ) : (
                                           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
