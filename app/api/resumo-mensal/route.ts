@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -125,7 +126,17 @@ export async function GET(request: NextRequest) {
       }>()
 
       for (const [chaveData, regsDoDia] of gruposPorData) {
-        const somaHorasDia = regsDoDia.reduce((acc, r) => acc + (r.horasCalculadas || 0), 0)
+        // Com um único registro no dia, horasCalculadas já reflete corretamente
+        // o desconto de almoço (ou a regra de passouDiretoAlmoco) daquele turno.
+        // Com múltiplos registros (turnos separados por um intervalo), o
+        // intervalo ENTRE os turnos já é o almoço — então somamos as horas
+        // BRUTAS de cada turno, sem descontar almoço de novo em cada um.
+        const somaHorasDia = regsDoDia.length === 1
+          ? (regsDoDia[0].horasCalculadas || 0)
+          : regsDoDia.reduce((acc, r) => {
+              if (!r.horaSaida) return acc + (r.horasCalculadas || 0)
+              return acc + calcularHorasBrutas(r.horaEntrada, r.horaSaida)
+            }, 0)
         const cargaDia = regsDoDia[0].horasprevistasdia ?? (config?.cargaHorariaEntressafra || 8)
         const horasExtrasDia = somaHorasDia > cargaDia ? somaHorasDia - cargaDia : 0
         const horasDevidasDia = somaHorasDia < cargaDia ? cargaDia - somaHorasDia : 0
