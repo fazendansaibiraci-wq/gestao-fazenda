@@ -128,15 +128,41 @@ export async function GET(request: NextRequest) {
       for (const [chaveData, regsDoDia] of gruposPorData) {
         // Com um único registro no dia, horasCalculadas já reflete corretamente
         // o desconto de almoço (ou a regra de passouDiretoAlmoco) daquele turno.
-        // Com múltiplos registros (turnos separados por um intervalo), o
-        // intervalo ENTRE os turnos já é o almoço — então somamos as horas
-        // BRUTAS de cada turno, sem descontar almoço de novo em cada um.
-        const somaHorasDia = regsDoDia.length === 1
-          ? (regsDoDia[0].horasCalculadas || 0)
-          : regsDoDia.reduce((acc, r) => {
-              if (!r.horaSaida) return acc + (r.horasCalculadas || 0)
-              return acc + calcularHorasBrutas(r.horaEntrada, r.horaSaida)
-            }, 0)
+        let somaHorasDia: number
+        if (regsDoDia.length === 1) {
+          somaHorasDia = regsDoDia[0].horasCalculadas || 0
+        } else {
+          // Com múltiplos registros (turnos no mesmo dia), somamos as horas
+          // BRUTAS de cada turno, sem o desconto de almoço já aplicado
+          // individualmente em cada registro.
+          const somaBruta = regsDoDia.reduce((acc, r) => {
+            if (!r.horaSaida) return acc + (r.horasCalculadas || 0)
+            return acc + calcularHorasBrutas(r.horaEntrada, r.horaSaida)
+          }, 0)
+
+          // Intervalo total entre turnos consecutivos (ordenados por
+          // horaEntrada). Turnos colados ou sobrepostos (sem intervalo real)
+          // contam 0 para aquele par.
+          const regsOrdenadosPorEntrada = [...regsDoDia].sort((a, b) => a.horaEntrada.localeCompare(b.horaEntrada))
+          let intervaloTotalDia = 0
+          for (let i = 1; i < regsOrdenadosPorEntrada.length; i++) {
+            const anterior = regsOrdenadosPorEntrada[i - 1]
+            const atual = regsOrdenadosPorEntrada[i]
+            if (!anterior.horaSaida) continue
+            const [hSaidaAnt, mSaidaAnt] = anterior.horaSaida.split(':').map(Number)
+            const [hEntradaAtual, mEntradaAtual] = atual.horaEntrada.split(':').map(Number)
+            const minutosSaidaAnt = hSaidaAnt * 60 + mSaidaAnt
+            const minutosEntradaAtual = hEntradaAtual * 60 + mEntradaAtual
+            intervaloTotalDia += Math.max(0, minutosEntradaAtual - minutosSaidaAnt) / 60
+          }
+
+          // Um intervalo real (>= 1h) somado entre os turnos já cobre o
+          // almoço, então não desconta nada a mais. Turnos colados (sem
+          // intervalo, ou com menos de 1h somado) descontam 1h cheia, uma
+          // única vez no dia.
+          const descontoAlmocoDia = intervaloTotalDia >= 1 ? 0 : 1
+          somaHorasDia = Math.max(0, somaBruta - descontoAlmocoDia)
+        }
         const cargaDia = regsDoDia[0].horasprevistasdia ?? (config?.cargaHorariaEntressafra || 8)
         const horasExtrasDia = somaHorasDia > cargaDia ? somaHorasDia - cargaDia : 0
         const horasDevidasDia = somaHorasDia < cargaDia ? cargaDia - somaHorasDia : 0
