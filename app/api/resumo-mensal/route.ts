@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
         totalFaltas,
         totalHorasTrabalhadas: Math.round(totalHorasTrabalhadas * 100) / 100,
         totalHorasExtras: Math.round(totalHorasExtras * 100) / 100,
-        totalHorasDevidas: Math.round(totalHorasDevidas * 100) / 100,
+        totalHorasDevidas: func.pagamentoProporcionalDiario ? 0 : Math.round(totalHorasDevidas * 100) / 100,
         valorHorasExtras: Math.round(valorHorasExtras * 100) / 100,
         descontoHorasDevidas: Math.round(descontoHorasDevidas * 100) / 100,
         descontoFaltas: Math.round(descontoFaltas * 100) / 100,
