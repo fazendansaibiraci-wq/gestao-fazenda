@@ -24,10 +24,12 @@ export default function TurmasPage() {
     const { data: session, status } = useSession()
     const [diarias, setDiarias] = useState<DiariaTurma[]>([])
     const [talhoes, setTalhoes] = useState([])
+    const [turmas, setTurmas] = useState([])
     const [loading, setLoading] = useState(true)
     const [filtroDataInicio, setFiltroDataInicio] = useState('')
     const [filtroDataFim, setFiltroDataFim] = useState('')
     const [filtroTalhao, setFiltroTalhao] = useState('')
+    const [filtroTurma, setFiltroTurma] = useState('')
 
   const userRole = (session?.user as any)?.role || ''
     const podeAcessar = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -37,6 +39,7 @@ export default function TurmasPage() {
         if (status === 'authenticated' && !podeAcessar) redirect('/dashboard')
         if (status === 'authenticated') {
                 loadTalhoes()
+                loadTurmas()
                 load()
         }
   }, [status])
@@ -48,6 +51,13 @@ export default function TurmasPage() {
         } catch (err) { console.error(err) }
   }
 
+  const loadTurmas = async () => {
+        try {
+                const res = await fetch('/api/turmas?ativo=true')
+                if (res.ok) setTurmas(await res.json())
+        } catch (err) { console.error(err) }
+  }
+
   const load = async () => {
         try {
                 let url = '/api/diarias-turma'
@@ -55,6 +65,7 @@ export default function TurmasPage() {
                 if (filtroDataInicio) params.append('dataInicio', filtroDataInicio)
                 if (filtroDataFim) params.append('dataFim', filtroDataFim)
                 if (filtroTalhao) params.append('talhaoId', filtroTalhao)
+                if (filtroTurma) params.append('turmaId', filtroTurma)
                 if (params.toString()) url += '?' + params.toString()
                 const response = await fetch(url)
                 if (!response.ok) throw new Error('Erro')
@@ -72,7 +83,7 @@ export default function TurmasPage() {
                 setLoading(true)
                 load()
         }
-  }, [filtroDataInicio, filtroDataFim, filtroTalhao])
+  }, [filtroDataInicio, filtroDataFim, filtroTalhao, filtroTurma])
 
   const handleDelete = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir esta diaria de turma?')) return
@@ -111,7 +122,7 @@ export default function TurmasPage() {
                   
                         <div className="card space-y-3">
                                 <h3 className="font-semibold text-primary">Filtros</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                           <div>
                                                       <label className="block text-xs text-gray-500 mb-1">Data Inicial</label>
                                                       <input type="date" value={filtroDataInicio} onChange={(e) => setFiltroDataInicio(e.target.value)} className="border rounded-lg px-3 py-2 text-sm w-full" />
@@ -123,6 +134,10 @@ export default function TurmasPage() {
                                           <select value={filtroTalhao} onChange={(e) => setFiltroTalhao(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
                                                       <option value="">Todos os Talhoes</option>
                                             {talhoes.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                                          </select>
+                                          <select value={filtroTurma} onChange={(e) => setFiltroTurma(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
+                                                      <option value="">Todas as Turmas</option>
+                                            {turmas.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}
                                           </select>
                                 </div>
                         </div>
