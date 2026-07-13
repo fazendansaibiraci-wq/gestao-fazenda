@@ -289,8 +289,8 @@ export default function SettingsPage() {
             {config?.inicioSafra && config?.fimSafra && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
                 <strong>Período safra atual:</strong>{' '}
-                {new Date(config.inicioSafra).toLocaleDateString('pt-BR')} até{' '}
-                {new Date(config.fimSafra).toLocaleDateString('pt-BR')}
+                {new Date(config.inicioSafra).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} até{' '}
+                {new Date(config.fimSafra).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
               </div>
             )}
             <button type="submit" disabled={savingConfig} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
