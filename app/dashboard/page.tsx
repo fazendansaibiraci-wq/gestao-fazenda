@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Leaf, Tractor, Calendar, BarChart3, AlertCircle } from 'lucide-react'
+import { Leaf, Tractor, Calendar, BarChart3, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 interface DashboardStats {
@@ -11,6 +11,12 @@ interface DashboardStats {
   totalSafras: number
   totalMaquinas: number
   atividadesPendentes: number
+}
+
+interface AlertaAusencia {
+  funcionarioId: string
+  nome: string
+  diasFaltantes: string[]
 }
 
 export default function DashboardPage() {
@@ -22,6 +28,8 @@ export default function DashboardPage() {
     atividadesPendentes: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [alertasAusencia, setAlertasAusencia] = useState<AlertaAusencia[]>([])
+  const [alertaAusenciaExpandido, setAlertaAusenciaExpandido] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -34,6 +42,7 @@ export default function DashboardPage() {
         redirect('/modules/atividades')
       }
       loadStats()
+      loadAlertasAusencia()
     }
   }, [status, session])
 
@@ -60,6 +69,23 @@ export default function DashboardPage() {
     }
   }
 
+  const loadAlertasAusencia = async () => {
+    try {
+      const res = await fetch('/api/alertas-ausencia')
+      if (res.ok) {
+        const data = await res.json()
+        setAlertasAusencia(data.data || [])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar alertas de ausência:', error)
+    }
+  }
+
+  const formatarDataCurta = (data: string) => {
+    const [, mes, dia] = data.split('-')
+    return `${dia}/${mes}`
+  }
+
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -82,6 +108,37 @@ export default function DashboardPage() {
           Sistema de Gestão Agrícola - Gestão Fazenda
         </p>
       </div>
+
+      {alertasAusencia.length > 0 && (
+        <div className="card bg-amber-50 border border-amber-300">
+          <button
+            onClick={() => setAlertaAusenciaExpandido(!alertaAusenciaExpandido)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              <p className="font-semibold text-amber-800">
+                {alertasAusencia.length} funcionário(s) com dias sem registro este mês
+              </p>
+            </div>
+            {alertaAusenciaExpandido ? (
+              <ChevronUp className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            )}
+          </button>
+          {alertaAusenciaExpandido && (
+            <div className="mt-3 pt-3 border-t border-amber-200 space-y-2">
+              {alertasAusencia.map((alerta) => (
+                <div key={alerta.funcionarioId} className="text-sm">
+                  <span className="font-medium text-amber-900">{alerta.nome}:</span>{' '}
+                  <span className="text-amber-700">{alerta.diasFaltantes.map(formatarDataCurta).join(', ')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link href="/modules/talhoes">
