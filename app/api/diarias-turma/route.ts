@@ -17,16 +17,17 @@ export async function GET(request: NextRequest) {
       }
 
       const { searchParams } = new URL(request.url)
-          const data = searchParams.get('data')
+          const dataInicio = searchParams.get('dataInicio')
+          const dataFim = searchParams.get('dataFim')
           const talhaoId = searchParams.get('talhaoId')
 
       const where: any = {}
 
-            if (data) {
-                    const dateStart = new Date(data)
-                    const dateEnd = new Date(data)
-                    dateEnd.setDate(dateEnd.getDate() + 1)
-                    where.data = { gte: dateStart, lt: dateEnd }
+            if (dataInicio) {
+                    where.data = { ...where.data, gte: new Date(dataInicio + 'T00:00:00.000Z') }
+            }
+            if (dataFim) {
+                    where.data = { ...where.data, lte: new Date(dataFim + 'T23:59:59.999Z') }
             }
 
       if (talhaoId) {
