@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Trash2, FileText, X } from 'lucide-react'
+import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 interface Atividade {
@@ -22,6 +22,12 @@ interface Atividade {
   funcionario?: { name: string }
 }
 
+interface AlertaAusencia {
+  funcionarioId: string
+  nome: string
+  diasFaltantes: string[]
+}
+
 export default function AtividadesPage() {
   const { data: session, status } = useSession()
   const [atividades, setAtividades] = useState<Atividade[]>([])
@@ -32,13 +38,19 @@ export default function AtividadesPage() {
   const [atestadoModal, setAtestadoModal] = useState<{ url: string; nome: string } | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState('')
+  const [alertasAusencia, setAlertasAusencia] = useState<AlertaAusencia[]>([])
+  const [alertaAusenciaExpandido, setAlertaAusenciaExpandido] = useState(false)
 
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
+  const userId = (session?.user as any)?.id
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
-    if (status === 'authenticated') load()
+    if (status === 'authenticated') {
+      load()
+      loadAlertasAusencia()
+    }
   }, [status])
 
   const load = async () => {
@@ -63,6 +75,23 @@ export default function AtividadesPage() {
     setLoading(true)
     load()
   }, [filtroData, filtroMes])
+
+  const loadAlertasAusencia = async () => {
+    try {
+      const res = await fetch('/api/alertas-ausencia')
+      if (res.ok) {
+        const data = await res.json()
+        setAlertasAusencia(data.data || [])
+      }
+    } catch (err) {
+      console.error('Erro ao carregar alertas de ausência:', err)
+    }
+  }
+
+  const formatarDataCurta = (data: string) => {
+    const [, mes, dia] = data.split('-')
+    return `${dia}/${mes}`
+  }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este lançamento?')) return
@@ -124,6 +153,11 @@ export default function AtividadesPage() {
     return atividades.filter((a) => a.funcionario?.name?.toLowerCase().includes(termo))
   }, [atividades, filtroFuncionario])
 
+  const meuAlertaAusencia = useMemo(
+    () => alertasAusencia.find((a) => a.funcionarioId === userId) || null,
+    [alertasAusencia, userId]
+  )
+
   if (status === 'loading' || loading) {
     return <div className="flex items-center justify-center h-64"><div className="spinner"></div></div>
   }return (
@@ -142,6 +176,50 @@ export default function AtividadesPage() {
           </button>
         </Link>
       </div>
+
+      {isGestor ? (
+        alertasAusencia.length > 0 && (
+          <div className="card bg-amber-50 border border-amber-300">
+            <button
+              onClick={() => setAlertaAusenciaExpandido(!alertaAusenciaExpandido)}
+              className="w-full flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <p className="font-semibold text-amber-800">
+                  {alertasAusencia.length} funcionário(s) com dias sem registro este mês
+                </p>
+              </div>
+              {alertaAusenciaExpandido ? (
+                <ChevronUp className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              )}
+            </button>
+            {alertaAusenciaExpandido && (
+              <div className="mt-3 pt-3 border-t border-amber-200 space-y-2">
+                {alertasAusencia.map((alerta) => (
+                  <div key={alerta.funcionarioId} className="text-sm">
+                    <span className="font-medium text-amber-900">{alerta.nome}:</span>{' '}
+                    <span className="text-amber-700">{alerta.diasFaltantes.map(formatarDataCurta).join(', ')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      ) : (
+        meuAlertaAusencia && (
+          <div className="card bg-amber-50 border border-amber-300">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800">
+                Você esqueceu de registrar atividade em: {meuAlertaAusencia.diasFaltantes.map(formatarDataCurta).join(', ')}
+              </p>
+            </div>
+          </div>
+        )
+      )}
 
       <div className="card space-y-3">
         <h3 className="font-semibold text-primary">Filtros</h3>
