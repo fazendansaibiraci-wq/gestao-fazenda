@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const data = searchParams.get('data')
+    const mes = searchParams.get('mes')
     const status = searchParams.get('status')
     const funcionarioNome = searchParams.get('funcionario')
 
@@ -25,6 +26,11 @@ export async function GET(request: NextRequest) {
       const dateEnd = new Date(data)
       dateEnd.setDate(dateEnd.getDate() + 1)
       where.data = { gte: dateStart, lt: dateEnd }
+    } else if (mes) {
+      const [ano, mesNum] = mes.split('-').map(Number)
+      const inicioMes = new Date(ano, mesNum - 1, 1)
+      const fimMes = new Date(ano, mesNum, 1)
+      where.data = { gte: inicioMes, lt: fimMes }
     }
 
     if (status) {
