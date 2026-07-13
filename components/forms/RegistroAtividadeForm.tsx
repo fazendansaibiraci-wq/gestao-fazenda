@@ -1,8 +1,10 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
+import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 
 interface RegistroAtividadeFormProps {
   id?: string
@@ -166,6 +168,32 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const totalHorasMaquina = form.horimetroInicial && form.horimetroFinal && parseFloat(form.horimetroFinal) > parseFloat(form.horimetroInicial)
     ? (parseFloat(form.horimetroFinal) - parseFloat(form.horimetroInicial)).toFixed(1)
    : null
+
+  // Prévia de horas extras/devidas com base neste registro isolado (mesma regra
+  // usada na criação do registro, em app/api/registros-atividade/route.ts). O
+  // cálculo final do Resumo Mensal pode ajustar o resultado caso existam
+  // múltiplos registros no mesmo dia para o mesmo funcionário (turnos separados).
+  const previewHoras = useMemo(() => {
+    if (!form.horaEntrada || !form.horaSaida) return null
+
+    const funcionarioReferencia: any = isGestor
+      ? (funcionarios as any[]).find((f: any) => f.id === form.funcionarioId)
+      : (funcionarios as any[]).find((f: any) => f.id === (session?.user as any)?.id)
+
+    if (!funcionarioReferencia) return null
+
+    const horasBrutas = calcularHorasBrutas(form.horaEntrada, form.horaSaida)
+    const horasCalculadas = estaNaSafra && form.passouDiretoAlmoco
+      ? horasBrutas
+      : Math.max(0, horasBrutas - 1)
+
+    const cargaDia = calcularCargaHorariaDia(new Date(form.data + 'T12:00:00'), funcionarioReferencia, config)
+
+    const horasExtras = horasCalculadas > cargaDia ? horasCalculadas - cargaDia : 0
+    const horasDevidas = horasCalculadas < cargaDia ? cargaDia - horasCalculadas : 0
+
+    return { horasCalculadas, cargaDia, horasExtras, horasDevidas }
+  }, [form.data, form.horaEntrada, form.horaSaida, form.passouDiretoAlmoco, form.funcionarioId, funcionarios, config, estaNaSafra, session])
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600 text-sm">{error}</p></div>}
@@ -300,6 +328,31 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                     <input type="checkbox" id="passouDiretoAlmoco" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
                     <label htmlFor="passouDiretoAlmoco" style={{fontSize:'14px', fontWeight:500, color:'#92400e', cursor:'pointer', margin:0}}>Passou direto no almoço (1h conta como hora extra)</label>
                   </div>
+                </div>
+              )}
+              {previewHoras && (
+                <div className={`p-3 rounded-lg border ${
+                  previewHoras.horasExtras > 0
+                    ? 'bg-green-50 border-green-200'
+                    : previewHoras.horasDevidas > 0
+                    ? 'bg-amber-50 border-amber-200'
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <p className={`text-sm ${
+                    previewHoras.horasExtras > 0
+                      ? 'text-green-800'
+                      : previewHoras.horasDevidas > 0
+                      ? 'text-amber-800'
+                      : 'text-gray-700'
+                  }`}>
+                    <strong>Horas trabalhadas:</strong> {previewHoras.horasCalculadas.toFixed(1)}h
+                    {previewHoras.horasExtras > 0 && ` — +${previewHoras.horasExtras.toFixed(1)}h de hora extra`}
+                    {previewHoras.horasDevidas > 0 && ` — faltam ${previewHoras.horasDevidas.toFixed(1)}h para completar a carga do dia`}
+                    {previewHoras.horasExtras === 0 && previewHoras.horasDevidas === 0 && ' — carga do dia completa'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Prévia — pode mudar se houver outro registro no mesmo dia
+                  </p>
                 </div>
               )}
             </div>
