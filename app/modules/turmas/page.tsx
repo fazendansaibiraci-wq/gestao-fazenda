@@ -25,7 +25,8 @@ export default function TurmasPage() {
     const [diarias, setDiarias] = useState<DiariaTurma[]>([])
     const [talhoes, setTalhoes] = useState([])
     const [loading, setLoading] = useState(true)
-    const [filtroData, setFiltroData] = useState('')
+    const [filtroDataInicio, setFiltroDataInicio] = useState('')
+    const [filtroDataFim, setFiltroDataFim] = useState('')
     const [filtroTalhao, setFiltroTalhao] = useState('')
 
   const userRole = (session?.user as any)?.role || ''
@@ -51,7 +52,8 @@ export default function TurmasPage() {
         try {
                 let url = '/api/diarias-turma'
                 const params = new URLSearchParams()
-                if (filtroData) params.append('data', filtroData)
+                if (filtroDataInicio) params.append('dataInicio', filtroDataInicio)
+                if (filtroDataFim) params.append('dataFim', filtroDataFim)
                 if (filtroTalhao) params.append('talhaoId', filtroTalhao)
                 if (params.toString()) url += '?' + params.toString()
                 const response = await fetch(url)
@@ -70,7 +72,7 @@ export default function TurmasPage() {
                 setLoading(true)
                 load()
         }
-  }, [filtroData, filtroTalhao])
+  }, [filtroDataInicio, filtroDataFim, filtroTalhao])
 
   const handleDelete = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir esta diaria de turma?')) return
@@ -109,8 +111,15 @@ export default function TurmasPage() {
                   
                         <div className="card space-y-3">
                                 <h3 className="font-semibold text-primary">Filtros</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                          <input type="date" value={filtroData} onChange={(e) => setFiltroData(e.target.value)} className="border rounded-lg px-3 py-2 text-sm" />
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                          <div>
+                                                      <label className="block text-xs text-gray-500 mb-1">Data Inicial</label>
+                                                      <input type="date" value={filtroDataInicio} onChange={(e) => setFiltroDataInicio(e.target.value)} className="border rounded-lg px-3 py-2 text-sm w-full" />
+                                          </div>
+                                          <div>
+                                                      <label className="block text-xs text-gray-500 mb-1">Data Final</label>
+                                                      <input type="date" value={filtroDataFim} onChange={(e) => setFiltroDataFim(e.target.value)} className="border rounded-lg px-3 py-2 text-sm w-full" />
+                                          </div>
                                           <select value={filtroTalhao} onChange={(e) => setFiltroTalhao(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
                                                       <option value="">Todos os Talhoes</option>
                                             {talhoes.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}
