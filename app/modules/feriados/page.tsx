@@ -118,7 +118,7 @@ export default function FeriadosPage() {
                 <div>
                   <p className="font-medium">{f.nome}</p>
                   <p className="text-sm text-gray-600">
-                    {new Date(f.data).toLocaleDateString('pt-BR')}
+                    {new Date(f.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                   </p>
                 </div>
               </div>
@@ -137,7 +137,7 @@ export default function FeriadosPage() {
                 <div>
                   <p className="font-medium">{f.nome}</p>
                   <p className="text-sm text-gray-600">
-                    {new Date(f.data).toLocaleDateString('pt-BR')}
+                    {new Date(f.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                     {f.descricao && ` - ${f.descricao}`}
                   </p>
                 </div>
