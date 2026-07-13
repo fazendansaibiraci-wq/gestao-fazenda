@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
           const dataInicio = searchParams.get('dataInicio')
           const dataFim = searchParams.get('dataFim')
           const talhaoId = searchParams.get('talhaoId')
+          const turmaId = searchParams.get('turmaId')
 
       const where: any = {}
 
@@ -32,6 +33,10 @@ export async function GET(request: NextRequest) {
 
       if (talhaoId) {
               where.talhaoId = talhaoId
+      }
+
+      if (turmaId) {
+              where.turmaId = turmaId
       }
 
       const diarias = await prisma.diariaTurma.findMany({
