@@ -144,8 +144,8 @@ export default function SafrasPage() {
               </span>
             </div>
             <div className="text-sm text-gray-600 mb-4 space-y-1">
-              <p>Início: {new Date(s.dataInicio).toLocaleDateString('pt-BR')}</p>
-              {s.dataFim && <p>Fim: {new Date(s.dataFim).toLocaleDateString('pt-BR')}</p>}
+              <p>Início: {new Date(s.dataInicio).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
+              {s.dataFim && <p>Fim: {new Date(s.dataFim).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>}
             </div>
             {isGestor ? (
               <div className="flex gap-2">
