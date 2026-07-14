@@ -89,7 +89,9 @@ export async function GET(request: NextRequest) {
     }
 
     const ultimoDia = fimIntervalo.getDate()
-    const resultado: { funcionarioId: string; nome: string; diasFaltantes: string[] }[] = []
+
+    // Primeiro identifica os dias faltantes de cada funcionário (lógica já existente).
+    const candidatosPorFuncionario: { func: (typeof funcionarios)[number]; diasFaltantes: string[] }[] = []
 
     for (const func of funcionarios) {
       const datasRegistradas = registrosPorFuncionario.get(func.id) || new Set<string>()
@@ -108,8 +110,79 @@ export async function GET(request: NextRequest) {
       }
 
       if (diasFaltantes.length > 0) {
-        resultado.push({ funcionarioId: func.id, nome: func.name, diasFaltantes })
+        candidatosPorFuncionario.push({ func, diasFaltantes })
       }
+    }
+
+    if (candidatosPorFuncionario.length === 0) {
+      return NextResponse.json({ success: true, data: [] })
+    }
+
+    // Talhão e safra usados como preenchimento obrigatório das faltas geradas
+    // automaticamente (mesma lógica de fallback já usada no formulário manual).
+    const talhaoAtivo = await prisma.talhao.findFirst({ where: { status: 'ATIVO' } })
+
+    let safraAtual = null
+    if (config?.inicioSafra && config?.fimSafra) {
+      safraAtual = await prisma.safra.findFirst({
+        where: {
+          dataInicio: { lte: config.fimSafra },
+          OR: [{ dataFim: null }, { dataFim: { gte: config.inicioSafra } }],
+        },
+      })
+    }
+    if (!safraAtual) {
+      safraAtual = await prisma.safra.findFirst()
+    }
+
+    const resultado: { funcionarioId: string; nome: string; diasFaltantes: string[] }[] = []
+
+    if (talhaoAtivo && safraAtual) {
+      for (const { func, diasFaltantes } of candidatosPorFuncionario) {
+        const diasGerados: string[] = []
+
+        for (const chave of diasFaltantes) {
+          // Checagem extra, logo antes de criar, pra evitar duplicar a falta caso
+          // essa API seja chamada mais de uma vez em sequência rápida (ex: efeito
+          // duplo do React, ou o usuário atualizando a página várias vezes).
+          const inicioDia = new Date(chave)
+          const fimDia = new Date(chave)
+          fimDia.setDate(fimDia.getDate() + 1)
+
+          const jaExiste = await prisma.registroAtividade.findFirst({
+            where: {
+              funcionarioId: func.id,
+              data: { gte: inicioDia, lt: fimDia },
+            },
+          })
+
+          if (jaExiste) continue
+
+          await prisma.registroAtividade.create({
+            data: {
+              funcionarioId: func.id,
+              data: new Date(chave + 'T12:00:00'),
+              isFalta: true,
+              motivoFalta: 'nao_registrado',
+              periodoFalta: 'DIA_INTEIRO',
+              observacao: 'Falta gerada automaticamente por ausência de registro',
+              status: 'CONCLUIDO',
+              horaEntrada: '00:00',
+              tipoAtividade: 'GERAIS',
+              talhaoId: talhaoAtivo.id,
+              safraId: safraAtual.id,
+            },
+          })
+
+          diasGerados.push(chave)
+        }
+
+        if (diasGerados.length > 0) {
+          resultado.push({ funcionarioId: func.id, nome: func.name, diasFaltantes: diasGerados })
+        }
+      }
+    } else {
+      console.error('GET /api/alertas-ausencia: nenhum talhão ativo ou safra encontrada para gerar faltas automáticas')
     }
 
     return NextResponse.json({ success: true, data: resultado })
