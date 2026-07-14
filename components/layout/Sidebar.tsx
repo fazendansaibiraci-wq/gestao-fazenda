@@ -17,7 +17,6 @@ import {
   Fuel,
   ClipboardList,
   Tag,
-  Beaker,
   Users,
   UserPlus,
   DollarSign,
@@ -52,7 +51,6 @@ export function Sidebar() {
   const cadastroItems = [
     { label: 'Cadastro de Produtos', href: '/modules/produtos', icon: Package, excludeRoles: 'FUNCIONARIO|GERENTE' },
     { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
-    { label: 'Receitas', href: '/modules/receitas', icon: Beaker, role: 'GESTOR|AGRONOMO' },
     { label: 'Tipos de Atividade', href: '/modules/tipos-atividade', icon: Tag, role: 'GESTOR' },
     { label: 'Implementos', href: '/modules/implementos', icon: Tractor, role: 'GESTOR' },
     { label: 'Turmas (Cadastro)', href: '/modules/turmas-cadastro', icon: Users, role: 'GESTOR' },
