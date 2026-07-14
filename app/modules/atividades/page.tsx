@@ -17,6 +17,7 @@ interface Atividade {
   motivoFalta?: string
   periodoFalta?: string
   atestadoUrl?: string
+  talhaoId: string
   talhao: { nome: string }
   safra: { nome: string }
   funcionario?: { name: string }
@@ -40,6 +41,10 @@ export default function AtividadesPage() {
   const [uploadError, setUploadError] = useState('')
   const [alertasAusencia, setAlertasAusencia] = useState<AlertaAusencia[]>([])
   const [alertaAusenciaExpandido, setAlertaAusenciaExpandido] = useState(false)
+  const [filtroTalhao, setFiltroTalhao] = useState('')
+  const [filtroTipoAtividade, setFiltroTipoAtividade] = useState('')
+  const [talhoes, setTalhoes] = useState<{ id: string; nome: string }[]>([])
+  const [tiposAtividade, setTiposAtividade] = useState<{ id: number; nome: string }[]>([])
 
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -50,6 +55,10 @@ export default function AtividadesPage() {
     if (status === 'authenticated') {
       load()
       loadAlertasAusencia()
+      if (isGestor) {
+        loadTalhoes()
+        loadTiposAtividade()
+      }
     }
   }, [status])
 
@@ -85,6 +94,30 @@ export default function AtividadesPage() {
       }
     } catch (err) {
       console.error('Erro ao carregar alertas de ausência:', err)
+    }
+  }
+
+  const loadTalhoes = async () => {
+    try {
+      const res = await fetch('/api/talhoes')
+      if (res.ok) {
+        const data = await res.json()
+        setTalhoes(Array.isArray(data) ? data : data.data || [])
+      }
+    } catch (err) {
+      console.error('Erro ao carregar talhões:', err)
+    }
+  }
+
+  const loadTiposAtividade = async () => {
+    try {
+      const res = await fetch('/api/tipos-atividade?ativo=true')
+      if (res.ok) {
+        const data = await res.json()
+        setTiposAtividade(Array.isArray(data) ? data : data.data || [])
+      }
+    } catch (err) {
+      console.error('Erro ao carregar tipos de atividade:', err)
     }
   }
 
@@ -146,12 +179,26 @@ export default function AtividadesPage() {
     return map[periodo] || periodo
   }
 
-  // Lista filtrada por nome do funcionário (busca client-side, "contém", case-insensitive).
+  // Lista filtrada por nome do funcionário (busca client-side, "contém", case-insensitive),
+  // por talhão e por tipo de atividade (comparação exata). Os três filtros se combinam (E lógico).
   const atividadesFiltradas = useMemo(() => {
-    if (!filtroFuncionario) return atividades
-    const termo = filtroFuncionario.toLowerCase()
-    return atividades.filter((a) => a.funcionario?.name?.toLowerCase().includes(termo))
-  }, [atividades, filtroFuncionario])
+    let resultado = atividades
+
+    if (filtroFuncionario) {
+      const termo = filtroFuncionario.toLowerCase()
+      resultado = resultado.filter((a) => a.funcionario?.name?.toLowerCase().includes(termo))
+    }
+
+    if (filtroTalhao) {
+      resultado = resultado.filter((a) => a.talhaoId === filtroTalhao)
+    }
+
+    if (filtroTipoAtividade) {
+      resultado = resultado.filter((a) => a.tipoAtividade === filtroTipoAtividade)
+    }
+
+    return resultado
+  }, [atividades, filtroFuncionario, filtroTalhao, filtroTipoAtividade])
 
   const meuAlertaAusencia = useMemo(
     () => alertasAusencia.find((a) => a.funcionarioId === userId) || null,
@@ -223,7 +270,7 @@ export default function AtividadesPage() {
 
       <div className="card space-y-3">
         <h3 className="font-semibold text-primary">Filtros</h3>
-        <div className={`grid grid-cols-1 gap-4 ${isGestor ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+        <div className={`grid grid-cols-1 gap-4 ${isGestor ? 'md:grid-cols-3 lg:grid-cols-5' : 'md:grid-cols-2'}`}>
           <input
             type="date"
             value={filtroData}
@@ -237,13 +284,35 @@ export default function AtividadesPage() {
             className="border rounded-lg px-3 py-2 text-sm"
           />
           {isGestor && (
-            <input
-              type="text"
-              value={filtroFuncionario}
-              onChange={(e) => setFiltroFuncionario(e.target.value)}
-              placeholder="Buscar funcionário..."
-              className="border rounded-lg px-3 py-2 text-sm"
-            />
+            <>
+              <input
+                type="text"
+                value={filtroFuncionario}
+                onChange={(e) => setFiltroFuncionario(e.target.value)}
+                placeholder="Buscar funcionário..."
+                className="border rounded-lg px-3 py-2 text-sm"
+              />
+              <select
+                value={filtroTalhao}
+                onChange={(e) => setFiltroTalhao(e.target.value)}
+                className="border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">Todos os Talhões</option>
+                {talhoes.map((t) => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
+                ))}
+              </select>
+              <select
+                value={filtroTipoAtividade}
+                onChange={(e) => setFiltroTipoAtividade(e.target.value)}
+                className="border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">Todas as Atividades</option>
+                {tiposAtividade.map((t) => (
+                  <option key={t.id} value={t.nome}>{t.nome}</option>
+                ))}
+              </select>
+            </>
           )}
         </div>
         {uploadError && (
