@@ -118,7 +118,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
               <p className="font-semibold text-amber-800">
-                {alertasAusencia.length} funcionário(s) com dias sem registro este mês
+                {alertasAusencia.length} funcionário(s) com falta(s) gerada(s) automaticamente este mês
               </p>
             </div>
             {alertaAusenciaExpandido ? (
