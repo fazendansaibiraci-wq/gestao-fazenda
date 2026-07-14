@@ -137,7 +137,7 @@ export default function RelatoriosPage() {
             },
             {
               nome: 'Desempenho por Equipamento',
-              colunas: ['Máquina', 'Usos', 'Horas Homem', 'Implemento mais usado'],
+              colunas: ['Máquina', 'Usos', 'Hora Máquina'],
               linhas: Object.entries(
                 registrosFiltrados
                   .filter((r: any) => r.maquinaId)
@@ -148,13 +148,7 @@ export default function RelatoriosPage() {
                     return acc
                   }, {})
               ).map(([nome, regs]: any) => {
-                const implementos = regs.map((r: any) => r.implementoUtilizado).filter(Boolean)
-                const maisUsado = implementos.length > 0
-                  ? implementos.sort((a: string, b: string) =>
-                      implementos.filter((v: string) => v === b).length - implementos.filter((v: string) => v === a).length
-                    )[0]
-                  : '-'
-                return [nome, regs.length, `${calcularHorasMaquina(regs)}h`, maisUsado]
+                return [nome, regs.length, `${calcularHorasMaquina(regs)}h`]
               }),
             },
           ],
@@ -491,8 +485,7 @@ export default function RelatoriosPage() {
                     <tr className="border-b">
                       <th className="text-left py-2 px-3 text-gray-600">Máquina</th>
                       <th className="text-left py-2 px-3 text-gray-600">Usos</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Implemento mais usado</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Hora Máquina</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -506,18 +499,11 @@ export default function RelatoriosPage() {
                           return acc
                         }, {})
                     ).map(([nome, regs]: any) => {
-                      const implementos = regs.map((r: any) => r.implementoUtilizado).filter(Boolean)
-                      const maisUsado = implementos.length > 0
-                        ? implementos.sort((a: string, b: string) =>
-                            implementos.filter((v: string) => v === b).length - implementos.filter((v: string) => v === a).length
-                          )[0]
-                        : '-'
                       return (
                         <tr key={nome} className="border-b hover:bg-gray-50">
                           <td className="py-2 px-3 font-medium">{nome}</td>
                           <td className="py-2 px-3">{regs.length}</td>
                           <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
-                          <td className="py-2 px-3">{maisUsado}</td>
                         </tr>
                       )
                     })}
