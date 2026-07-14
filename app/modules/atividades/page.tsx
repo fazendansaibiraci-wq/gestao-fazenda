@@ -223,7 +223,7 @@ export default function AtividadesPage() {
 
       <div className="card space-y-3">
         <h3 className="font-semibold text-primary">Filtros</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 gap-4 ${isGestor ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
           <input
             type="date"
             value={filtroData}
@@ -236,13 +236,15 @@ export default function AtividadesPage() {
             onChange={(e) => { setFiltroMes(e.target.value); if (e.target.value) setFiltroData('') }}
             className="border rounded-lg px-3 py-2 text-sm"
           />
-          <input
+          {isGestor && (
+            <input
               type="text"
               value={filtroFuncionario}
               onChange={(e) => setFiltroFuncionario(e.target.value)}
               placeholder="Buscar funcionário..."
               className="border rounded-lg px-3 py-2 text-sm"
             />
+          )}
         </div>
         {uploadError && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{uploadError}</p>
