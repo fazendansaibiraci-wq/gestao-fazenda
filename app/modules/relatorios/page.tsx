@@ -158,13 +158,12 @@ export default function RelatoriosPage() {
           sheets: [
             {
               nome: 'Custos por Talhão',
-              colunas: ['Talhão', 'Atividades', 'Horas Homem', 'Horas Máquina', 'Total Bombas'],
+              colunas: ['Talhão', 'Atividades', 'Horas Homem', 'Horas Máquina'],
               linhas: Object.entries(agruparPor('talhaoId')).map(([id, regs]) => [
                 getTalhaoNome(id),
                 regs.length,
                 `${calcularHoras(regs)}h`,
                 `${calcularHorasMaquina(regs)}h`,
-                calcularBombas(regs),
               ]),
             },
             {
@@ -525,7 +524,6 @@ export default function RelatoriosPage() {
                       <th className="text-left py-2 px-3 text-gray-600">Atividades</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Máquina</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Total Bombas</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -535,7 +533,6 @@ export default function RelatoriosPage() {
                         <td className="py-2 px-3">{regs.length}</td>
                         <td className="py-2 px-3">{calcularHoras(regs)}h</td>
                         <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
-                        <td className="py-2 px-3">{calcularBombas(regs)}</td>
                       </tr>
                     ))}
                   </tbody>
