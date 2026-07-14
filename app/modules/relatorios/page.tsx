@@ -69,9 +69,6 @@ export default function RelatoriosPage() {
   const calcularHoras = (regs: any[]) =>
     regs.reduce((acc, r) => acc + (r.horasCalculadas || 0), 0).toFixed(1)
 
-  const calcularBombas = (regs: any[]) =>
-    regs.reduce((acc, r) => acc + (r.totalBombas || 0), 0)
-
   const calcularHorasMaquina = (regs: any[]) =>
     regs.reduce((acc, r) => acc + (r.horasMaquina || 0), 0).toFixed(1)
 
@@ -168,13 +165,12 @@ export default function RelatoriosPage() {
             },
             {
               nome: 'Resumo por Safra',
-              colunas: ['Safra', 'Total Atividades', 'Horas Homem', 'Horas Máquina', 'Total Bombas'],
+              colunas: ['Safra', 'Total Atividades', 'Horas Homem', 'Horas Máquina'],
               linhas: Object.entries(agruparPor('safraId')).map(([id, regs]) => [
                 getSafraNome(id),
                 regs.length,
                 `${calcularHoras(regs)}h`,
                 `${calcularHorasMaquina(regs)}h`,
-                calcularBombas(regs),
               ]),
             },
           ],
@@ -547,7 +543,6 @@ export default function RelatoriosPage() {
                       <th className="text-left py-2 px-3 text-gray-600">Total Atividades</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Máquina</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Total Bombas</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -557,7 +552,6 @@ export default function RelatoriosPage() {
                         <td className="py-2 px-3">{regs.length}</td>
                         <td className="py-2 px-3">{calcularHoras(regs)}h</td>
                         <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
-                        <td className="py-2 px-3">{calcularBombas(regs)}</td>
                       </tr>
                     ))}
                   </tbody>
