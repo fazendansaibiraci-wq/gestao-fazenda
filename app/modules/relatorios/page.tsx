@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { BarChart3, DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText } from 'lucide-react'
+import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText } from 'lucide-react'
 
 export default function RelatoriosPage() {
   const { data: session } = useSession()
@@ -80,7 +80,6 @@ export default function RelatoriosPage() {
 
   const abas = [
     { id: 'historico', label: 'Histórico de Atividades', icon: ClipboardList },
-    { id: 'agronomico', label: 'Relatório Agronômico', icon: BarChart3 },
     { id: 'operacional', label: 'Indicadores Operacionais', icon: TrendingUp },
     { id: 'custos', label: 'Custos', icon: DollarSign },
   ]
@@ -109,23 +108,6 @@ export default function RelatoriosPage() {
               ]),
             },
           ],
-        }
-      case 'agronomico':
-        return {
-          sheets: Object.entries(agruparPor('talhaoId')).map(([id, regs]) => ({
-            nome: getTalhaoNome(id).substring(0, 31),
-            colunas: ['Data', 'Atividade', 'Bombas', 'Adubo', 'Operador', 'Máquina'],
-            linhas: regs
-              .sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime())
-              .map((r: any) => [
-                new Date(r.data).toLocaleDateString('pt-BR'),
-                getTipoLabel(r.tipoAtividade),
-                r.totalBombas || '-',
-                r.quantidadeAdubo ? `${r.quantidadeAdubo}kg` : '-',
-                r.funcionario?.name || '-',
-                r.maquina?.nome || '-',
-              ]),
-          })),
         }
       case 'operacional':
         return {
@@ -458,58 +440,6 @@ export default function RelatoriosPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
-
-          {aba === 'agronomico' && (
-            <div className="space-y-4">
-              {Object.entries(agruparPor('talhaoId')).map(([talhaoId, regs]) => (
-                <div key={talhaoId} className="card">
-                  <h3 className="text-lg font-semibold text-primary mb-4">Talhão: {getTalhaoNome(talhaoId)}</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-primary">{regs.length}</p>
-                      <p className="text-sm text-gray-600">Aplicações</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-primary">{calcularBombas(regs)}</p>
-                      <p className="text-sm text-gray-600">Total Bombas</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-primary">{calcularHoras(regs)}h</p>
-                      <p className="text-sm text-gray-600">Horas Homem</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-primary">{calcularHorasMaquina(regs)}h</p>
-                      <p className="text-sm text-gray-600">Horas Máquina</p>
-                    </div>
-                  </div>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 px-3 text-gray-600">Data</th>
-                        <th className="text-left py-2 px-3 text-gray-600">Atividade</th>
-                        <th className="text-left py-2 px-3 text-gray-600">Bombas</th>
-                        <th className="text-left py-2 px-3 text-gray-600">Adubo</th>
-                        <th className="text-left py-2 px-3 text-gray-600">Operador</th>
-                        <th className="text-left py-2 px-3 text-gray-600">Máquina</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {regs.sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime()).map((r: any) => (
-                        <tr key={r.id} className="border-b hover:bg-gray-50">
-                          <td className="py-2 px-3">{new Date(r.data).toLocaleDateString('pt-BR')}</td>
-                          <td className="py-2 px-3">{getTipoLabel(r.tipoAtividade)}</td>
-                          <td className="py-2 px-3">{r.totalBombas || '-'}</td>
-                          <td className="py-2 px-3">{r.quantidadeAdubo ? `${r.quantidadeAdubo}kg` : '-'}</td>
-                          <td className="py-2 px-3">{r.funcionario?.name || '-'}</td>
-                          <td className="py-2 px-3">{r.maquina?.nome || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
             </div>
           )}
 
