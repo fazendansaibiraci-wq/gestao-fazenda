@@ -79,7 +79,7 @@ export default function RelatoriosPage() {
   const getTipoLabel = (tipo: string) => tiposAtividade.find(t => t.nome === tipo)?.nome || tipo
 
   const abas = [
-    { id: 'historico', label: 'Histórico de Aplicações', icon: ClipboardList },
+    { id: 'historico', label: 'Histórico de Atividades', icon: ClipboardList },
     { id: 'agronomico', label: 'Relatório Agronômico', icon: BarChart3 },
     { id: 'operacional', label: 'Indicadores Operacionais', icon: TrendingUp },
     { id: 'custos', label: 'Custos', icon: DollarSign },
@@ -95,7 +95,7 @@ export default function RelatoriosPage() {
         return {
           sheets: [
             {
-              nome: 'Histórico de Aplicações',
+              nome: 'Histórico de Atividades',
               colunas: ['Data', 'Talhão', 'Safra', 'Atividade', 'Responsável', 'Bombas', 'Horas Homem', 'Implemento'],
               linhas: registrosFiltrados.map(r => [
                 new Date(r.data).toLocaleDateString('pt-BR'),
@@ -427,7 +427,7 @@ export default function RelatoriosPage() {
         <>
           {aba === 'historico' && (
             <div className="card">
-              <h3 className="text-lg font-semibold text-primary mb-4">Histórico de Aplicações</h3>
+              <h3 className="text-lg font-semibold text-primary mb-4">Histórico de Atividades</h3>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
