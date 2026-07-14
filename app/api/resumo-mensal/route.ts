@@ -247,7 +247,7 @@ export async function GET(request: NextRequest) {
       // Cálculo acumulado
       const valorHorasExtras = totalHorasExtras * valorHoraExtra
       const descontoHorasDevidas = totalHorasDevidas * valorHoraNormal
-      const descontoFaltas = totalFaltas * valorDia
+      const descontoFaltas = func.tipoSalario === 'DIARIO' ? 0 : totalFaltas * valorDia
       const totalDescontos = descontoHorasDevidas + descontoFaltas
 
       // Total acumulado = (salário ÷ 30 × dias trabalhados) + horas extras - descontos
