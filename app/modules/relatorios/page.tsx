@@ -516,7 +516,7 @@ export default function RelatoriosPage() {
             <div className="space-y-6">
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-2">Custos por Talhão</h3>
-                <p className="text-sm text-gray-500 mb-4">* Para custos detalhados por produto, cadastre os preços nos Produtos e vincule Receitas de Aplicação às atividades.</p>
+                <p className="text-sm text-gray-500 mb-4">* Para custos detalhados por produto, cadastre os preços nos Produtos.</p>
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
