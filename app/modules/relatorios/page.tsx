@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText } from 'lucide-react'
+import { calcularTotaisHoras } from '@/lib/calculoTotaisFuncionario'
 
 export default function RelatoriosPage() {
   const { data: session } = useSession()
@@ -75,7 +76,7 @@ export default function RelatoriosPage() {
     regs.reduce((acc, r) => acc + (r.horasMaquina || 0), 0).toFixed(1)
 
   const calcularHorasExtras = (regs: any[]) =>
-    regs.reduce((acc, r) => acc + (r.horasExtras || 0), 0).toFixed(1)
+    calcularTotaisHoras(regs).totalHorasExtras.toFixed(1)
 
   const getTalhaoNome = (id: string) => talhoes.find(t => t.id === id)?.nome || id
   const getSafraNome = (id: string) => safras.find(s => s.id === id)?.nome || id
