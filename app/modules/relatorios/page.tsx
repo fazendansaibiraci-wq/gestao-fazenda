@@ -74,6 +74,9 @@ export default function RelatoriosPage() {
   const calcularHorasMaquina = (regs: any[]) =>
     regs.reduce((acc, r) => acc + (r.horasMaquina || 0), 0).toFixed(1)
 
+  const calcularHorasExtras = (regs: any[]) =>
+    regs.reduce((acc, r) => acc + (r.horasExtras || 0), 0).toFixed(1)
+
   const getTalhaoNome = (id: string) => talhoes.find(t => t.id === id)?.nome || id
   const getSafraNome = (id: string) => safras.find(s => s.id === id)?.nome || id
   const getTipoLabel = (tipo: string) => tiposAtividade.find(t => t.nome === tipo)?.nome || tipo
@@ -114,7 +117,7 @@ export default function RelatoriosPage() {
           sheets: [
             {
               nome: 'Desempenho por Operador',
-              colunas: ['Operador', 'Atividades', 'Horas Homem', 'Média h/atividade', 'Faltas'],
+              colunas: ['Operador', 'Atividades', 'Horas Homem', 'Hora Máquina', 'Hora Extra', 'Faltas'],
               linhas: Object.entries(
                 registrosFiltrados.reduce((acc: any, r) => {
                   const nome = r.funcionario?.name || 'Desconhecido'
@@ -126,7 +129,8 @@ export default function RelatoriosPage() {
                 nome,
                 regs.length,
                 `${calcularHoras(regs)}h`,
-                `${regs.length > 0 ? (parseFloat(calcularHoras(regs)) / regs.length).toFixed(1) : 0}h`,
+                `${calcularHorasMaquina(regs)}h`,
+                `${calcularHorasExtras(regs)}h`,
                 regs.filter((r: any) => r.isFalta).length,
               ]),
             },
@@ -453,7 +457,8 @@ export default function RelatoriosPage() {
                       <th className="text-left py-2 px-3 text-gray-600">Operador</th>
                       <th className="text-left py-2 px-3 text-gray-600">Atividades</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Média h/atividade</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Hora Máquina</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Hora Extra</th>
                       <th className="text-left py-2 px-3 text-gray-600">Faltas</th>
                     </tr>
                   </thead>
@@ -470,7 +475,8 @@ export default function RelatoriosPage() {
                         <td className="py-2 px-3 font-medium">{nome}</td>
                         <td className="py-2 px-3">{regs.length}</td>
                         <td className="py-2 px-3">{calcularHoras(regs)}h</td>
-                        <td className="py-2 px-3">{regs.length > 0 ? (parseFloat(calcularHoras(regs)) / regs.length).toFixed(1) : 0}h</td>
+                        <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
+                        <td className="py-2 px-3">{calcularHorasExtras(regs)}h</td>
                         <td className="py-2 px-3">{regs.filter((r: any) => r.isFalta).length}</td>
                       </tr>
                     ))}
