@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText } from 'lucide-react'
+import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle } from 'lucide-react'
 import { calcularTotaisHoras } from '@/lib/calculoTotaisFuncionario'
 
 export default function RelatoriosPage() {
@@ -14,6 +14,7 @@ export default function RelatoriosPage() {
   const [tiposAtividade, setTiposAtividade] = useState<{ id: string; nome: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [exportando, setExportando] = useState(false)
+  const [abastecimentos, setAbastecimentos] = useState<any[]>([])
 
   const [filtros, setFiltros] = useState({
     safraId: '',
@@ -23,6 +24,9 @@ export default function RelatoriosPage() {
     tipoAtividade: '',
   })
 
+  const [filtroDataInicioComb, setFiltroDataInicioComb] = useState('')
+  const [filtroDataFimComb, setFiltroDataFimComb] = useState('')
+
   useEffect(() => {
     loadDados()
   }, [])
@@ -30,16 +34,18 @@ export default function RelatoriosPage() {
   const loadDados = async () => {
     try {
       setLoading(true)
-      const [regRes, talRes, safRes, tipRes] = await Promise.all([
+      const [regRes, talRes, safRes, tipRes, abaRes] = await Promise.all([
         fetch('/api/registros-atividade'),
         fetch('/api/talhoes'),
         fetch('/api/safras'),
         fetch('/api/tipos-atividade?ativo=true'),
+        fetch('/api/abastecimentos'),
       ])
       if (regRes.ok) setRegistros((await regRes.json()).data || [])
       if (talRes.ok) setTalhoes((await talRes.json()).data || [])
       if (safRes.ok) setSafras((await safRes.json()).data || [])
       if (tipRes.ok) setTiposAtividade(await tipRes.json())
+      if (abaRes.ok) setAbastecimentos((await abaRes.json()).data || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -79,13 +85,73 @@ export default function RelatoriosPage() {
   const getSafraNome = (id: string) => safras.find(s => s.id === id)?.nome || id
   const getTipoLabel = (tipo: string) => tiposAtividade.find(t => t.nome === tipo)?.nome || tipo
 
+  // ─── Comparativo de combustível por máquina ──────────────────────────────
+
+  const getResumoCombustivelPorMaquina = () => {
+    const abastecimentosFiltrados = abastecimentos.filter((a: any) => {
+      if (filtroDataInicioComb && new Date(a.data) < new Date(filtroDataInicioComb)) return false
+      if (filtroDataFimComb && new Date(a.data) > new Date(filtroDataFimComb)) return false
+      return true
+    })
+
+    const registrosMaquinaFiltrados = registros.filter((r: any) => {
+      if (!r.maquinaId) return false
+      if (filtroDataInicioComb && new Date(r.data) < new Date(filtroDataInicioComb)) return false
+      if (filtroDataFimComb && new Date(r.data) > new Date(filtroDataFimComb)) return false
+      return true
+    })
+
+    const gruposPorMaquina: Record<string, any[]> = {}
+    abastecimentosFiltrados.forEach((a: any) => {
+      if (!gruposPorMaquina[a.maquinaId]) gruposPorMaquina[a.maquinaId] = []
+      gruposPorMaquina[a.maquinaId].push(a)
+    })
+
+    const resumo = Object.entries(gruposPorMaquina).map(([maquinaId, abs]: any) => {
+      const nomeMaquina = abs[0]?.maquina?.nome || maquinaId
+      const totalHoras = abs.reduce((acc: number, a: any) => acc + (a.horasTrabalhadad || 0), 0)
+      const totalLitros = abs.reduce((acc: number, a: any) => acc + (a.litrosAbastecidos || 0), 0)
+      const custoTotal = abs.reduce(
+        (acc: number, a: any) => acc + (a.custoAbastecimento ?? (a.litrosAbastecidos || 0) * (a.valorPorLitro || 0)),
+        0
+      )
+      const consumoMedioLH = totalHoras > 0 ? totalLitros / totalHoras : 0
+      const horasRegistradasAtividades = registrosMaquinaFiltrados
+        .filter((r: any) => r.maquinaId === maquinaId)
+        .reduce((acc: number, r: any) => acc + (r.horasMaquina || 0), 0)
+
+      // Divergência entre o horímetro (totalHoras) e as horas registradas nas
+      // atividades, em qualquer direção, usada como conferência cruzada.
+      const base = totalHoras > 0 ? totalHoras : horasRegistradasAtividades
+      const divergente = base > 0 && Math.abs(totalHoras - horasRegistradasAtividades) / base > 0.2
+
+      return {
+        maquinaId,
+        nomeMaquina,
+        totalHoras,
+        totalLitros,
+        custoTotal,
+        consumoMedioLH,
+        horasRegistradasAtividades,
+        divergente,
+      }
+    })
+
+    resumo.sort((a, b) => b.consumoMedioLH - a.consumoMedioLH)
+
+    return resumo
+  }
+
   const abas = [
     { id: 'historico', label: 'Histórico de Atividades', icon: ClipboardList },
     { id: 'operacional', label: 'Indicadores Operacionais', icon: TrendingUp },
     { id: 'custos', label: 'Custos', icon: DollarSign },
+    { id: 'combustivel', label: 'Combustível', icon: Fuel },
   ]
 
   const getNomeAba = () => abas.find(a => a.id === aba)?.label || aba
+
+  const resumoCombustivel = getResumoCombustivelPorMaquina()
 
   // ─── Dados por aba para exportação ───────────────────────────────────────
 
@@ -175,6 +241,47 @@ export default function RelatoriosPage() {
             },
           ],
         }
+      case 'combustivel': {
+        const resumoCombustivel = getResumoCombustivelPorMaquina()
+        const totalGeralHoras = resumoCombustivel.reduce((acc, m) => acc + m.totalHoras, 0)
+        const totalGeralLitros = resumoCombustivel.reduce((acc, m) => acc + m.totalLitros, 0)
+        const totalGeralCusto = resumoCombustivel.reduce((acc, m) => acc + m.custoTotal, 0)
+        const totalGeralHorasAtividades = resumoCombustivel.reduce((acc, m) => acc + m.horasRegistradasAtividades, 0)
+        const consumoMedioGeral = totalGeralHoras > 0 ? totalGeralLitros / totalGeralHoras : 0
+        return {
+          sheets: [
+            {
+              nome: 'Comparativo de Combustível',
+              colunas: [
+                'Máquina',
+                'Horas Trabalhadas (Horímetro)',
+                'Litros Abastecidos',
+                'Consumo Médio (L/h)',
+                'Horas em Atividades (conferência)',
+                'Custo Total (R$)',
+              ],
+              linhas: [
+                ...resumoCombustivel.map(m => [
+                  m.nomeMaquina,
+                  `${m.totalHoras.toFixed(1)}h`,
+                  `${m.totalLitros.toFixed(1)}L`,
+                  `${m.consumoMedioLH.toFixed(2)} L/h`,
+                  `${m.horasRegistradasAtividades.toFixed(1)}h`,
+                  `R$ ${m.custoTotal.toFixed(2)}`,
+                ]),
+                [
+                  'Total Geral',
+                  `${totalGeralHoras.toFixed(1)}h`,
+                  `${totalGeralLitros.toFixed(1)}L`,
+                  `${consumoMedioGeral.toFixed(2)} L/h`,
+                  `${totalGeralHorasAtividades.toFixed(1)}h`,
+                  `R$ ${totalGeralCusto.toFixed(2)}`,
+                ],
+              ],
+            },
+          ],
+        }
+      }
       default:
         return { sheets: [] }
     }
@@ -308,36 +415,51 @@ export default function RelatoriosPage() {
           <Filter className="w-5 h-5 text-primary" />
           <h3 className="font-semibold text-primary">Filtros</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div className="form-group">
-            <label>Safra</label>
-            <select value={filtros.safraId} onChange={e => setFiltros(p => ({ ...p, safraId: e.target.value }))}>
-              <option value="">Todas</option>
-              {safras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Talhão</label>
-            <select value={filtros.talhaoId} onChange={e => setFiltros(p => ({ ...p, talhaoId: e.target.value }))}>
-              <option value="">Todos</option>
-              {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Tipo de Atividade</label>
-            <select value={filtros.tipoAtividade} onChange={e => setFiltros(p => ({ ...p, tipoAtividade: e.target.value }))}>
-              <option value="">Todos</option>
-              {tiposAtividade.map(t => <option key={t.id} value={t.nome}>{t.nome}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Data Início</label>
-            <input type="date" value={filtros.dataInicio} onChange={e => setFiltros(p => ({ ...p, dataInicio: e.target.value }))} />
-          </div>
-          <div className="form-group">
-            <label>Data Fim</label>
-            <input type="date" value={filtros.dataFim} onChange={e => setFiltros(p => ({ ...p, dataFim: e.target.value }))} />
-          </div>
+        <div className={`grid grid-cols-1 gap-4 ${aba === 'combustivel' ? 'md:grid-cols-2' : 'md:grid-cols-3 lg:grid-cols-5'}`}>
+          {aba === 'combustivel' ? (
+            <>
+              <div className="form-group">
+                <label>Data Início</label>
+                <input type="date" value={filtroDataInicioComb} onChange={e => setFiltroDataInicioComb(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Data Fim</label>
+                <input type="date" value={filtroDataFimComb} onChange={e => setFiltroDataFimComb(e.target.value)} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="form-group">
+                <label>Safra</label>
+                <select value={filtros.safraId} onChange={e => setFiltros(p => ({ ...p, safraId: e.target.value }))}>
+                  <option value="">Todas</option>
+                  {safras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Talhão</label>
+                <select value={filtros.talhaoId} onChange={e => setFiltros(p => ({ ...p, talhaoId: e.target.value }))}>
+                  <option value="">Todos</option>
+                  {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Tipo de Atividade</label>
+                <select value={filtros.tipoAtividade} onChange={e => setFiltros(p => ({ ...p, tipoAtividade: e.target.value }))}>
+                  <option value="">Todos</option>
+                  {tiposAtividade.map(t => <option key={t.id} value={t.nome}>{t.nome}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Data Início</label>
+                <input type="date" value={filtros.dataInicio} onChange={e => setFiltros(p => ({ ...p, dataInicio: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Data Fim</label>
+                <input type="date" value={filtros.dataFim} onChange={e => setFiltros(p => ({ ...p, dataFim: e.target.value }))} />
+              </div>
+            </>
+          )}
         </div>
        <div className="flex justify-between items-center mt-2">
           <p className="text-sm text-gray-500">{registrosFiltrados.length} registros encontrados</p>
@@ -378,7 +500,7 @@ export default function RelatoriosPage() {
         <div className="flex gap-2">
           <button
             onClick={exportarExcel}
-            disabled={exportando || registrosFiltrados.length === 0}
+            disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : registrosFiltrados.length === 0)}
             className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
           >
             <FileSpreadsheet className="w-4 h-4" />
@@ -386,7 +508,7 @@ export default function RelatoriosPage() {
           </button>
           <button
             onClick={exportarPDF}
-            disabled={exportando || registrosFiltrados.length === 0}
+            disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : registrosFiltrados.length === 0)}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
           >
             <FileText className="w-4 h-4" />
@@ -397,7 +519,7 @@ export default function RelatoriosPage() {
 
       {loading ? (
         <div className="card text-center py-12 text-gray-500">Carregando dados...</div>
-      ) : registrosFiltrados.length === 0 ? (
+      ) : (aba !== 'combustivel' && registrosFiltrados.length === 0) ? (
         <div className="card text-center py-12 text-gray-500">Nenhum registro encontrado com os filtros selecionados.</div>
       ) : (
         <>
@@ -557,6 +679,76 @@ export default function RelatoriosPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {aba === 'combustivel' && (
+            <div className="card">
+              <h3 className="text-lg font-semibold text-primary mb-4">Comparativo de Combustível por Máquina</h3>
+              {resumoCombustivel.length === 0 ? (
+                <p className="text-center py-12 text-gray-500">Nenhum abastecimento encontrado no período selecionado.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-3 text-gray-600">Máquina</th>
+                        <th className="text-left py-2 px-3 text-gray-600">Horas Trabalhadas (Horímetro)</th>
+                        <th className="text-left py-2 px-3 text-gray-600">Litros Abastecidos</th>
+                        <th className="text-left py-2 px-3 text-gray-600">Consumo Médio (L/h)</th>
+                        <th className="text-left py-2 px-3 text-gray-600">Horas em Atividades (conferência)</th>
+                        <th className="text-left py-2 px-3 text-gray-600">Custo Total (R$)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const maxConsumoMedio = Math.max(...resumoCombustivel.map(m => m.consumoMedioLH))
+                        const maxTotalLitros = Math.max(...resumoCombustivel.map(m => m.totalLitros))
+                        const totalGeralHoras = resumoCombustivel.reduce((acc, m) => acc + m.totalHoras, 0)
+                        const totalGeralLitros = resumoCombustivel.reduce((acc, m) => acc + m.totalLitros, 0)
+                        const totalGeralCusto = resumoCombustivel.reduce((acc, m) => acc + m.custoTotal, 0)
+                        const totalGeralHorasAtividades = resumoCombustivel.reduce((acc, m) => acc + m.horasRegistradasAtividades, 0)
+                        const consumoMedioGeral = totalGeralHoras > 0 ? totalGeralLitros / totalGeralHoras : 0
+
+                        return (
+                          <>
+                            {resumoCombustivel.map(m => (
+                              <tr key={m.maquinaId} className="border-b hover:bg-gray-50">
+                                <td className="py-2 px-3 font-medium">{m.nomeMaquina}</td>
+                                <td className="py-2 px-3">
+                                  {m.totalHoras.toFixed(1)}h
+                                  {m.divergente && (
+                                    <AlertCircle
+                                      className="inline-block w-4 h-4 text-amber-500 ml-1 align-text-bottom"
+                                      title="Divergência entre horímetro e horas registradas nas atividades"
+                                    />
+                                  )}
+                                </td>
+                                <td className={`py-2 px-3 ${m.totalLitros === maxTotalLitros && maxTotalLitros > 0 ? 'text-blue-600 font-bold' : ''}`}>
+                                  {m.totalLitros.toFixed(1)}L
+                                </td>
+                                <td className={`py-2 px-3 ${m.consumoMedioLH === maxConsumoMedio && maxConsumoMedio > 0 ? 'text-red-600 font-bold' : ''}`}>
+                                  {m.consumoMedioLH.toFixed(2)} L/h
+                                </td>
+                                <td className="py-2 px-3">{m.horasRegistradasAtividades.toFixed(1)}h</td>
+                                <td className="py-2 px-3">R$ {m.custoTotal.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                            <tr className="border-t-2 border-gray-300 font-semibold bg-gray-50">
+                              <td className="py-2 px-3">Total Geral</td>
+                              <td className="py-2 px-3">{totalGeralHoras.toFixed(1)}h</td>
+                              <td className="py-2 px-3">{totalGeralLitros.toFixed(1)}L</td>
+                              <td className="py-2 px-3">{consumoMedioGeral.toFixed(2)} L/h</td>
+                              <td className="py-2 px-3">{totalGeralHorasAtividades.toFixed(1)}h</td>
+                              <td className="py-2 px-3">R$ {totalGeralCusto.toFixed(2)}</td>
+                            </tr>
+                          </>
+                        )
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </>
