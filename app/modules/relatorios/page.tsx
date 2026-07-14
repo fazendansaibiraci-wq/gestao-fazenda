@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { BarChart3, Leaf, DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText } from 'lucide-react'
+import { BarChart3, DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText } from 'lucide-react'
 
 export default function RelatoriosPage() {
   const { data: session } = useSession()
-  const [aba, setAba] = useState('consumo')
+  const [aba, setAba] = useState('historico')
   const [registros, setRegistros] = useState<any[]>([])
   const [talhoes, setTalhoes] = useState<any[]>([])
   const [safras, setSafras] = useState<any[]>([])
@@ -79,7 +79,6 @@ export default function RelatoriosPage() {
   const getTipoLabel = (tipo: string) => tiposAtividade.find(t => t.nome === tipo)?.nome || tipo
 
   const abas = [
-    { id: 'consumo', label: 'Consumo de Produtos', icon: Leaf },
     { id: 'historico', label: 'Histórico de Aplicações', icon: ClipboardList },
     { id: 'agronomico', label: 'Relatório Agronômico', icon: BarChart3 },
     { id: 'operacional', label: 'Indicadores Operacionais', icon: TrendingUp },
@@ -92,32 +91,6 @@ export default function RelatoriosPage() {
 
   const getDadosExportacao = () => {
     switch (aba) {
-      case 'consumo':
-        return {
-          sheets: [
-            {
-              nome: 'Consumo por Talhão',
-              colunas: ['Talhão', 'Atividades', 'Total Bombas', 'Qtd Adubo (kg)', 'Qtd Corretivo (ton)'],
-              linhas: Object.entries(agruparPor('talhaoId')).map(([id, regs]) => [
-                getTalhaoNome(id),
-                regs.length,
-                calcularBombas(regs),
-                regs.reduce((a, r) => a + (r.quantidadeAdubo || 0), 0).toFixed(2),
-                regs.reduce((a, r) => a + (r.quantidadeCorretivo || 0), 0).toFixed(2),
-              ]),
-            },
-            {
-              nome: 'Consumo por Atividade',
-              colunas: ['Tipo de Atividade', 'Registros', 'Total Bombas', 'Horas Homem'],
-              linhas: Object.entries(agruparPor('tipoAtividade')).map(([tipo, regs]) => [
-                getTipoLabel(tipo),
-                regs.length,
-                calcularBombas(regs),
-                `${calcularHoras(regs)}h`,
-              ]),
-            },
-          ],
-        }
       case 'historico':
         return {
           sheets: [
@@ -452,59 +425,6 @@ export default function RelatoriosPage() {
         <div className="card text-center py-12 text-gray-500">Nenhum registro encontrado com os filtros selecionados.</div>
       ) : (
         <>
-          {aba === 'consumo' && (
-            <div className="space-y-6">
-              <div className="card">
-                <h3 className="text-lg font-semibold text-primary mb-4">Consumo por Talhão</h3>
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-3 text-gray-600">Talhão</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Atividades</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Total Bombas</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Qtd Adubo (kg)</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Qtd Corretivo (ton)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(agruparPor('talhaoId')).map(([talhaoId, regs]) => (
-                      <tr key={talhaoId} className="border-b hover:bg-gray-50">
-                        <td className="py-2 px-3 font-medium">{getTalhaoNome(talhaoId)}</td>
-                        <td className="py-2 px-3">{regs.length}</td>
-                        <td className="py-2 px-3">{calcularBombas(regs)}</td>
-                        <td className="py-2 px-3">{regs.reduce((a, r) => a + (r.quantidadeAdubo || 0), 0).toFixed(2)}</td>
-                        <td className="py-2 px-3">{regs.reduce((a, r) => a + (r.quantidadeCorretivo || 0), 0).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="card">
-                <h3 className="text-lg font-semibold text-primary mb-4">Consumo por Atividade</h3>
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-3 text-gray-600">Tipo de Atividade</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Registros</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Total Bombas</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(agruparPor('tipoAtividade')).map(([tipo, regs]) => (
-                      <tr key={tipo} className="border-b hover:bg-gray-50">
-                        <td className="py-2 px-3 font-medium">{getTipoLabel(tipo)}</td>
-                        <td className="py-2 px-3">{regs.length}</td>
-                        <td className="py-2 px-3">{calcularBombas(regs)}</td>
-                        <td className="py-2 px-3">{calcularHoras(regs)}h</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           {aba === 'historico' && (
             <div className="card">
               <h3 className="text-lg font-semibold text-primary mb-4">Histórico de Aplicações</h3>
