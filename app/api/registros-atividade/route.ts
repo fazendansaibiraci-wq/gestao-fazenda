@@ -205,10 +205,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (body.maquinaId && body.horimetroFinal) {
-      await prisma.maquina.update({
-        where: { id: body.maquinaId },
-        data: { ultimoHorimetro: body.horimetroFinal },
-      })
+      const maquinaAtual = await prisma.maquina.findUnique({ where: { id: body.maquinaId } })
+      if (maquinaAtual && body.horimetroFinal > (maquinaAtual.ultimoHorimetro || 0)) {
+        await prisma.maquina.update({
+          where: { id: body.maquinaId },
+          data: { ultimoHorimetro: body.horimetroFinal },
+        })
+      }
     }
 
     return NextResponse.json(
