@@ -145,6 +145,19 @@ export default function DashboardPage() {
     return `${dia}/${mes}`
   }
 
+  // Encurta nomes longos no eixo do gráfico de Horas por Funcionário (ex:
+  // "LUIS CARLOS DE OLIVEIRA" -> "LUIS ... OLIVEIRA"), mantendo o nome
+  // completo disponível no tooltip.
+  const truncarNomeFuncionario = (nome: string, maxLen: number = 18) => {
+    if (nome.length <= maxLen) return nome
+    const partes = nome.trim().split(/\s+/)
+    if (partes.length <= 2) {
+      return `${nome.slice(0, maxLen - 1)}…`
+    }
+    const curto = `${partes[0]} ... ${partes[partes.length - 1]}`
+    return curto.length <= maxLen + 6 ? curto : `${nome.slice(0, maxLen - 1)}…`
+  }
+
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -312,17 +325,33 @@ export default function DashboardPage() {
             <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
               Sem dados este mês
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dadosGraficos.horasPorFuncionario} layout="vertical" margin={{ left: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis type="number" tick={{ fontSize: 12 }} />
-                <YAxis dataKey="funcionario" type="category" width={110} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="totalHoras" fill="#52b788" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+          ) : (() => {
+            const dadosHorasFuncionario = dadosGraficos.horasPorFuncionario.map(f => ({
+              ...f,
+              funcionarioCurto: truncarNomeFuncionario(f.funcionario),
+            }))
+            const alturaGraficoFuncionarios = Math.max(250, dadosHorasFuncionario.length * 40 + 40)
+
+            return (
+              <ResponsiveContainer width="100%" height={alturaGraficoFuncionarios}>
+                <BarChart
+                  data={dadosHorasFuncionario}
+                  layout="vertical"
+                  margin={{ left: 100, right: 16, top: 8, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="funcionarioCurto" type="category" width={150} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    labelFormatter={(_, payload) =>
+                      payload && payload[0] ? (payload[0].payload as any).funcionario : ''
+                    }
+                  />
+                  <Bar dataKey="totalHoras" fill="#52b788" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )
+          })()}
         </div>
 
         <div className="card">
