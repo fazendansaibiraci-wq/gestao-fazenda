@@ -2,7 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle } from 'lucide-react'
+import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3 } from 'lucide-react'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 import { calcularTotaisHoras } from '@/lib/calculoTotaisFuncionario'
 import { calcularCombustivelPorMaquina } from '@/lib/calculoCombustivelPorMaquina'
 
@@ -124,16 +134,43 @@ export default function RelatoriosPage() {
     return calcularCombustivelPorMaquina(abastecimentos, registros, filtroDataInicioComb, filtroDataFimComb)
   }
 
+  // ─── Comparativo Hora Homem x Hora Máquina por Operador ──────────────────
+  // Reaproveita o mesmo agrupamento por operador usado na tabela "Desempenho
+  // por Operador" (aba Indicadores Operacionais), evitando duplicar a lógica.
+
+  const agruparPorOperador = () => {
+    return registrosFiltrados.reduce((acc: Record<string, any[]>, r) => {
+      const nome = r.funcionario?.name || 'Desconhecido'
+      if (!acc[nome]) acc[nome] = []
+      acc[nome].push(r)
+      return acc
+    }, {} as Record<string, any[]>)
+  }
+
+  const getDadosComparativoHHHM = () => {
+    return Object.entries(agruparPorOperador())
+      .map(([nome, regs]) => {
+        const horasHomem = parseFloat(calcularHoras(regs))
+        const horasMaquina = parseFloat(calcularHorasMaquina(regs))
+        const total = horasHomem + horasMaquina
+        const percentualHoraMaquina = total > 0 ? (horasMaquina / total) * 100 : 0
+        return { operador: nome, horasHomem, horasMaquina, percentualHoraMaquina }
+      })
+      .sort((a, b) => b.horasHomem - a.horasHomem)
+  }
+
   const abas = [
     { id: 'historico', label: 'Histórico de Atividades', icon: ClipboardList },
     { id: 'operacional', label: 'Indicadores Operacionais', icon: TrendingUp },
     { id: 'custos', label: 'Custos', icon: DollarSign },
     { id: 'combustivel', label: 'Combustível', icon: Fuel },
+    { id: 'comparativo-hh-hm', label: 'Comparativo HH/HM', icon: BarChart3 },
   ]
 
   const getNomeAba = () => abas.find(a => a.id === aba)?.label || aba
 
   const resumoCombustivel = getResumoCombustivelPorMaquina()
+  const dadosComparativoHHHM = getDadosComparativoHHHM()
 
   // ─── Dados por aba para exportação ───────────────────────────────────────
 
@@ -166,14 +203,7 @@ export default function RelatoriosPage() {
             {
               nome: 'Desempenho por Operador',
               colunas: ['Operador', 'Atividades', 'Horas Homem', 'Hora Máquina', 'Hora Extra', 'Faltas'],
-              linhas: Object.entries(
-                registrosFiltrados.reduce((acc: any, r) => {
-                  const nome = r.funcionario?.name || 'Desconhecido'
-                  if (!acc[nome]) acc[nome] = []
-                  acc[nome].push(r)
-                  return acc
-                }, {})
-              ).map(([nome, regs]: any) => [
+              linhas: Object.entries(agruparPorOperador()).map(([nome, regs]: any) => [
                 nome,
                 regs.length,
                 `${calcularHoras(regs)}h`,
@@ -268,6 +298,21 @@ export default function RelatoriosPage() {
           ],
         }
       }
+      case 'comparativo-hh-hm':
+        return {
+          sheets: [
+            {
+              nome: 'Comparativo HH/HM',
+              colunas: ['Operador', 'Horas Homem', 'Horas Máquina', '% Hora Máquina'],
+              linhas: dadosComparativoHHHM.map(d => [
+                d.operador,
+                `${d.horasHomem.toFixed(1)}h`,
+                `${d.horasMaquina.toFixed(1)}h`,
+                `${d.percentualHoraMaquina.toFixed(1)}%`,
+              ]),
+            },
+          ],
+        }
       default:
         return { sheets: [] }
     }
@@ -565,14 +610,7 @@ export default function RelatoriosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(
-                      registrosFiltrados.reduce((acc: any, r) => {
-                        const nome = r.funcionario?.name || 'Desconhecido'
-                        if (!acc[nome]) acc[nome] = []
-                        acc[nome].push(r)
-                        return acc
-                      }, {})
-                    ).map(([nome, regs]: any) => (
+                    {Object.entries(agruparPorOperador()).map(([nome, regs]: any) => (
                       <tr key={nome} className="border-b hover:bg-gray-50">
                         <td className="py-2 px-3 font-medium">{nome}</td>
                         <td className="py-2 px-3">{regs.length}</td>
@@ -743,6 +781,85 @@ export default function RelatoriosPage() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {aba === 'comparativo-hh-hm' && (
+            <div className="space-y-6">
+              <div className="card">
+                <h3 className="text-lg font-semibold text-primary mb-4">
+                  Comparativo Hora Homem x Hora Máquina por Operador
+                </h3>
+                {dadosComparativoHHHM.length === 0 ? (
+                  <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
+                    Sem dados
+                  </div>
+                ) : (() => {
+                  const truncarNomeOperador = (nome: string, maxLen: number = 14) => {
+                    if (nome.length <= maxLen) return nome
+                    return `${nome.slice(0, maxLen - 1)}…`
+                  }
+                  const dadosGrafico = dadosComparativoHHHM.map(d => ({
+                    ...d,
+                    operadorCurto: truncarNomeOperador(d.operador),
+                  }))
+                  const alturaGrafico = Math.max(320, dadosGrafico.length * 10 + 280)
+
+                  return (
+                    <ResponsiveContainer width="100%" height={alturaGrafico}>
+                      <BarChart data={dadosGrafico} margin={{ left: 8, right: 16, top: 8, bottom: 70 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis
+                          dataKey="operadorCurto"
+                          interval={0}
+                          angle={-35}
+                          textAnchor="end"
+                          height={80}
+                          tick={{ fontSize: 11 }}
+                        />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          labelFormatter={(_, payload) =>
+                            payload && payload[0] ? (payload[0].payload as any).operador : ''
+                          }
+                          formatter={(value: number) => `${value.toFixed(1)}h`}
+                        />
+                        <Legend />
+                        <Bar dataKey="horasHomem" name="Horas Homem" fill="#2d6a4f" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="horasMaquina" name="Horas Máquina" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )
+                })()}
+              </div>
+
+              <div className="card">
+                <h3 className="text-lg font-semibold text-primary mb-4">Comparativo HH/HM por Operador</h3>
+                {dadosComparativoHHHM.length === 0 ? (
+                  <p className="text-center py-12 text-gray-500">Nenhum registro encontrado no período selecionado.</p>
+                ) : (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-3 text-gray-600">Operador</th>
+                        <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
+                        <th className="text-left py-2 px-3 text-gray-600">Horas Máquina</th>
+                        <th className="text-left py-2 px-3 text-gray-600">% Hora Máquina</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dadosComparativoHHHM.map(d => (
+                        <tr key={d.operador} className="border-b hover:bg-gray-50">
+                          <td className="py-2 px-3 font-medium">{d.operador}</td>
+                          <td className="py-2 px-3">{d.horasHomem.toFixed(1)}h</td>
+                          <td className="py-2 px-3">{d.horasMaquina.toFixed(1)}h</td>
+                          <td className="py-2 px-3">{d.percentualHoraMaquina.toFixed(1)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           )}
         </>
