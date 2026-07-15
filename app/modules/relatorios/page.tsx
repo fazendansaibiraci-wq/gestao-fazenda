@@ -16,6 +16,7 @@ export default function RelatoriosPage() {
   const [loading, setLoading] = useState(true)
   const [exportando, setExportando] = useState(false)
   const [abastecimentos, setAbastecimentos] = useState<any[]>([])
+  const [custoHHHM, setCustoHHHM] = useState<{ talhaoId: string; nomeTalhao: string; custoHHPorHa: number | null; custoHMPorHa: number | null }[]>([])
 
   const [filtros, setFiltros] = useState({
     safraId: '',
@@ -53,6 +54,37 @@ export default function RelatoriosPage() {
       setLoading(false)
     }
   }
+
+  // Custo HH/ha e Custo HM/ha por talhão: calculados inteiramente no servidor
+  // (envolve salário individual de cada funcionário), só os totais agregados
+  // por talhão chegam aqui. Buscado sempre que a aba Custos está ativa ou
+  // quando os filtros de data mudam.
+  const loadCustoHHHM = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (filtros.dataInicio) params.set('dataInicio', filtros.dataInicio)
+      if (filtros.dataFim) params.set('dataFim', filtros.dataFim)
+      const res = await fetch(`/api/relatorios/custo-hh-hm?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCustoHHHM(data.data || [])
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  useEffect(() => {
+    if (aba === 'custos') {
+      loadCustoHHHM()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aba, filtros.dataInicio, filtros.dataFim])
+
+  const getCustoHHHMPorTalhao = (talhaoId: string) => custoHHHM.find(c => c.talhaoId === talhaoId)
+
+  const formatarCustoPorHa = (valor: number | null | undefined) =>
+    valor != null ? `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/ha` : '—'
 
   const registrosFiltrados = registros.filter(r => {
     if (filtros.safraId && r.safraId !== filtros.safraId) return false
@@ -171,12 +203,14 @@ export default function RelatoriosPage() {
           sheets: [
             {
               nome: 'Custos por Talhão',
-              colunas: ['Talhão', 'Atividades', 'Horas Homem', 'Horas Máquina'],
+              colunas: ['Talhão', 'Atividades', 'Horas Homem', 'Horas Máquina', 'Custo HH/ha', 'Custo HM/ha'],
               linhas: Object.entries(agruparPor('talhaoId')).map(([id, regs]) => [
                 getTalhaoNome(id),
                 regs.length,
                 `${calcularHoras(regs)}h`,
                 `${calcularHorasMaquina(regs)}h`,
+                formatarCustoPorHa(getCustoHHHMPorTalhao(id)?.custoHHPorHa),
+                formatarCustoPorHa(getCustoHHHMPorTalhao(id)?.custoHMPorHa),
               ]),
             },
             {
@@ -592,6 +626,8 @@ export default function RelatoriosPage() {
                       <th className="text-left py-2 px-3 text-gray-600">Atividades</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Máquina</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Custo HH/ha</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Custo HM/ha</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -601,6 +637,8 @@ export default function RelatoriosPage() {
                         <td className="py-2 px-3">{regs.length}</td>
                         <td className="py-2 px-3">{calcularHoras(regs)}h</td>
                         <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
+                        <td className="py-2 px-3">{formatarCustoPorHa(getCustoHHHMPorTalhao(talhaoId)?.custoHHPorHa)}</td>
+                        <td className="py-2 px-3">{formatarCustoPorHa(getCustoHHHMPorTalhao(talhaoId)?.custoHMPorHa)}</td>
                       </tr>
                     ))}
                   </tbody>
