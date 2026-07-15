@@ -42,7 +42,9 @@ export async function POST(request: NextRequest) {
     })
 
     const horimetroAnterior = abastecimentoAnterior?.horimetroAtual || 0
-    const horasTrabalhadad = body.horimetroAtual - horimetroAnterior
+    const horasTrabalhadad = abastecimentoAnterior
+      ? Math.max(0, body.horimetroAtual - abastecimentoAnterior.horimetroAtual)
+      : 0
     const consumoLporH = horasTrabalhadad > 0 ? body.litrosAbastecidos / horasTrabalhadad : 0
     const custoAbastecimento = body.litrosAbastecidos * body.valorPorLitro
 
