@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle } from 'lucide-react'
 import { calcularTotaisHoras } from '@/lib/calculoTotaisFuncionario'
+import { calcularCombustivelPorMaquina } from '@/lib/calculoCombustivelPorMaquina'
 
 export default function RelatoriosPage() {
   const { data: session } = useSession()
@@ -88,58 +89,7 @@ export default function RelatoriosPage() {
   // ─── Comparativo de combustível por máquina ──────────────────────────────
 
   const getResumoCombustivelPorMaquina = () => {
-    const abastecimentosFiltrados = abastecimentos.filter((a: any) => {
-      if (filtroDataInicioComb && new Date(a.data) < new Date(filtroDataInicioComb)) return false
-      if (filtroDataFimComb && new Date(a.data) > new Date(filtroDataFimComb)) return false
-      return true
-    })
-
-    const registrosMaquinaFiltrados = registros.filter((r: any) => {
-      if (!r.maquinaId) return false
-      if (filtroDataInicioComb && new Date(r.data) < new Date(filtroDataInicioComb)) return false
-      if (filtroDataFimComb && new Date(r.data) > new Date(filtroDataFimComb)) return false
-      return true
-    })
-
-    const gruposPorMaquina: Record<string, any[]> = {}
-    abastecimentosFiltrados.forEach((a: any) => {
-      if (!gruposPorMaquina[a.maquinaId]) gruposPorMaquina[a.maquinaId] = []
-      gruposPorMaquina[a.maquinaId].push(a)
-    })
-
-    const resumo = Object.entries(gruposPorMaquina).map(([maquinaId, abs]: any) => {
-      const nomeMaquina = abs[0]?.maquina?.nome || maquinaId
-      const totalHoras = abs.reduce((acc: number, a: any) => acc + (a.horasTrabalhadad || 0), 0)
-      const totalLitros = abs.reduce((acc: number, a: any) => acc + (a.litrosAbastecidos || 0), 0)
-      const custoTotal = abs.reduce(
-        (acc: number, a: any) => acc + (a.custoAbastecimento ?? (a.litrosAbastecidos || 0) * (a.valorPorLitro || 0)),
-        0
-      )
-      const consumoMedioLH = totalHoras > 0 ? totalLitros / totalHoras : 0
-      const horasRegistradasAtividades = registrosMaquinaFiltrados
-        .filter((r: any) => r.maquinaId === maquinaId)
-        .reduce((acc: number, r: any) => acc + (r.horasMaquina || 0), 0)
-
-      // Divergência entre o horímetro (totalHoras) e as horas registradas nas
-      // atividades, em qualquer direção, usada como conferência cruzada.
-      const base = totalHoras > 0 ? totalHoras : horasRegistradasAtividades
-      const divergente = base > 0 && Math.abs(totalHoras - horasRegistradasAtividades) / base > 0.2
-
-      return {
-        maquinaId,
-        nomeMaquina,
-        totalHoras,
-        totalLitros,
-        custoTotal,
-        consumoMedioLH,
-        horasRegistradasAtividades,
-        divergente,
-      }
-    })
-
-    resumo.sort((a, b) => b.consumoMedioLH - a.consumoMedioLH)
-
-    return resumo
+    return calcularCombustivelPorMaquina(abastecimentos, registros, filtroDataInicioComb, filtroDataFimComb)
   }
 
   const abas = [
