@@ -165,6 +165,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
   const needsAdubo = form.tipoAtividade === 'Adubação'
   const needsCorretivo = form.tipoAtividade === 'Correção de Solo'
+  const needsBombas = ['drench', 'pulverização', 'pulverizacao', 'herbicida'].includes(form.tipoAtividade.toLowerCase())
   const totalHorasMaquina = form.horimetroInicial && form.horimetroFinal && parseFloat(form.horimetroFinal) > parseFloat(form.horimetroInicial)
     ? (parseFloat(form.horimetroFinal) - parseFloat(form.horimetroInicial)).toFixed(1)
    : null
@@ -392,6 +393,16 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   <label>Quantidade</label>
                   <input type="number" name="quantidadeCorretivo" value={form.quantidadeCorretivo} onChange={handleChange} disabled={loading} step="0.001" placeholder="0" />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {needsBombas && (
+            <div className="card">
+              <h3 className="text-lg font-semibold text-primary mb-4">Aplicação</h3>
+              <div className="form-group">
+                <label>Quantidade de Bombas</label>
+                <input type="number" name="totalBombas" value={form.totalBombas} onChange={handleChange} disabled={loading} min="0" step="1" placeholder="0" />
               </div>
             </div>
           )}
