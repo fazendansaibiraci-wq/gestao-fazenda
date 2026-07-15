@@ -91,6 +91,18 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value }))
   }
 
+  const handleMaquinaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const maquinaId = e.target.value
+    const maquinaSelecionada: any = maquinas.find((m: any) => m.id === maquinaId)
+    setForm(prev => ({
+      ...prev,
+      maquinaId,
+      horimetroInicial: maquinaId && maquinaSelecionada
+        ? String(maquinaSelecionada.ultimoHorimetro ?? 0)
+        : '',
+    }))
+  }
+
   const validateHorimetro = () => {
     if (form.maquinaId && form.horimetroInicial && form.horimetroFinal) {
       if (parseFloat(form.horimetroFinal) <= parseFloat(form.horimetroInicial)) {
@@ -412,7 +424,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
             <div className="space-y-4">
               <div className="form-group">
                 <label>Máquina Utilizada</label>
-                <select name="maquinaId" value={form.maquinaId} onChange={handleChange} disabled={loading}>
+                <select name="maquinaId" value={form.maquinaId} onChange={handleMaquinaChange} disabled={loading}>
                   <option value="">Sem máquina</option>
                   {maquinas.map((m:any) => <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>)}
                 </select>
@@ -423,6 +435,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                     <div className="form-group">
                       <label>Horímetro Inicial (h)</label>
                       <input type="number" name="horimetroInicial" value={form.horimetroInicial} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required />
+                      <p className="text-xs text-gray-500 mt-1">Preenchido automaticamente com o último horímetro registrado da máquina. Ajuste se necessário.</p>
                     </div>
                     <div className="form-group">
                       <label>Horímetro Final (h)</label>
