@@ -16,27 +16,6 @@ export async function GET(request: NextRequest) {
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
     const fimMes = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59)
 
-    // ─── Atividades por Talhão ────────────────────────────────────────────
-    const registrosAtividadeMes = await prisma.registroAtividade.findMany({
-      where: {
-        data: { gte: inicioMes, lte: fimMes },
-        isFalta: false,
-      },
-      include: {
-        talhao: true,
-      },
-    })
-
-    const contagemPorTalhao: Record<string, number> = {}
-    registrosAtividadeMes.forEach((r) => {
-      const nomeTalhao = r.talhao?.nome || 'Sem talhão'
-      contagemPorTalhao[nomeTalhao] = (contagemPorTalhao[nomeTalhao] || 0) + 1
-    })
-
-    const atividadesPorTalhao = Object.entries(contagemPorTalhao)
-      .map(([talhao, quantidade]) => ({ talhao, quantidade }))
-      .sort((a, b) => b.quantidade - a.quantidade)
-
     // ─── Consumo de Combustível por Máquina (L/h) ─────────────────────────
     const abastecimentosMes = await prisma.abastecimentoTrator.findMany({
       where: {
@@ -104,7 +83,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        atividadesPorTalhao,
         consumoPorMaquina,
         horasPorFuncionario,
         custoDieselPorDia,
