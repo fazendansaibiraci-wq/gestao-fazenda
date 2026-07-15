@@ -44,6 +44,8 @@ export async function PUT(
         ano: body.ano,
         placa: body.placa,
         valor: body.valor ? parseFloat(body.valor) : null,
+        valorResidual: body.valorResidual ? parseFloat(body.valorResidual) : null,
+        vidaUtilHoras: body.vidaUtilHoras ? parseFloat(body.vidaUtilHoras) : null,
         status: body.status,
         ultimoHorimetro: body.ultimoHorimetro !== undefined ? parseFloat(body.ultimoHorimetro) : undefined,
       },
