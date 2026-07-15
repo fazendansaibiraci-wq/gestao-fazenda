@@ -26,6 +26,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [produtos, setProdutos] = useState([])
   const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
   const userRole = (session?.user as any)?.role || ''
+  const podeEditarHorimetroInicial = userRole === 'GESTOR'
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
   const [atestadoFile, setAtestadoFile] = useState<File | null>(null)
   const [atestadoUploading, setAtestadoUploading] = useState(false)
@@ -434,8 +435,12 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="form-group">
                       <label>Horímetro Inicial (h)</label>
-                      <input type="number" name="horimetroInicial" value={form.horimetroInicial} onChange={handleChange} disabled={loading} step="0.1" placeholder="0,0" required />
-                      <p className="text-xs text-gray-500 mt-1">Preenchido automaticamente com o último horímetro registrado da máquina. Ajuste se necessário.</p>
+                      <input type="number" name="horimetroInicial" value={form.horimetroInicial} onChange={handleChange} disabled={loading || !podeEditarHorimetroInicial} step="0.1" placeholder="0,0" required />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {podeEditarHorimetroInicial
+                          ? 'Preenchido automaticamente com o último horímetro registrado da máquina. Ajuste se necessário.'
+                          : 'Preenchido automaticamente com o último horímetro registrado da máquina. Apenas o gestor pode alterar este valor.'}
+                      </p>
                     </div>
                     <div className="form-group">
                       <label>Horímetro Final (h)</label>
