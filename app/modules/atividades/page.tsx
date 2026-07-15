@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 
 interface Atividade {
   id: string
@@ -21,6 +22,18 @@ interface Atividade {
   talhao: { nome: string }
   safra: { nome: string }
   funcionario?: { name: string }
+  horasCalculadas?: number | null
+  horasprevistasdia?: number | null
+  passouDiretoAlmoco?: boolean
+  observacao?: string | null
+  maquinaId?: string | null
+  maquina?: { nome: string } | null
+  implementoUtilizado?: string | null
+  totalBombas?: number | null
+  tipoAdubo?: string | null
+  quantidadeAdubo?: number | null
+  tipoCorretivo?: string | null
+  quantidadeCorretivo?: number | null
 }
 
 interface AlertaAusencia {
@@ -47,6 +60,7 @@ export default function AtividadesPage() {
   const [talhoes, setTalhoes] = useState<{ id: string; nome: string }[]>([])
   const [tiposAtividade, setTiposAtividade] = useState<{ id: number; nome: string }[]>([])
   const [maquinas, setMaquinas] = useState<{ id: string; nome: string }[]>([])
+  const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
 
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -192,6 +206,24 @@ export default function AtividadesPage() {
     if (!periodo) return ''
     const map: Record<string, string> = { DIA_INTEIRO: 'Dia inteiro', MANHA: 'Manhã', TARDE: 'Tarde' }
     return map[periodo] || periodo
+  }
+
+  const toggleExpandir = (id: string) => {
+    setExpandidos((prev) => {
+      const novo = new Set(prev)
+      if (novo.has(id)) {
+        novo.delete(id)
+      } else {
+        novo.add(id)
+      }
+      return novo
+    })
+  }
+
+  const formatarHoras = (h: number) => {
+    const horas = Math.floor(h)
+    const minutos = Math.round((h - horas) * 60)
+    return `${horas}h ${minutos.toString().padStart(2, '0')}min`
   }
 
   // Lista filtrada por nome do funcionário (busca client-side, "contém", case-insensitive),
@@ -353,6 +385,7 @@ export default function AtividadesPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-gray-50">
+              <th className="px-4 py-3 text-left font-semibold w-10"></th>
               <th className="px-4 py-3 text-left font-semibold">Data</th>
               <th className="px-4 py-3 text-left font-semibold">Horário</th>
               {isGestor && <th className="px-4 py-3 text-left font-semibold">Funcionário</th>}
@@ -365,13 +398,23 @@ export default function AtividadesPage() {
           <tbody>
             {atividadesFiltradas.length === 0 ? (
               <tr>
-                <td colSpan={isGestor ? 7 : 6} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={isGestor ? 8 : 7} className="px-4 py-8 text-center text-gray-500">
                   Nenhuma atividade registrada
                 </td>
               </tr>
             ) : (
               atividadesFiltradas.map((a) => (
-                <tr key={a.id} className={`border-b hover:bg-gray-50 ${a.isFalta ? 'bg-red-50' : ''}`}>
+                <Fragment key={a.id}>
+                <tr className={`border-b hover:bg-gray-50 ${a.isFalta ? 'bg-red-50' : ''}`}>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => toggleExpandir(a.id)}
+                      className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors"
+                      title={expandidos.has(a.id) ? 'Recolher detalhes' : 'Ver detalhes'}
+                    >
+                      {expandidos.has(a.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </td>
                   <td className="px-4 py-3">{new Date(a.data).toLocaleDateString('pt-BR')}</td>
                   <td className="px-4 py-3">{a.isFalta ? '—' : `${a.horaEntrada}${a.horaSaida ? ` - ${a.horaSaida}` : ''}`}</td>
                   {isGestor && <td className="px-4 py-3 text-gray-600">{a.funcionario?.name || '-'}</td>}
@@ -438,6 +481,136 @@ export default function AtividadesPage() {
                     </div>
                   </td>
                 </tr>
+                {expandidos.has(a.id) && (
+                  <tr className={`border-b ${a.isFalta ? 'bg-red-50' : 'bg-gray-50'}`}>
+                    <td colSpan={isGestor ? 8 : 7} className="px-4 py-4">
+                      {a.isFalta ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs text-gray-600">
+                          <div>
+                            <span className="block text-gray-400">Motivo da Falta</span>
+                            <span className="font-medium text-gray-700">
+                              {a.motivoFalta ? a.motivoFalta.replace(/_/g, ' ') : '—'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-gray-400">Período da Falta</span>
+                            <span className="font-medium text-gray-700">{periodoLabel(a.periodoFalta) || '—'}</span>
+                          </div>
+                          {a.observacao && (
+                            <div className="col-span-2 md:col-span-3">
+                              <span className="block text-gray-400">Observação</span>
+                              <span className="font-medium text-gray-700">{a.observacao}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (() => {
+                        const horasBrutas = a.horaSaida ? calcularHorasBrutas(a.horaEntrada, a.horaSaida) : null
+                        const horasCalc = a.horasCalculadas ?? 0
+                        const cargaDia = a.horasprevistasdia ?? 0
+                        const horasExtras = horasCalc > cargaDia ? horasCalc - cargaDia : 0
+                        const horasDevidas = horasCalc < cargaDia ? cargaDia - horasCalc : 0
+
+                        return (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-gray-600">
+                              <div>
+                                <span className="block text-gray-400">Entrada</span>
+                                <span className="font-medium text-gray-700">{a.horaEntrada}</span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Saída</span>
+                                <span className="font-medium text-gray-700">{a.horaSaida || '—'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Tempo Bruto</span>
+                                <span className="font-medium text-gray-700">{horasBrutas != null ? formatarHoras(horasBrutas) : '—'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Almoço</span>
+                                <span className={`font-medium ${a.passouDiretoAlmoco ? 'text-green-600' : 'text-gray-700'}`}>
+                                  {a.horaSaida ? (a.passouDiretoAlmoco ? 'Passou direto (+1h extra)' : '- 1h') : '—'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Carga Contratual do Dia</span>
+                                <span className="font-medium text-gray-700">{formatarHoras(cargaDia)}</span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Horas Calculadas</span>
+                                <span className="font-medium text-gray-700">{formatarHoras(horasCalc)}</span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Horas Extras</span>
+                                <span className={`font-medium ${horasExtras > 0 ? 'text-green-600' : 'text-gray-700'}`}>
+                                  {horasExtras > 0 ? formatarHoras(horasExtras) : '—'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Horas Devidas</span>
+                                <span className={`font-medium ${horasDevidas > 0 ? 'text-orange-600' : 'text-gray-700'}`}>
+                                  {horasDevidas > 0 ? formatarHoras(horasDevidas) : '—'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Talhão</span>
+                                <span className="font-medium text-gray-700">{a.talhao?.nome || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Safra</span>
+                                <span className="font-medium text-gray-700">{a.safra?.nome || '-'}</span>
+                              </div>
+                              <div>
+                                <span className="block text-gray-400">Tipo de Atividade</span>
+                                <span className="font-medium text-gray-700">{a.tipoAtividade}</span>
+                              </div>
+                              {a.maquinaId && (
+                                <div>
+                                  <span className="block text-gray-400">Máquina</span>
+                                  <span className="font-medium text-gray-700">{a.maquina?.nome || '-'}</span>
+                                </div>
+                              )}
+                              {a.implementoUtilizado && (
+                                <div>
+                                  <span className="block text-gray-400">Implemento</span>
+                                  <span className="font-medium text-gray-700">{a.implementoUtilizado}</span>
+                                </div>
+                              )}
+                              {a.totalBombas != null && (
+                                <div>
+                                  <span className="block text-gray-400">Total de Bombas</span>
+                                  <span className="font-medium text-gray-700">{a.totalBombas}</span>
+                                </div>
+                              )}
+                              {a.tipoAdubo && (
+                                <div>
+                                  <span className="block text-gray-400">Adubo</span>
+                                  <span className="font-medium text-gray-700">
+                                    {a.tipoAdubo}{a.quantidadeAdubo != null ? ` — ${a.quantidadeAdubo}` : ''}
+                                  </span>
+                                </div>
+                              )}
+                              {a.tipoCorretivo && (
+                                <div>
+                                  <span className="block text-gray-400">Corretivo</span>
+                                  <span className="font-medium text-gray-700">
+                                    {a.tipoCorretivo}{a.quantidadeCorretivo != null ? ` — ${a.quantidadeCorretivo}` : ''}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            {a.observacao && (
+                              <div className="text-xs text-gray-600">
+                                <span className="block text-gray-400">Observação</span>
+                                <span className="font-medium text-gray-700">{a.observacao}</span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))
             )}
           </tbody>
