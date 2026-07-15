@@ -14,6 +14,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
 } from 'recharts'
 
@@ -30,9 +31,11 @@ interface AlertaAusencia {
   diasFaltantes: string[]
 }
 
-interface AtividadePorTalhao {
-  talhao: string
-  quantidade: number
+interface CustoHHHMPorTalhao {
+  talhaoId: string
+  nomeTalhao: string
+  custoHHPorHa: number | null
+  custoHMPorHa: number | null
 }
 
 interface ConsumoPorMaquina {
@@ -51,7 +54,6 @@ interface CustoDieselPorDia {
 }
 
 interface DadosGraficos {
-  atividadesPorTalhao: AtividadePorTalhao[]
   consumoPorMaquina: ConsumoPorMaquina[]
   horasPorFuncionario: HorasPorFuncionario[]
   custoDieselPorDia: CustoDieselPorDia[]
@@ -69,11 +71,11 @@ export default function DashboardPage() {
   const [alertasAusencia, setAlertasAusencia] = useState<AlertaAusencia[]>([])
   const [alertaAusenciaExpandido, setAlertaAusenciaExpandido] = useState(false)
   const [dadosGraficos, setDadosGraficos] = useState<DadosGraficos>({
-    atividadesPorTalhao: [],
     consumoPorMaquina: [],
     horasPorFuncionario: [],
     custoDieselPorDia: [],
   })
+  const [custoHHHMPorTalhao, setCustoHHHMPorTalhao] = useState<CustoHHHMPorTalhao[]>([])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -88,6 +90,7 @@ export default function DashboardPage() {
       loadStats()
       loadAlertasAusencia()
       loadDadosGraficos()
+      loadCustoHHHM()
     }
   }, [status, session])
 
@@ -140,6 +143,29 @@ export default function DashboardPage() {
     }
   }
 
+  const formatarDataYYYYMMDD = (data: Date) => {
+    const ano = data.getFullYear()
+    const mes = String(data.getMonth() + 1).padStart(2, '0')
+    const dia = String(data.getDate()).padStart(2, '0')
+    return `${ano}-${mes}-${dia}`
+  }
+
+  const loadCustoHHHM = async () => {
+    try {
+      const hoje = new Date()
+      const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+      const dataInicio = formatarDataYYYYMMDD(inicioMes)
+      const dataFim = formatarDataYYYYMMDD(hoje)
+      const res = await fetch(`/api/relatorios/custo-hh-hm?dataInicio=${dataInicio}&dataFim=${dataFim}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCustoHHHMPorTalhao(data.data || [])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar custo HH/HM por talhão:', error)
+    }
+  }
+
   const formatarDataCurta = (data: string) => {
     const [, mes, dia] = data.split('-')
     return `${dia}/${mes}`
@@ -157,6 +183,10 @@ export default function DashboardPage() {
     const curto = `${partes[0]} ... ${partes[partes.length - 1]}`
     return curto.length <= maxLen + 6 ? curto : `${nome.slice(0, maxLen - 1)}…`
   }
+
+  const semDadosCustoHHHM =
+    custoHHHMPorTalhao.length === 0 ||
+    custoHHHMPorTalhao.every((t) => t.custoHHPorHa == null && t.custoHMPorHa == null)
 
   if (status === 'loading') {
     return (
@@ -282,22 +312,32 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card">
-          <h3 className="font-semibold text-primary mb-4">Atividades por Talhão este mês</h3>
-          {dadosGraficos.atividadesPorTalhao.length === 0 ? (
+          <h3 className="font-semibold text-primary mb-4">Custo por Hectare (HH e HM) este mês</h3>
+          {semDadosCustoHHHM ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
               Sem dados este mês
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={dadosGraficos.atividadesPorTalhao}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="talhao" tick={{ fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="quantidade" fill="#2d6a4f" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+          ) : (() => {
+            const dadosCustoHHHM = custoHHHMPorTalhao.map((t) => ({
+              nomeTalhao: t.nomeTalhao,
+              custoHHPorHa: t.custoHHPorHa ?? 0,
+              custoHMPorHa: t.custoHMPorHa ?? 0,
+            }))
+
+            return (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={dadosCustoHHHM}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="nomeTalhao" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
+                  <Legend />
+                  <Bar dataKey="custoHHPorHa" name="Custo HH/ha" fill="#2d6a4f" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="custoHMPorHa" name="Custo HM/ha" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )
+          })()}
         </div>
 
         <div className="card">
