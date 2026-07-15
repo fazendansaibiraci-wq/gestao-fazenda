@@ -152,9 +152,7 @@ export default function RelatoriosPage() {
       .map(([nome, regs]) => {
         const horasHomem = parseFloat(calcularHoras(regs))
         const horasMaquina = parseFloat(calcularHorasMaquina(regs))
-        const total = horasHomem + horasMaquina
-        const percentualHoraMaquina = total > 0 ? (horasMaquina / total) * 100 : 0
-        return { operador: nome, horasHomem, horasMaquina, percentualHoraMaquina }
+        return { operador: nome, horasHomem, horasMaquina }
       })
       .sort((a, b) => b.horasHomem - a.horasHomem)
   }
@@ -303,12 +301,11 @@ export default function RelatoriosPage() {
           sheets: [
             {
               nome: 'Comparativo HH/HM',
-              colunas: ['Operador', 'Horas Homem', 'Horas Máquina', '% Hora Máquina'],
+              colunas: ['Operador', 'Horas Homem', 'Horas Máquina'],
               linhas: dadosComparativoHHHM.map(d => [
                 d.operador,
                 `${d.horasHomem.toFixed(1)}h`,
                 `${d.horasMaquina.toFixed(1)}h`,
-                `${d.percentualHoraMaquina.toFixed(1)}%`,
               ]),
             },
           ],
@@ -844,7 +841,6 @@ export default function RelatoriosPage() {
                         <th className="text-left py-2 px-3 text-gray-600">Operador</th>
                         <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                         <th className="text-left py-2 px-3 text-gray-600">Horas Máquina</th>
-                        <th className="text-left py-2 px-3 text-gray-600">% Hora Máquina</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -853,7 +849,6 @@ export default function RelatoriosPage() {
                           <td className="py-2 px-3 font-medium">{d.operador}</td>
                           <td className="py-2 px-3">{d.horasHomem.toFixed(1)}h</td>
                           <td className="py-2 px-3">{d.horasMaquina.toFixed(1)}h</td>
-                          <td className="py-2 px-3">{d.percentualHoraMaquina.toFixed(1)}%</td>
                         </tr>
                       ))}
                     </tbody>
