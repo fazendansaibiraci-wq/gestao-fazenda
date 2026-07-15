@@ -43,8 +43,10 @@ export default function AtividadesPage() {
   const [alertaAusenciaExpandido, setAlertaAusenciaExpandido] = useState(false)
   const [filtroTalhao, setFiltroTalhao] = useState('')
   const [filtroTipoAtividade, setFiltroTipoAtividade] = useState('')
+  const [filtroMaquina, setFiltroMaquina] = useState('')
   const [talhoes, setTalhoes] = useState<{ id: string; nome: string }[]>([])
   const [tiposAtividade, setTiposAtividade] = useState<{ id: number; nome: string }[]>([])
+  const [maquinas, setMaquinas] = useState<{ id: string; nome: string }[]>([])
 
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -58,6 +60,7 @@ export default function AtividadesPage() {
       if (isGestor) {
         loadTalhoes()
         loadTiposAtividade()
+        loadMaquinas()
       }
     }
   }, [status])
@@ -118,6 +121,18 @@ export default function AtividadesPage() {
       }
     } catch (err) {
       console.error('Erro ao carregar tipos de atividade:', err)
+    }
+  }
+
+  const loadMaquinas = async () => {
+    try {
+      const res = await fetch('/api/maquinas')
+      if (res.ok) {
+        const data = await res.json()
+        setMaquinas(Array.isArray(data) ? data : data.data || [])
+      }
+    } catch (err) {
+      console.error('Erro ao carregar máquinas:', err)
     }
   }
 
@@ -197,8 +212,12 @@ export default function AtividadesPage() {
       resultado = resultado.filter((a) => a.tipoAtividade === filtroTipoAtividade)
     }
 
+    if (filtroMaquina) {
+      resultado = resultado.filter((a) => a.maquinaId === filtroMaquina)
+    }
+
     return resultado
-  }, [atividades, filtroFuncionario, filtroTalhao, filtroTipoAtividade])
+  }, [atividades, filtroFuncionario, filtroTalhao, filtroTipoAtividade, filtroMaquina])
 
   const meuAlertaAusencia = useMemo(
     () => alertasAusencia.find((a) => a.funcionarioId === userId) || null,
@@ -270,7 +289,7 @@ export default function AtividadesPage() {
 
       <div className="card space-y-3">
         <h3 className="font-semibold text-primary">Filtros</h3>
-        <div className={`grid grid-cols-1 gap-4 ${isGestor ? 'md:grid-cols-3 lg:grid-cols-5' : 'md:grid-cols-2'}`}>
+        <div className={`grid grid-cols-1 gap-4 ${isGestor ? 'md:grid-cols-3 lg:grid-cols-6' : 'md:grid-cols-2'}`}>
           <input
             type="date"
             value={filtroData}
@@ -310,6 +329,16 @@ export default function AtividadesPage() {
                 <option value="">Todas as Atividades</option>
                 {tiposAtividade.map((t) => (
                   <option key={t.id} value={t.nome}>{t.nome}</option>
+                ))}
+              </select>
+              <select
+                value={filtroMaquina}
+                onChange={(e) => setFiltroMaquina(e.target.value)}
+                className="border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">Todas as Máquinas</option>
+                {maquinas.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nome}</option>
                 ))}
               </select>
             </>
