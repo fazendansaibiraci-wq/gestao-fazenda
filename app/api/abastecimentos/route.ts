@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Obter horímetro anterior
     const abastecimentoAnterior = await prisma.abastecimentoTrator.findFirst({
-      where: { maquinaId: body.maquinaId },
+      where: { maquinaId: body.maquinaId, data: { lt: new Date(body.data) } },
       orderBy: { data: 'desc' },
     })
 
