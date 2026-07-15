@@ -144,13 +144,15 @@ export default function RelatoriosPage() {
           sheets: [
             {
               nome: 'Histórico de Atividades',
-              colunas: ['Data', 'Talhão', 'Safra', 'Atividade', 'Responsável', 'Bombas', 'Horas Homem', 'Implemento'],
+              colunas: ['Data', 'Talhão', 'Safra', 'Atividade', 'Responsável', 'Máquina', 'Hora Máquina', 'Bombas', 'Horas Homem', 'Implemento'],
               linhas: registrosFiltrados.map(r => [
                 new Date(r.data).toLocaleDateString('pt-BR'),
                 r.talhao?.nome || '-',
                 r.safra?.nome || '-',
                 getTipoLabel(r.tipoAtividade),
                 r.funcionario?.name || '-',
+                r.maquina?.nome || '-',
+                r.horasMaquina ? `${r.horasMaquina.toFixed(1)}h` : '-',
                 r.totalBombas || '-',
                 r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-',
                 r.implementoUtilizado || '-',
@@ -519,6 +521,8 @@ export default function RelatoriosPage() {
                       <th className="text-left py-2 px-3 text-gray-600">Safra</th>
                       <th className="text-left py-2 px-3 text-gray-600">Atividade</th>
                       <th className="text-left py-2 px-3 text-gray-600">Responsável</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Máquina</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Hora Máquina</th>
                       <th className="text-left py-2 px-3 text-gray-600">Bombas</th>
                       <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
                       <th className="text-left py-2 px-3 text-gray-600">Implemento</th>
@@ -532,6 +536,8 @@ export default function RelatoriosPage() {
                         <td className="py-2 px-3">{r.safra?.nome || '-'}</td>
                         <td className="py-2 px-3">{getTipoLabel(r.tipoAtividade)}</td>
                         <td className="py-2 px-3">{r.funcionario?.name || '-'}</td>
+                        <td className="py-2 px-3">{r.maquina?.nome || '-'}</td>
+                        <td className="py-2 px-3">{r.horasMaquina ? `${r.horasMaquina.toFixed(1)}h` : '-'}</td>
                         <td className="py-2 px-3">{r.totalBombas || '-'}</td>
                         <td className="py-2 px-3">{r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-'}</td>
                         <td className="py-2 px-3">{r.implementoUtilizado || '-'}</td>
