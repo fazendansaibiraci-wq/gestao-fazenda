@@ -5,6 +5,17 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Leaf, Tractor, Calendar, BarChart3, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 
 interface DashboardStats {
   totalTalhoes: number
@@ -19,6 +30,33 @@ interface AlertaAusencia {
   diasFaltantes: string[]
 }
 
+interface AtividadePorTalhao {
+  talhao: string
+  quantidade: number
+}
+
+interface ConsumoPorMaquina {
+  maquina: string
+  consumoMedioLH: number
+}
+
+interface HorasPorFuncionario {
+  funcionario: string
+  totalHoras: number
+}
+
+interface CustoDieselPorDia {
+  dia: string
+  custo: number
+}
+
+interface DadosGraficos {
+  atividadesPorTalhao: AtividadePorTalhao[]
+  consumoPorMaquina: ConsumoPorMaquina[]
+  horasPorFuncionario: HorasPorFuncionario[]
+  custoDieselPorDia: CustoDieselPorDia[]
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const [stats, setStats] = useState<DashboardStats>({
@@ -30,6 +68,12 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [alertasAusencia, setAlertasAusencia] = useState<AlertaAusencia[]>([])
   const [alertaAusenciaExpandido, setAlertaAusenciaExpandido] = useState(false)
+  const [dadosGraficos, setDadosGraficos] = useState<DadosGraficos>({
+    atividadesPorTalhao: [],
+    consumoPorMaquina: [],
+    horasPorFuncionario: [],
+    custoDieselPorDia: [],
+  })
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -43,6 +87,7 @@ export default function DashboardPage() {
       }
       loadStats()
       loadAlertasAusencia()
+      loadDadosGraficos()
     }
   }, [status, session])
 
@@ -78,6 +123,20 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Erro ao carregar alertas de ausência:', error)
+    }
+  }
+
+  const loadDadosGraficos = async () => {
+    try {
+      const res = await fetch('/api/dashboard-graficos')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.data) {
+          setDadosGraficos(data.data)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados dos gráficos:', error)
     }
   }
 
@@ -206,6 +265,84 @@ export default function DashboardPage() {
             </div>
           </div>
         </Link>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="card">
+          <h3 className="font-semibold text-primary mb-4">Atividades por Talhão este mês</h3>
+          {dadosGraficos.atividadesPorTalhao.length === 0 ? (
+            <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
+              Sem dados este mês
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={dadosGraficos.atividadesPorTalhao}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="talhao" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="quantidade" fill="#2d6a4f" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="card">
+          <h3 className="font-semibold text-primary mb-4">Consumo de Combustível por Máquina (L/h) este mês</h3>
+          {dadosGraficos.consumoPorMaquina.length === 0 ? (
+            <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
+              Sem dados este mês
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={dadosGraficos.consumoPorMaquina}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="maquina" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="consumoMedioLH" fill="#ea580c" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="card">
+          <h3 className="font-semibold text-primary mb-4">Horas Trabalhadas por Funcionário este mês</h3>
+          {dadosGraficos.horasPorFuncionario.length === 0 ? (
+            <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
+              Sem dados este mês
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={dadosGraficos.horasPorFuncionario} layout="vertical" margin={{ left: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis type="number" tick={{ fontSize: 12 }} />
+                <YAxis dataKey="funcionario" type="category" width={110} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="totalHoras" fill="#52b788" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="card">
+          <h3 className="font-semibold text-primary mb-4">Custo de Diesel por Dia este mês</h3>
+          {dadosGraficos.custoDieselPorDia.length === 0 ? (
+            <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
+              Sem dados este mês
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={dadosGraficos.custoDieselPorDia}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Custo']} />
+                <Line type="monotone" dataKey="custo" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
 
       <div>
