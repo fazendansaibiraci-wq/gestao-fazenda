@@ -713,7 +713,21 @@ export default function RelatoriosPage() {
 
           {aba === 'combustivel' && (
             <div className="card">
-              <h3 className="text-lg font-semibold text-primary mb-4">Comparativo de Combustível por Máquina</h3>
+              <h3 className="text-lg font-semibold text-primary mb-2">Comparativo de Combustível por Máquina</h3>
+              <div className="flex flex-wrap gap-4 text-xs text-gray-500 mb-4">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                  Maior volume total abastecido (litros)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-600"></span>
+                  Maior consumo médio (L/h)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                  Divergência entre horímetro e horas registradas nas atividades
+                </span>
+              </div>
               {resumoCombustivel.length === 0 ? (
                 <p className="text-center py-12 text-gray-500">Nenhum abastecimento encontrado no período selecionado.</p>
               ) : (
