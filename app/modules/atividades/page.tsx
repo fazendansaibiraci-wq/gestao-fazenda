@@ -28,6 +28,7 @@ interface Atividade {
   observacao?: string | null
   maquinaId?: string | null
   maquina?: { nome: string } | null
+  horasMaquina?: number | null
   implementoUtilizado?: string | null
   totalBombas?: number | null
   tipoAdubo?: string | null
@@ -567,6 +568,12 @@ export default function AtividadesPage() {
                                 <div>
                                   <span className="block text-gray-400">Máquina</span>
                                   <span className="font-medium text-gray-700">{a.maquina?.nome || '-'}</span>
+                                </div>
+                              )}
+                              {a.maquinaId && (
+                                <div>
+                                  <span className="block text-gray-400">Horas Máquina</span>
+                                  <span className="font-medium text-gray-700">{a.horasMaquina ? `${a.horasMaquina.toFixed(1)}h` : '-'}</span>
                                 </div>
                               )}
                               {a.implementoUtilizado && (
