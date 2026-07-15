@@ -4,6 +4,23 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 
+// O servidor (Vercel) roda em UTC, não no horário de Brasília. Usar
+// new Date().getFullYear()/getMonth()/getDate() direto reflete o dia em UTC,
+// que a partir de ~21h no horário do Brasil já virou o dia seguinte em UTC —
+// fazendo o sistema tratar o dia atual (ainda em andamento no Brasil) como
+// "ontem" e gerar falta automática indevida. Esta função obtém os componentes
+// de data corretos no fuso America/Sao_Paulo, independente do fuso do servidor.
+function obterDataHojeBrasil(): { ano: number; mes: number; dia: number } {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  const [{ value: ano }, , { value: mes }, , { value: dia }] = formatter.formatToParts(new Date())
+  return { ano: Number(ano), mes: Number(mes), dia: Number(dia) }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,7 +32,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const mesParam = searchParams.get('mes')
 
-    const agora = new Date()
+    const { ano: anoHojeBR, mes: mesHojeBR, dia: diaHojeBR } = obterDataHojeBrasil()
+
     let ano: number
     let mesNum: number
     if (mesParam) {
@@ -23,15 +41,15 @@ export async function GET(request: NextRequest) {
       ano = Number(anoStr)
       mesNum = Number(mesStr)
     } else {
-      ano = agora.getFullYear()
-      mesNum = agora.getMonth() + 1
+      ano = anoHojeBR
+      mesNum = mesHojeBR
     }
 
     // Intervalo a verificar: do dia 1 do mês até ontem, nunca incluindo hoje,
     // e sempre dentro dos limites do próprio mês informado.
     const inicioMes = new Date(ano, mesNum - 1, 1)
     const ultimoDiaMes = new Date(ano, mesNum, 0)
-    const ontem = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 1)
+    const ontem = new Date(anoHojeBR, mesHojeBR - 1, diaHojeBR - 1)
     const fimIntervalo = ontem < ultimoDiaMes ? ontem : ultimoDiaMes
 
     if (fimIntervalo < inicioMes) {
