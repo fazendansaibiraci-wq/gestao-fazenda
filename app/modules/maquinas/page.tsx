@@ -18,6 +18,8 @@ export default function MaquinasPage() {
     ano: new Date().getFullYear(),
     placa: '',
     valor: '',
+    valorResidual: '',
+    vidaUtilHoras: '',
     status: 'ATIVA',
   })
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -58,6 +60,8 @@ export default function MaquinasPage() {
         ano: new Date().getFullYear(),
         placa: '',
         valor: '',
+        valorResidual: '',
+        vidaUtilHoras: '',
         status: 'ATIVA',
       })
       setEditingId(null)
@@ -143,6 +147,20 @@ export default function MaquinasPage() {
             onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
             className="border rounded-lg px-3 py-2"
           />
+          <input
+            type="number"
+            placeholder="Valor Residual (R$)"
+            value={formData.valorResidual}
+            onChange={(e) => setFormData({ ...formData, valorResidual: e.target.value })}
+            className="border rounded-lg px-3 py-2"
+          />
+          <input
+            type="number"
+            placeholder="Vida Útil (horas)"
+            value={formData.vidaUtilHoras}
+            onChange={(e) => setFormData({ ...formData, vidaUtilHoras: e.target.value })}
+            className="border rounded-lg px-3 py-2"
+          />
           <select
             value={formData.status}
             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
@@ -170,6 +188,8 @@ export default function MaquinasPage() {
                   ano: new Date().getFullYear(),
                   placa: '',
                   valor: '',
+                  valorResidual: '',
+                  vidaUtilHoras: '',
                   status: 'ATIVA',
                 })
               }}
@@ -208,7 +228,12 @@ export default function MaquinasPage() {
               <button
                 onClick={() => {
                   setEditingId(m.id)
-                  setFormData({ ...m, valor: m.valor || '' })
+                  setFormData({
+                    ...m,
+                    valor: m.valor || '',
+                    valorResidual: m.valorResidual || '',
+                    vidaUtilHoras: m.vidaUtilHoras || '',
+                  })
                 }}
                 className="flex-1 btn btn-outline text-sm"
               >
