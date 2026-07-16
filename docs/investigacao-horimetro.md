@@ -248,4 +248,18 @@ Resultado (6 rows):
 | cmrncepby0001auehyzq21zyj | 2026-07-15 12:00:00 | cmr4ygj4f00052pghgyst49ot | MARIA EUNICE JESUS CARVALHO |
 | cmrnr9zi50001z5gc4mip70e1 | 2026-07-15 12:00:00 | cmr3v4qly00017evjwqiyd8sm | EDIVALDO DA SILVA |
 
-**Nenhum DELETE foi executado.** Esta seção apenas documenta a consulta de diagnóstico, aguardando autorização para excluir as faltas automáticas listadas acima.
+**DELETE executado em 16/07/2026, autorizado pelo usuário:**
+
+```sql
+DELETE FROM registros_atividade falta
+WHERE falta."isFalta" = true
+  AND falta."motivoFalta" = 'nao_registrado'
+  AND EXISTS (
+    SELECT 1 FROM registros_atividade real
+    WHERE real."funcionarioId" = falta."funcionarioId"
+      AND real.data = falta.data
+      AND real."isFalta" = false
+  );
+```
+
+Resultado: `DELETE 6` — as 6 faltas automáticas duplicadas listadas na tabela acima foram removidas com sucesso.
