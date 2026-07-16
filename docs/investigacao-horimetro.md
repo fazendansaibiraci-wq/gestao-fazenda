@@ -178,3 +178,43 @@ WHERE "maquinaId" = 'cmr591y6t0002croc3x0axgdy'
 
 - **UPDATE 7** — 7 linhas afetadas (as datas 03/07, 04/07, 06/07, 07/07, 12/07, 13/07 e 14/07, que tinham valores de placeholder em vez de leituras reais de horímetro).
 - Confirmação: os 7 registros agora têm `horimetroInicial`, `horimetroFinal` e `horasMaquina` = NULL; os 2 registros com horímetro real (08/07 e 09/07, 5642.5–5660.9) permaneceram intactos.
+
+---
+
+## Reconferência 3306 — 16/07/2026
+
+Consulta rodada via psql (Railway Console: Postgres) em produção, apenas leitura (SELECT). Nenhum dado foi alterado.
+
+### registros_atividade (11 rows)
+
+| data | horimetroInicial | horimetroFinal | horasMaquina | funcionario |
+|---|---|---|---|---|
+| 2026-07-03 12:00:00 | 6329.1 | 6339.5 | 10.4 | EDIVALDO DA SILVA |
+| 2026-07-04 12:00:00 | 6339.5 | 6347.2 | 7.7 | EDIVALDO DA SILVA |
+| 2026-07-05 12:00:00 | 6347.2 | 6354 | 6.8 | EDIVALDO DA SILVA |
+| 2026-07-06 15:00:00 | 6354 | 6367.3 | 13.3 | EDIVALDO DA SILVA |
+| 2026-07-07 15:00:00 | 6367.3 | 6378.2 | 10.9 | EDIVALDO DA SILVA |
+| 2026-07-08 12:00:00 | 6378.2 | 6388.5 | 10.3 | EDIVALDO DA SILVA |
+| 2026-07-09 12:00:00 | 6388.5 | 6393.9 | 5.4 | EDIVALDO DA SILVA |
+| 2026-07-09 12:00:00 | 6393.9 | 6401.6 | 7.7 | EDIVALDO DA SILVA |
+| 2026-07-13 12:00:00 | 6411.9 | 6413.9 | 2 | EDIVALDO DA SILVA |
+| 2026-07-14 12:00:00 | 6413.9 | 6419.9 | 6 | EDIVALDO DA SILVA |
+| 2026-07-14 12:00:00 | 6419.9 | 6425.3 | 5.4 | EDIVALDO DA SILVA |
+
+Sem mudanças em relação à consulta anterior desta investigação.
+
+### abastecimentos_trator (7 rows)
+
+| data | horimetroanterior | horimetroAtual | horasTrabalhadad | litrosAbastecidos |
+|---|---|---|---|---|
+| 2026-07-08 10:09:00 | 6329.1 | 6378.2 | 49.1 | 78 |
+| 2026-07-09 06:57:00 | 6378.2 | 6388.6 | 10.40000000000055 | 80 |
+| 2026-07-09 14:09:00 | 6388.6 | 6393.8 | 5.199999999999818 | 33 |
+| 2026-07-12 07:15:00 | 6393.8 | 6401.7 | 7.899999999999636 | 59 |
+| 2026-07-13 12:48:00 | 6401.7 | 6411.9 | 10.19999999999982 | 68 |
+| 2026-07-14 17:57:00 | 6411.9 | 6423.4 | 11.5 | 58 |
+| 2026-07-16 07:26:00 | 6423.4 | 6437.4 | 14 | 73 |
+
+**Observações:**
+- A correção do primeiro abastecimento (08/07) aplicada anteriormente persiste corretamente: `horimetroanterior = 6329.1` e `horasTrabalhadad = 49.1`.
+- Um novo abastecimento foi lançado em 16/07 às 07:26 (73 litros, horímetro 6423.4 → 6437.4, 14h trabalhadas) — a base é de produção e reflete lançamentos em tempo real.
