@@ -289,4 +289,11 @@ Resultado (1 row):
 |---|---|---|---|
 | cmrlxpch100015gj3om680zuj | 2026-07-14 | cmr4ygj4f00052pghgyst49ot | MARIA EUNICE JESUS CARVALHO |
 
-**Nenhum DELETE foi executado.** Esta seção apenas documenta a consulta de diagnóstico, aguardando autorização para excluir a falta automática listada acima.
+**DELETE executado em 16/07/2026, autorizado pelo usuário:**
+
+```sql
+DELETE FROM registros_atividade
+WHERE id = 'cmrlxpch100015gj3om680zuj';
+```
+
+Resultado: `DELETE 1` — a falta automática duplicada de MARIA EUNICE JESUS CARVALHO (14/07) foi removida com sucesso. Faxina completa concluída.
