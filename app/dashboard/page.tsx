@@ -36,6 +36,8 @@ interface CustoHHHMPorTalhao {
   nomeTalhao: string
   custoHHPorHa: number | null
   custoHMPorHa: number | null
+  horasHH: number
+  horasHM: number
 }
 
 interface ConsumoPorMaquina {
@@ -186,7 +188,7 @@ export default function DashboardPage() {
 
   const semDadosCustoHHHM =
     custoHHHMPorTalhao.length === 0 ||
-    custoHHHMPorTalhao.every((t) => t.custoHHPorHa == null && t.custoHMPorHa == null)
+    custoHHHMPorTalhao.every((t) => !t.horasHH && !t.horasHM)
 
   if (status === 'loading') {
     return (
@@ -312,28 +314,28 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card">
-          <h3 className="font-semibold text-primary mb-4">Custo por Hectare (HH e HM) este mês</h3>
+          <h3 className="font-semibold text-primary mb-4">Comparativo Hora Homem e Hora Máquina por Talhão este mês</h3>
           {semDadosCustoHHHM ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
               Sem dados este mês
             </div>
           ) : (() => {
-            const dadosCustoHHHM = custoHHHMPorTalhao.map((t) => ({
+            const dadosHHHM = custoHHHMPorTalhao.map((t) => ({
               nomeTalhao: t.nomeTalhao,
-              custoHHPorHa: t.custoHHPorHa ?? 0,
-              custoHMPorHa: t.custoHMPorHa ?? 0,
+              horasHH: t.horasHH ?? 0,
+              horasHM: t.horasHM ?? 0,
             }))
 
             return (
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={dadosCustoHHHM}>
+                <BarChart data={dadosHHHM}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="nomeTalhao" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value: number) => `R$ ${value.toFixed(2)}`} />
+                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}h`} />
                   <Legend />
-                  <Bar dataKey="custoHHPorHa" name="Custo HH/ha" fill="#2d6a4f" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="custoHMPorHa" name="Custo HM/ha" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="horasHH" name="Hora Homem" fill="#2d6a4f" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="horasHM" name="Hora Máquina" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )
