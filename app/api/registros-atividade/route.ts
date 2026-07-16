@@ -217,12 +217,18 @@ export async function POST(request: NextRequest) {
     // Se esta é uma atividade real (não falta), remove qualquer falta automática
     // ("nao_registrado") que já existia pro mesmo funcionário no mesmo dia, pra
     // evitar registro duplicado (atividade real + falta automática obsoleta).
+    // Usa intervalo do dia (não igualdade exata) porque a rota de alerta de
+    // ausência grava a data com formatação ligeiramente diferente.
     if (!registro.isFalta) {
+      const inicioDia = new Date(registro.data)
+      inicioDia.setUTCHours(0, 0, 0, 0)
+      const fimDia = new Date(inicioDia)
+      fimDia.setUTCDate(fimDia.getUTCDate() + 1)
       await prisma.registroAtividade.deleteMany({
         where: {
           id: { not: registro.id },
           funcionarioId: registro.funcionarioId,
-          data: registro.data,
+          data: { gte: inicioDia, lt: fimDia },
           isFalta: true,
           motivoFalta: 'nao_registrado',
         },
