@@ -214,6 +214,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Se esta é uma atividade real (não falta), remove qualquer falta automática
+    // ("nao_registrado") que já existia pro mesmo funcionário no mesmo dia, pra
+    // evitar registro duplicado (atividade real + falta automática obsoleta).
+    if (!registro.isFalta) {
+      await prisma.registroAtividade.deleteMany({
+        where: {
+          id: { not: registro.id },
+          funcionarioId: registro.funcionarioId,
+          data: registro.data,
+          isFalta: true,
+          motivoFalta: 'nao_registrado',
+        },
+      })
+    }
+
     return NextResponse.json(
       {
         success: true,
