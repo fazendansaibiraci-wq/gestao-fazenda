@@ -263,3 +263,30 @@ WHERE falta."isFalta" = true
 ```
 
 Resultado: `DELETE 6` — as 6 faltas automáticas duplicadas listadas na tabela acima foram removidas com sucesso.
+
+## Faxina completa de faltas duplicadas — 16/07/2026
+
+Consulta read-only (sem alterações) para identificar TODAS as faltas automáticas ainda duplicadas em qualquer funcionário, usando comparação por DIA (`DATE()`) em vez de igualdade exata de timestamp — para pegar duplicatas que a correção anterior (comparação exata) poderia não detectar.
+
+```sql
+SELECT falta.id, DATE(falta.data) AS dia, falta."funcionarioId", u.name
+FROM registros_atividade falta
+JOIN users u ON u.id = falta."funcionarioId"
+WHERE falta."isFalta" = true
+  AND falta."motivoFalta" = 'nao_registrado'
+  AND EXISTS (
+    SELECT 1 FROM registros_atividade real
+    WHERE real."funcionarioId" = falta."funcionarioId"
+      AND DATE(real.data) = DATE(falta.data)
+      AND real."isFalta" = false
+  )
+ORDER BY u.name, dia;
+```
+
+Resultado (1 row):
+
+| id | dia | funcionarioId | name |
+|---|---|---|---|
+| cmrlxpch100015gj3om680zuj | 2026-07-14 | cmr4ygj4f00052pghgyst49ot | MARIA EUNICE JESUS CARVALHO |
+
+**Nenhum DELETE foi executado.** Esta seção apenas documenta a consulta de diagnóstico, aguardando autorização para excluir a falta automática listada acima.
