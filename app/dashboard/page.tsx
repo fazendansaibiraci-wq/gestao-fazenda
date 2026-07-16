@@ -50,15 +50,15 @@ interface HorasPorFuncionario {
   totalHoras: number
 }
 
-interface CustoDieselPorDia {
+interface LitrosDieselPorDia {
   dia: string
-  custo: number
+  litros: number
 }
 
 interface DadosGraficos {
   consumoPorMaquina: ConsumoPorMaquina[]
   horasPorFuncionario: HorasPorFuncionario[]
-  custoDieselPorDia: CustoDieselPorDia[]
+  litrosDieselPorDia: LitrosDieselPorDia[]
 }
 
 export default function DashboardPage() {
@@ -75,7 +75,7 @@ export default function DashboardPage() {
   const [dadosGraficos, setDadosGraficos] = useState<DadosGraficos>({
     consumoPorMaquina: [],
     horasPorFuncionario: [],
-    custoDieselPorDia: [],
+    litrosDieselPorDia: [],
   })
   const [custoHHHMPorTalhao, setCustoHHHMPorTalhao] = useState<CustoHHHMPorTalhao[]>([])
 
@@ -397,19 +397,19 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <h3 className="font-semibold text-primary mb-4">Custo de Diesel por Dia este mês</h3>
-          {dadosGraficos.custoDieselPorDia.length === 0 ? (
+          <h3 className="font-semibold text-primary mb-4">Litros de Diesel Abastecidos por Dia este mês</h3>
+          {dadosGraficos.litrosDieselPorDia.length === 0 ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
               Sem dados este mês
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={dadosGraficos.custoDieselPorDia}>
+              <LineChart data={dadosGraficos.litrosDieselPorDia}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Custo']} />
-                <Line type="monotone" dataKey="custo" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
+                <Tooltip formatter={(value: number) => [`${value.toFixed(1)}L`, 'Litros']} />
+                <Line type="monotone" dataKey="litros" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           )}
