@@ -218,3 +218,34 @@ Sem mudanças em relação à consulta anterior desta investigação.
 **Observações:**
 - A correção do primeiro abastecimento (08/07) aplicada anteriormente persiste corretamente: `horimetroanterior = 6329.1` e `horasTrabalhadad = 49.1`.
 - Um novo abastecimento foi lançado em 16/07 às 07:26 (73 litros, horímetro 6423.4 → 6437.4, 14h trabalhadas) — a base é de produção e reflete lançamentos em tempo real.
+
+## Faltas automáticas duplicadas — 16/07/2026
+
+Consulta read-only (sem alterações) para identificar faltas automáticas (`isFalta = true`, `motivoFalta = 'nao_registrado'`) que já têm um registro de atividade real (`isFalta = false`) para o mesmo funcionário no mesmo dia — ou seja, duplicadas.
+
+```sql
+SELECT falta.id, falta.data, falta."funcionarioId", u.name
+FROM registros_atividade falta
+JOIN users u ON u.id = falta."funcionarioId"
+WHERE falta."isFalta" = true
+  AND falta."motivoFalta" = 'nao_registrado'
+  AND EXISTS (
+    SELECT 1 FROM registros_atividade real
+    WHERE real."funcionarioId" = falta."funcionarioId"
+      AND real.data = falta.data
+      AND real."isFalta" = false
+  );
+```
+
+Resultado (6 rows):
+
+| id | data | funcionarioId | name |
+|---|---|---|---|
+| cmrkkt6di000t64w88yqye0rj | 2026-07-13 12:00:00 | cmrb2x9830000119al1fgntz8 | GERINALDO JOAQUIM DA SILVA |
+| cmrmzy9g20001149uc8jxr08g | 2026-07-15 12:00:00 | cmr3v47jr00007evjgkjf1jqz | LUIS HENRIQUE DE OLIVEIRA |
+| cmrncepl40005auehg9sjl9cd | 2026-07-15 12:00:00 | cmrb2x9830000119al1fgntz8 | GERINALDO JOAQUIM DA SILVA |
+| cmrlxq5hb0005ltwf66ri8us2 | 2026-07-14 12:00:00 | cmrb2x9830000119al1fgntz8 | GERINALDO JOAQUIM DA SILVA |
+| cmrncepby0001auehyzq21zyj | 2026-07-15 12:00:00 | cmr4ygj4f00052pghgyst49ot | MARIA EUNICE JESUS CARVALHO |
+| cmrnr9zi50001z5gc4mip70e1 | 2026-07-15 12:00:00 | cmr3v4qly00017evjwqiyd8sm | EDIVALDO DA SILVA |
+
+**Nenhum DELETE foi executado.** Esta seção apenas documenta a consulta de diagnóstico, aguardando autorização para excluir as faltas automáticas listadas acima.
