@@ -65,19 +65,19 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.totalHoras - a.totalHoras)
       .slice(0, 10)
 
-    // ─── Custo de Diesel por Dia ────────────────────────────────────────
-    const custoPorDiaMap = new Map<string, number>()
+    // ─── Litros de Diesel por Dia ──────────────────────────────────────
+    const litrosPorDiaMap = new Map<string, number>()
     abastecimentosMes.forEach((a) => {
       const chaveData = new Date(a.data).toISOString().split('T')[0]
-      const custo = a.custoAbastecimento ?? (a.litrosAbastecidos || 0) * (a.valorPorLitro || 0)
-      custoPorDiaMap.set(chaveData, (custoPorDiaMap.get(chaveData) || 0) + custo)
+      const litros = a.litrosAbastecidos || 0
+      litrosPorDiaMap.set(chaveData, (litrosPorDiaMap.get(chaveData) || 0) + litros)
     })
 
-    const custoDieselPorDia = Array.from(custoPorDiaMap.entries())
+    const litrosDieselPorDia = Array.from(litrosPorDiaMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([chaveData, custo]) => {
+      .map(([chaveData, litros]) => {
         const [, mes, dia] = chaveData.split('-')
-        return { dia: `${dia}/${mes}`, custo }
+        return { dia: `${dia}/${mes}`, litros }
       })
 
     return NextResponse.json({
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
       data: {
         consumoPorMaquina,
         horasPorFuncionario,
-        custoDieselPorDia,
+        litrosDieselPorDia,
       },
     })
   } catch (error) {
