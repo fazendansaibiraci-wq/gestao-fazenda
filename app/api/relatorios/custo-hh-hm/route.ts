@@ -119,8 +119,8 @@ export async function GET(request: NextRequest) {
       valorHMPorMaquina.set(maquinaId, depreciacaoPorHora + combustivelPorHora)
     }
 
-    // Agrupa por talhão, somando Custo HH e Custo HM.
-    const acumuladorPorTalhao = new Map<string, { nomeTalhao: string; area: number | null; custoHH: number; custoHM: number }>()
+    // Agrupa por talhão, somando Custo HH/HM e também as horas brutas de HH/HM.
+    const acumuladorPorTalhao = new Map<string, { nomeTalhao: string; area: number | null; custoHH: number; custoHM: number; horasHH: number; horasHM: number }>()
 
     for (const r of registros) {
       if (!acumuladorPorTalhao.has(r.talhaoId)) {
@@ -129,6 +129,8 @@ export async function GET(request: NextRequest) {
           area: r.talhao?.area ?? null,
           custoHH: 0,
           custoHM: 0,
+          horasHH: 0,
+          horasHM: 0,
         })
       }
       const acumulado = acumuladorPorTalhao.get(r.talhaoId)!
@@ -136,11 +138,13 @@ export async function GET(request: NextRequest) {
       if (r.funcionario) {
         const valorHH = calcularValorHH(r.funcionario)
         acumulado.custoHH += (r.horasCalculadas || 0) * valorHH
+        acumulado.horasHH += r.horasCalculadas || 0
       }
 
       if (r.maquinaId) {
         const valorHM = valorHMPorMaquina.get(r.maquinaId) || 0
         acumulado.custoHM += (r.horasMaquina || 0) * valorHM
+        acumulado.horasHM += r.horasMaquina || 0
       }
     }
 
@@ -149,6 +153,8 @@ export async function GET(request: NextRequest) {
       nomeTalhao: dados.nomeTalhao,
       custoHHPorHa: dados.area && dados.area > 0 ? dados.custoHH / dados.area : null,
       custoHMPorHa: dados.area && dados.area > 0 ? dados.custoHM / dados.area : null,
+      horasHH: dados.horasHH,
+      horasHM: dados.horasHM,
     }))
 
     return NextResponse.json({ success: true, data: resultado })
