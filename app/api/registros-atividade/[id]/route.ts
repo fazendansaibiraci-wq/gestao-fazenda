@@ -149,6 +149,22 @@ export async function PUT(
       }
     }
 
+    if (!updated.isFalta) {
+      const inicioDia = new Date(updated.data)
+      inicioDia.setUTCHours(0, 0, 0, 0)
+      const fimDia = new Date(inicioDia)
+      fimDia.setUTCDate(fimDia.getUTCDate() + 1)
+      await prisma.registroAtividade.deleteMany({
+        where: {
+          id: { not: updated.id },
+          funcionarioId: updated.funcionarioId,
+          data: { gte: inicioDia, lt: fimDia },
+          isFalta: true,
+          motivoFalta: 'nao_registrado',
+        },
+      }).catch(() => {})
+    }
+
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error('PUT /api/registros-atividade/[id]:', error instanceof Error ? error.message : error)
