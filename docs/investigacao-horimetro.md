@@ -108,3 +108,73 @@ SELECT id, nome FROM maquinas WHERE nome IN ('COLHEDEIRA', '3406', '265');
 - **COLHEDEIRA**: a maioria dos registros de atividade tem `horimetroInicial = 1` e `horimetroFinal = 2` (valores de placeholder, não horímetro real), exceto os dois registros de 08/09 de julho, que usam valores reais (5642.5–5660.9), consistentes com os abastecimentos da mesma janela.
 - **265** e **3406**: registros de atividade e abastecimentos estão consistentes entre si (horímetro final de atividade bate com horímetro de abastecimento subsequente).
 - Os últimos abastecimentos de COLHEDEIRA (15/07 17:38) e 3406 (15/07 22:56) foram lançados após a consulta anterior desta investigação — a base é de produção e reflete lançamentos em tempo real.
+
+---
+
+## Correções aplicadas em 16/07/2026
+
+Todas as correções abaixo foram aplicadas via UPDATE no psql (Railway Console: Postgres), cada uma seguida de um SELECT de confirmação antes de seguir para a próxima. Todas afetaram exatamente 1 (ou 7, no último caso) linha, conforme esperado.
+
+### 1) 3306 — 1º abastecimento (08/07), horímetro anterior real = 6329.1 (atividade mais antiga em 03/07)
+
+```sql
+UPDATE abastecimentos_trator
+SET "horimetroanterior" = 6329.1,
+    "horasTrabalhadad" = 6378.2 - 6329.1
+WHERE "maquinaId" = 'cmqs2r2ei0002x7oknmu7y7hd'
+  AND data = '2026-07-08 10:09:00';
+```
+
+- **UPDATE 1** — linha afetada.
+- Confirmação: `horimetroanterior = 6329.1`, `horimetroAtual = 6378.2`, `horasTrabalhadad = 49.1`.
+
+### 2) AGRALE — 1º abastecimento (09/07), horímetro anterior real = 9922.6 (atividade mais antiga em 03/07)
+
+```sql
+UPDATE abastecimentos_trator
+SET "horimetroanterior" = 9922.6,
+    "horasTrabalhadad" = 9982.1 - 9922.6
+WHERE "maquinaId" = 'cmqs2p70x0000x7okdb6z48gu'
+  AND data = '2026-07-09 12:57:00';
+```
+
+- **UPDATE 1** — linha afetada.
+- Confirmação: `horimetroanterior = 9922.6`, `horimetroAtual = 9982.1`, `horasTrabalhadad = 59.5`.
+
+### 3) 3406 — 1º abastecimento (08/07), horímetro anterior real = 1200.5 (atividade mais antiga em 02/07)
+
+```sql
+UPDATE abastecimentos_trator
+SET "horimetroanterior" = 1200.5,
+    "horasTrabalhadad" = 1254.9 - 1200.5
+WHERE "maquinaId" = 'cmqs2jzgo00008ztfp71d7xvk'
+  AND data = '2026-07-08 07:10:00';
+```
+
+- **UPDATE 1** — linha afetada.
+- Confirmação: `horimetroanterior = 1200.5`, `horimetroAtual = 1254.9`, `horasTrabalhadad = 54.4`.
+
+### 4) 265 — 1º abastecimento (08/07), horímetro anterior real = 24681.6 (atividade mais antiga em 04/07)
+
+```sql
+UPDATE abastecimentos_trator
+SET "horimetroanterior" = 24681.6,
+    "horasTrabalhadad" = 24711.5 - 24681.6
+WHERE "maquinaId" = 'cmqs2s5oo0003x7oklf70bvqj'
+  AND data = '2026-07-08 09:07:00';
+```
+
+- **UPDATE 1** — linha afetada.
+- Confirmação: `horimetroanterior = 24681.6`, `horimetroAtual = 24711.5`, `horasTrabalhadad = 29.9`.
+
+### 5) COLHEDEIRA — zerar registros de atividade com horímetro placeholder (1 → 2)
+
+```sql
+UPDATE registros_atividade
+SET "horimetroInicial" = NULL, "horimetroFinal" = NULL, "horasMaquina" = NULL
+WHERE "maquinaId" = 'cmr591y6t0002croc3x0axgdy'
+  AND "horimetroInicial" = 1 AND "horimetroFinal" = 2;
+```
+
+- **UPDATE 7** — 7 linhas afetadas (as datas 03/07, 04/07, 06/07, 07/07, 12/07, 13/07 e 14/07, que tinham valores de placeholder em vez de leituras reais de horímetro).
+- Confirmação: os 7 registros agora têm `horimetroInicial`, `horimetroFinal` e `horasMaquina` = NULL; os 2 registros com horímetro real (08/07 e 09/07, 5642.5–5660.9) permaneceram intactos.
