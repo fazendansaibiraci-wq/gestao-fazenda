@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
           await prisma.registroAtividade.create({
             data: {
               funcionarioId: func.id,
-              data: new Date(chave + 'T12:00:00'),
+              data: new Date(chave + 'T12:00:00.000Z'),
               isFalta: true,
               motivoFalta: 'nao_registrado',
               periodoFalta: 'DIA_INTEIRO',
