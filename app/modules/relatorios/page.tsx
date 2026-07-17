@@ -26,7 +26,7 @@ export default function RelatoriosPage() {
   const [loading, setLoading] = useState(true)
   const [exportando, setExportando] = useState(false)
   const [abastecimentos, setAbastecimentos] = useState<any[]>([])
-  const [custoHHHM, setCustoHHHM] = useState<{ talhaoId: string; nomeTalhao: string; custoHHPorHa: number | null; custoHMPorHa: number | null }[]>([])
+  const [custoHHHM, setCustoHHHM] = useState<{ talhaoId: string; nomeTalhao: string; custoHHPorHa: number | null; custoHMPorHa: number | null; horasTurma?: number; custoTurmasPorHa?: number | null }[]>([])
 
   const [filtros, setFiltros] = useState({
     safraId: '',
@@ -669,21 +669,41 @@ export default function RelatoriosPage() {
                       <th className="text-left py-2 px-3 text-gray-600">Horas Máquina</th>
                       <th className="text-left py-2 px-3 text-gray-600">Custo HH/ha</th>
                       <th className="text-left py-2 px-3 text-gray-600">Custo HM/ha</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Horas Turmas (estimado)</th>
+                      <th className="text-left py-2 px-3 text-gray-600">Custo Turmas/ha</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(agruparPor('talhaoId')).map(([talhaoId, regs]) => (
-                      <tr key={talhaoId} className="border-b hover:bg-gray-50">
-                        <td className="py-2 px-3 font-medium">{getTalhaoNome(talhaoId)}</td>
-                        <td className="py-2 px-3">{regs.length}</td>
-                        <td className="py-2 px-3">{calcularHoras(regs)}h</td>
-                        <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
-                        <td className="py-2 px-3">{formatarCustoPorHa(getCustoHHHMPorTalhao(talhaoId)?.custoHHPorHa)}</td>
-                        <td className="py-2 px-3">{formatarCustoPorHa(getCustoHHHMPorTalhao(talhaoId)?.custoHMPorHa)}</td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const gruposAtividade = agruparPor('talhaoId')
+                      const talhaoIdsComTurma = custoHHHM
+                        .filter(c => (c.horasTurma || 0) > 0 || c.custoTurmasPorHa != null)
+                        .map(c => c.talhaoId)
+                      const todosTalhaoIds = Array.from(
+                        new Set([...Object.keys(gruposAtividade), ...talhaoIdsComTurma])
+                      )
+                      return todosTalhaoIds.map((talhaoId) => {
+                        const regs = gruposAtividade[talhaoId] || []
+                        const custo = getCustoHHHMPorTalhao(talhaoId)
+                        return (
+                          <tr key={talhaoId} className="border-b hover:bg-gray-50">
+                            <td className="py-2 px-3 font-medium">{getTalhaoNome(talhaoId)}</td>
+                            <td className="py-2 px-3">{regs.length}</td>
+                            <td className="py-2 px-3">{calcularHoras(regs)}h</td>
+                            <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
+                            <td className="py-2 px-3">{formatarCustoPorHa(custo?.custoHHPorHa)}</td>
+                            <td className="py-2 px-3">{formatarCustoPorHa(custo?.custoHMPorHa)}</td>
+                            <td className="py-2 px-3">{custo?.horasTurma ? `${custo.horasTurma.toFixed(1)}h` : '—'}</td>
+                            <td className="py-2 px-3">{formatarCustoPorHa(custo?.custoTurmasPorHa)}</td>
+                          </tr>
+                        )
+                      })
+                    })()}
                   </tbody>
                 </table>
+                <p className="text-xs text-gray-400 mt-2">
+                  * Horas Turmas é estimado (pessoas × carga horária padrão do dia), pois turmas são pagas por diária, não por hora registrada.
+                </p>
               </div>
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-4">Resumo por Safra</h3>
