@@ -333,8 +333,8 @@ model RegistroAtividade {
   horasCalculadas   Float?
   horasprevistasdia Float?
 
-  talhao   Talhao @relation(fields: [talhaoId], references: [id])
-  talhaoId String
+  talhao   Talhao? @relation(fields: [talhaoId], references: [id])
+  talhaoId String?
   safra    Safra  @relation(fields: [safraId], references: [id])
   safraId  String
 
