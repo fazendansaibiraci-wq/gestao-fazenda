@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       maquinas.map(async (m) => {
         const ultimaAtividade = await prisma.registroAtividade.findFirst({
           where: { maquinaId: m.id, horimetroFinal: { not: null } },
-          orderBy: [{ data: 'desc' }, { createdAt: 'desc' }],
+          orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
           select: { horimetroFinal: true },
         })
         return {
