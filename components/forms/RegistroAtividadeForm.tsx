@@ -98,8 +98,12 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     setForm(prev => ({
       ...prev,
       maquinaId,
+      // Prioriza o horímetro final do último Registro de Atividade dessa
+      // máquina (vinculação correta dia a dia). Só cai pro ultimoHorimetro
+      // "genérico" (que pode vir de abastecimento) se a máquina nunca teve
+      // nenhum Registro de Atividade ainda.
       horimetroInicial: maquinaId && maquinaSelecionada
-        ? String(maquinaSelecionada.ultimoHorimetro ?? 0)
+        ? String(maquinaSelecionada.ultimoHorimetroAtividade ?? maquinaSelecionada.ultimoHorimetro ?? 0)
         : '',
     }))
   }
