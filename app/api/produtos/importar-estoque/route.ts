@@ -18,10 +18,17 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const pdfParse = require('pdf-parse')
-    const dados = await pdfParse(buffer)
+    const { PDFParse } = require('pdf-parse')
+    const parser = new PDFParse({ data: buffer })
+    let textoExtraido: string
+    try {
+      const resultado = await parser.getText()
+      textoExtraido = resultado.text
+    } finally {
+      await parser.destroy()
+    }
 
-    const { produtos, linhasNaoReconhecidas } = parseInventarioIdeagri(dados.text)
+    const { produtos, linhasNaoReconhecidas } = parseInventarioIdeagri(textoExtraido)
 
     if (produtos.length === 0) {
       return NextResponse.json(
