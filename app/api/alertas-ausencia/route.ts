@@ -136,10 +136,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: [] })
     }
 
-    // Talhão e safra usados como preenchimento obrigatório das faltas geradas
-    // automaticamente (mesma lógica de fallback já usada no formulário manual).
-    const talhaoAtivo = await prisma.talhao.findFirst({ where: { status: 'ATIVO' } })
-
+    // Falta automática não tem talhão real (não é uma atividade feita em
+    // algum lugar) — talhaoId fica null. Mantém só a safra pra contexto
+    // temporal do registro.
     let safraAtual = null
     if (config?.inicioSafra && config?.fimSafra) {
       safraAtual = await prisma.safra.findFirst({
@@ -155,7 +154,7 @@ export async function GET(request: NextRequest) {
 
     const resultado: { funcionarioId: string; nome: string; diasFaltantes: string[] }[] = []
 
-    if (talhaoAtivo && safraAtual) {
+    if (safraAtual) {
       for (const { func, diasFaltantes } of candidatosPorFuncionario) {
         const diasGerados: string[] = []
 
@@ -187,7 +186,6 @@ export async function GET(request: NextRequest) {
               status: 'CONCLUIDO',
               horaEntrada: '00:00',
               tipoAtividade: 'GERAIS',
-              talhaoId: talhaoAtivo.id,
               safraId: safraAtual.id,
             },
           })
