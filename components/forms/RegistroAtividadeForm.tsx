@@ -114,6 +114,15 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         setError('Horímetro final deve ser maior que inicial')
         return false
       }
+      const maquinaSelecionada: any = maquinas.find((m: any) => m.id === form.maquinaId)
+      const maiorHorimetroConhecido = Math.max(
+        maquinaSelecionada?.ultimoHorimetroAtividade ?? 0,
+        maquinaSelecionada?.ultimoHorimetro ?? 0
+      )
+      if (parseFloat(form.horimetroInicial) < maiorHorimetroConhecido) {
+        setError(`Horímetro inicial (${form.horimetroInicial}h) não pode ser menor que a última leitura conhecida dessa máquina (${maiorHorimetroConhecido}h). Verifique o valor digitado.`)
+        return false
+      }
     }
     return true
   }
