@@ -7,12 +7,23 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
     const maquinas = await prisma.maquina.findMany({
       orderBy: { nome: 'asc' },
     })
-
-    return NextResponse.json({ success: true, data: maquinas })
+    const maquinasComHorimetro = await Promise.all(
+      maquinas.map(async (m) => {
+        const ultimaAtividade = await prisma.registroAtividade.findFirst({
+          where: { maquinaId: m.id, horimetroFinal: { not: null } },
+          orderBy: [{ data: 'desc' }, { createdAt: 'desc' }],
+          select: { horimetroFinal: true },
+        })
+        return {
+          ...m,
+          ultimoHorimetroAtividade: ultimaAtividade?.horimetroFinal ?? null,
+        }
+      })
+    )
+    return NextResponse.json({ success: true, data: maquinasComHorimetro })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
