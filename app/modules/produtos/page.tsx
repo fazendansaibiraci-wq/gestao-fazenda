@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { redirect } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Trash2, Search } from 'lucide-react'
+import { ImportarEstoqueIdeagri } from '@/components/ImportarEstoqueIdeagri'
 
 export default function ProdutosPage() {
   const { data: session, status } = useSession()
@@ -84,6 +85,10 @@ export default function ProdutosPage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-primary">Produtos e Insumos</h1>
 
+      {isGestor && (
+        <ImportarEstoqueIdeagri onImportado={load} />
+      )}
+
       {/* Formulário — apenas Gestor/Gerente */}
       {isGestor && (
         <form onSubmit={handleSubmit} className="card space-y-4">
@@ -108,6 +113,7 @@ export default function ProdutosPage() {
               <option value="inseticida">Inseticida</option>
               <option value="adjuvante">Adjuvante</option>
               <option value="corretivo">Corretivo</option>
+              <option value="outro">Outro / A Classificar</option>
             </select>
             <select
               value={formData.unidadeMedida}
@@ -120,6 +126,9 @@ export default function ProdutosPage() {
               <option value="ml">ml</option>
               <option value="sacas">sacas</option>
               <option value="bags">bags</option>
+              <option value="ton">ton</option>
+              <option value="un">un</option>
+              <option value="SC">SC (saca)</option>
             </select>
             <input
               type="number"
@@ -187,6 +196,7 @@ export default function ProdutosPage() {
               <th className="px-4 py-3 text-left">Categoria</th>
               <th className="px-4 py-3 text-left">Unidade</th>
               <th className="px-4 py-3 text-left">Valor</th>
+              <th className="px-4 py-3 text-left">Estoque</th>
               <th className="px-4 py-3 text-left">Fornecedor</th>
               <th className="px-4 py-3 text-left">Status</th>
               {isGestor && <th className="px-4 py-3 text-right">Ações</th>}
@@ -195,7 +205,7 @@ export default function ProdutosPage() {
           <tbody>
             {produtosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={isGestor ? 7 : 6} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={isGestor ? 8 : 7} className="px-4 py-8 text-center text-gray-500">
                   Nenhum produto encontrado
                 </td>
               </tr>
@@ -206,6 +216,9 @@ export default function ProdutosPage() {
                   <td className="px-4 py-3 text-gray-600">{p.categoria}</td>
                   <td className="px-4 py-3 text-gray-600">{p.unidadeMedida}</td>
                   <td className="px-4 py-3 text-gray-600">R$ {p.valorUnitario?.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {p.quantidadeEstoque?.toLocaleString('pt-BR') || 0} {p.unidadeMedida}
+                  </td>
                   <td className="px-4 py-3 text-gray-600">{p.fornecedor || '-'}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
