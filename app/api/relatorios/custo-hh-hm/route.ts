@@ -49,6 +49,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: [] })
     }
 
+    // ─── Turmas (DiariaTurma) no mesmo período ───────────────────────────
+    // DiariaTurma não tem campo de horas (é diária, não hora). Estimamos
+    // horas = quantidadePessoas × carga horária padrão do dia, só pra dar
+    // uma referência — não é precisão real, por isso "estimado" no label.
+    const diariasTurma = await prisma.diariaTurma.findMany({
+      where: {
+        ...(Object.keys(dataFilter).length > 0 ? { data: dataFilter } : {}),
+      },
+      select: {
+        talhaoId: true,
+        quantidadePessoas: true,
+        valorTotal: true,
+        talhao: { select: { area: true, nome: true } },
+      },
+    })
+    const cargaHorariaPadraoDiaTurma = config?.cargaHorariaEntressafra || 8
+    const acumuladorTurmaPorTalhao = new Map<string, { nomeTalhao: string | null; area: number | null; horasTurma: number; custoTurmasTotal: number }>()
+    for (const d of diariasTurma) {
+      if (!acumuladorTurmaPorTalhao.has(d.talhaoId)) {
+        acumuladorTurmaPorTalhao.set(d.talhaoId, {
+          nomeTalhao: d.talhao?.nome ?? null,
+          area: d.talhao?.area ?? null,
+          horasTurma: 0,
+          custoTurmasTotal: 0,
+        })
+      }
+      const acumuladoTurma = acumuladorTurmaPorTalhao.get(d.talhaoId)!
+      acumuladoTurma.horasTurma += d.quantidadePessoas * cargaHorariaPadraoDiaTurma
+      acumuladoTurma.custoTurmasTotal += d.valorTotal
+    }
+
     // Data de referência pra determinar se está na safra: o meio do período
     // filtrado (mesma ideia do resumo-mensal, que usa o meio do mês), ou hoje
     // quando não há período definido.
@@ -148,14 +179,25 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const resultado = Array.from(acumuladorPorTalhao.entries()).map(([talhaoId, dados]) => ({
-      talhaoId,
-      nomeTalhao: dados.nomeTalhao,
-      custoHHPorHa: dados.area && dados.area > 0 ? dados.custoHH / dados.area : null,
-      custoHMPorHa: dados.area && dados.area > 0 ? dados.custoHM / dados.area : null,
-      horasHH: dados.horasHH,
-      horasHM: dados.horasHM,
-    }))
+    const todosTalhaoIds = new Set([
+      ...Array.from(acumuladorPorTalhao.keys()),
+      ...Array.from(acumuladorTurmaPorTalhao.keys()),
+    ])
+    const resultado = Array.from(todosTalhaoIds).map((talhaoId) => {
+      const dados = acumuladorPorTalhao.get(talhaoId)
+      const turma = acumuladorTurmaPorTalhao.get(talhaoId)
+      const area = dados?.area ?? turma?.area ?? null
+      return {
+        talhaoId,
+        nomeTalhao: dados?.nomeTalhao || turma?.nomeTalhao || talhaoId,
+        custoHHPorHa: dados?.area && dados.area > 0 ? dados.custoHH / dados.area : null,
+        custoHMPorHa: dados?.area && dados.area > 0 ? dados.custoHM / dados.area : null,
+        horasHH: dados?.horasHH || 0,
+        horasHM: dados?.horasHM || 0,
+        horasTurma: turma?.horasTurma || 0,
+        custoTurmasPorHa: turma && area && area > 0 ? turma.custoTurmasTotal / area : null,
+      }
+    })
 
     return NextResponse.json({ success: true, data: resultado })
   } catch (error) {
