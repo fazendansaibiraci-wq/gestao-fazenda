@@ -74,6 +74,26 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+      const [ultimaAtividadeMaquina, maquinaParaValidar] = await Promise.all([
+        prisma.registroAtividade.findFirst({
+          where: { maquinaId: body.maquinaId, horimetroFinal: { not: null } },
+          orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
+          select: { horimetroFinal: true },
+        }),
+        prisma.maquina.findUnique({ where: { id: body.maquinaId }, select: { ultimoHorimetro: true } }),
+      ])
+      const maiorHorimetroConhecido = Math.max(
+        ultimaAtividadeMaquina?.horimetroFinal || 0,
+        maquinaParaValidar?.ultimoHorimetro || 0
+      )
+      if (body.horimetroInicial < maiorHorimetroConhecido) {
+        return NextResponse.json(
+          {
+            error: `Horímetro inicial (${body.horimetroInicial}h) não pode ser menor que a última leitura conhecida dessa máquina (${maiorHorimetroConhecido}h). Verifique o valor digitado.`,
+          },
+          { status: 400 }
+        )
+      }
     }
 
     const funcionarioId = body.funcionarioId || session.user?.id as string
