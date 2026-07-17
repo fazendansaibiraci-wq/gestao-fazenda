@@ -45,10 +45,6 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    if (registros.length === 0) {
-      return NextResponse.json({ success: true, data: [] })
-    }
-
     // ─── Turmas (DiariaTurma) no mesmo período ───────────────────────────
     // DiariaTurma não tem campo de horas (é diária, não hora). Estimamos
     // horas = quantidadePessoas × carga horária padrão do dia, só pra dar
@@ -78,6 +74,10 @@ export async function GET(request: NextRequest) {
       const acumuladoTurma = acumuladorTurmaPorTalhao.get(d.talhaoId)!
       acumuladoTurma.horasTurma += d.quantidadePessoas * cargaHorariaPadraoDiaTurma
       acumuladoTurma.custoTurmasTotal += d.valorTotal
+    }
+
+    if (registros.length === 0 && diariasTurma.length === 0) {
+      return NextResponse.json({ success: true, data: [] })
     }
 
     // Data de referência pra determinar se está na safra: o meio do período
