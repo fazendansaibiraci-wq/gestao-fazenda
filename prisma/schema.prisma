@@ -242,6 +242,8 @@ model Produto {
   valorUnitario     Float
   fornecedor        String?
   status            Boolean  @default(true)
+  quantidadeEstoque Float    @default(0)
+  estoqueMinimo     Float    @default(0)
   dataCriacao       DateTime @default(now())
   ultimaAtualizacao DateTime @updatedAt
 
