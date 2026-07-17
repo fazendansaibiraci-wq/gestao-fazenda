@@ -675,7 +675,12 @@ export default function RelatoriosPage() {
                   </thead>
                   <tbody>
                     {(() => {
-                      const gruposAtividade = agruparPor('talhaoId')
+                      const gruposAtividadeSemFalta: Record<string, any[]> = {}
+                      Object.entries(agruparPor('talhaoId')).forEach(([talhaoId, regs]) => {
+                        const semFalta = (regs as any[]).filter(r => !r.isFalta)
+                        if (semFalta.length > 0) gruposAtividadeSemFalta[talhaoId] = semFalta
+                      })
+                      const gruposAtividade = gruposAtividadeSemFalta
                       const talhaoIdsComTurma = custoHHHM
                         .filter(c => (c.horasTurma || 0) > 0 || c.custoTurmasPorHa != null)
                         .map(c => c.talhaoId)
