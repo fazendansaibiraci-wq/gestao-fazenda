@@ -63,26 +63,20 @@ export async function PUT(
           { status: 400 }
         )
       }
-      const [ultimaAtividadeMaquina, maquinaParaValidar] = await Promise.all([
-        prisma.registroAtividade.findFirst({
-          where: {
-            maquinaId: body.maquinaId,
-            horimetroFinal: { not: null },
-            id: { not: params.id },
-          },
-          orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
-          select: { horimetroFinal: true },
-        }),
-        prisma.maquina.findUnique({ where: { id: body.maquinaId }, select: { ultimoHorimetro: true } }),
-      ])
-      const maiorHorimetroConhecido = Math.max(
-        ultimaAtividadeMaquina?.horimetroFinal || 0,
-        maquinaParaValidar?.ultimoHorimetro || 0
-      )
-      if (body.horimetroInicial < maiorHorimetroConhecido) {
+      const ultimaAtividadeMaquina = await prisma.registroAtividade.findFirst({
+        where: {
+          maquinaId: body.maquinaId,
+          horimetroFinal: { not: null },
+          id: { not: params.id },
+        },
+        orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
+        select: { horimetroFinal: true },
+      })
+      const ultimoHorimetroAtividade = ultimaAtividadeMaquina?.horimetroFinal || 0
+      if (body.horimetroInicial < ultimoHorimetroAtividade) {
         return NextResponse.json(
           {
-            error: `Horímetro inicial (${body.horimetroInicial}h) não pode ser menor que a última leitura conhecida dessa máquina (${maiorHorimetroConhecido}h). Verifique o valor digitado.`,
+            error: `Horímetro inicial (${body.horimetroInicial}h) não pode ser menor que o horímetro final do último Registro de Atividade dessa máquina (${ultimoHorimetroAtividade}h). Verifique o valor digitado.`,
           },
           { status: 400 }
         )
