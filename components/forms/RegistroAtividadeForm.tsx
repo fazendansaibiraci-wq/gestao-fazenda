@@ -105,17 +105,11 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     setForm(prev => ({
       ...prev,
       maquinaId,
-      // Sugere o MAIOR valor conhecido entre a última atividade e o
-      // último abastecimento dessa máquina — o mesmo critério usado na
-      // validação de continuidade (validateHorimetro), pra garantir que o
-      // valor sugerido nunca comece já inválido. Se a máquina foi
-      // abastecida com uma leitura mais alta depois da última atividade,
-      // é essa leitura mais alta que reflete o estado real da máquina.
+      // Sugere o horímetro final do último Registro de Atividade dessa
+      // máquina — vínculo dia a dia, sem considerar abastecimento (que é
+      // uma leitura separada e não deve influenciar essa cadeia).
       horimetroInicial: maquinaId && maquinaSelecionada
-        ? String(Math.max(
-            maquinaSelecionada.ultimoHorimetroAtividade ?? 0,
-            maquinaSelecionada.ultimoHorimetro ?? 0
-          ))
+        ? String(maquinaSelecionada.ultimoHorimetroAtividade ?? 0)
         : '',
     }))
   }
@@ -135,12 +129,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
       // verdade nesse caso.
       if (!id) {
         const maquinaSelecionada: any = maquinas.find((m: any) => m.id === form.maquinaId)
-        const maiorHorimetroConhecido = Math.max(
-          maquinaSelecionada?.ultimoHorimetroAtividade ?? 0,
-          maquinaSelecionada?.ultimoHorimetro ?? 0
-        )
-        if (parseFloat(form.horimetroInicial) < maiorHorimetroConhecido) {
-          setError(`Horímetro inicial (${form.horimetroInicial}h) não pode ser menor que a última leitura conhecida dessa máquina (${maiorHorimetroConhecido}h). Verifique o valor digitado.`)
+        const ultimoHorimetroAtividade = maquinaSelecionada?.ultimoHorimetroAtividade ?? 0
+        if (parseFloat(form.horimetroInicial) < ultimoHorimetroAtividade) {
+          setError(`Horímetro inicial (${form.horimetroInicial}h) não pode ser menor que o horímetro final do último Registro de Atividade dessa máquina (${ultimoHorimetroAtividade}h). Verifique o valor digitado.`)
           return false
         }
       }
