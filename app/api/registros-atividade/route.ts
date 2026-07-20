@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    if (!body.data || !body.horaEntrada || !body.talhaoId || !body.safraId) {
+    if (!body.data || !body.horaEntrada || !body.safraId || (!body.isFalta && !body.talhaoId)) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
     }
 
