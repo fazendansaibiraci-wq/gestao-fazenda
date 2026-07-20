@@ -133,7 +133,7 @@ export async function PUT(
     // registro (era) com o novo estado pedido no body (será), pra creditar de
     // volta ou debitar apenas na transição — e não fazer nada se o motivo da
     // falta não mudou.
-    const eraCompensacaoBancoHoras = registro.isFalta && registro.motivoFalta === 'banco_horas'
+    const eraCompensacaoBancoHoras = registro.motivoFalta === 'banco_horas' && registro.tipoAtividade === 'BANCO_HORAS'
     const isFaltaFinal = body.isFalta !== undefined ? body.isFalta : registro.isFalta
     const motivoFaltaFinal = body.motivoFalta ?? null
     const seraCompensacaoBancoHoras = !!isFaltaFinal && motivoFaltaFinal === 'banco_horas'
