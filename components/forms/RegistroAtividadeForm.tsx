@@ -281,6 +281,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               <select id="motivoFalta" name="motivoFalta" value={form.motivoFalta} onChange={handleChange} disabled={loading}>
                 <option value="">Selecionar motivo</option>
                 <option value="atestado_medico">Atestado Médico</option>
+                <option value="banco_horas">Compensação (Banco de Horas)</option>
                 <option value="pessoal">Pessoal</option>
                 <option value="outro">Outro</option>
               </select>
