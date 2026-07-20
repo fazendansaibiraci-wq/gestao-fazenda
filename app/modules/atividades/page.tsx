@@ -7,6 +7,8 @@ import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp } from '
 import { redirect } from 'next/navigation'
 import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 
+const DIAS_SEMANA_ABREV = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+
 interface Atividade {
   id: string
   data: string
@@ -418,7 +420,12 @@ export default function AtividadesPage() {
                       {expandidos.has(a.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
                   </td>
-                  <td className="px-4 py-3">{new Date(a.data).toLocaleDateString('pt-BR')}</td>
+                  <td className="px-4 py-3">
+                    {new Date(a.data).toLocaleDateString('pt-BR')}{' '}
+                    <span className="text-gray-400 text-xs">
+                      {DIAS_SEMANA_ABREV[new Date(a.data).getUTCDay()]}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">{a.isFalta ? '—' : `${a.horaEntrada}${a.horaSaida ? ` - ${a.horaSaida}` : ''}`}</td>
                   {isGestor && <td className="px-4 py-3 text-gray-600">{a.funcionario?.name || '-'}</td>}
                   <td className="px-4 py-3 font-medium">
