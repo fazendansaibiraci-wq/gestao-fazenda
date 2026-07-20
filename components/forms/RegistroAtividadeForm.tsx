@@ -174,7 +174,10 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         funcionarioId: form.funcionarioId,
         isFalta: true, motivoFalta: form.motivoFalta, periodoFalta: form.periodoFalta,
         observacao: form.observacao,
-        talhaoId: form.talhaoId || (talhoes[0] as any)?.id,
+        // Falta não tem talhão real — não preencher com um talhão
+        // qualquer só pra satisfazer campo obrigatório (mesmo problema
+        // corrigido hoje mais cedo pro sistema automático de faltas).
+        talhaoId: null,
         safraId: form.safraId || (safras[0] as any)?.id,
         tipoAtividade: 'GERAIS', status: 'CONCLUIDO', horaEntrada: '00:00',
       } : {
