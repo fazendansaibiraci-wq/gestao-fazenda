@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
@@ -31,6 +31,13 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [atestadoFile, setAtestadoFile] = useState<File | null>(null)
   const [atestadoUploading, setAtestadoUploading] = useState(false)
   const [atestadoError, setAtestadoError] = useState('')
+
+  const erroRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (error && erroRef.current) {
+      erroRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [error])
 
   const [form, setForm] = useState({
     data: initialData?.data?.split('T')[0] || new Date().toISOString().split('T')[0],
@@ -114,14 +121,23 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         setError('Horímetro final deve ser maior que inicial')
         return false
       }
-      const maquinaSelecionada: any = maquinas.find((m: any) => m.id === form.maquinaId)
-      const maiorHorimetroConhecido = Math.max(
-        maquinaSelecionada?.ultimoHorimetroAtividade ?? 0,
-        maquinaSelecionada?.ultimoHorimetro ?? 0
-      )
-      if (parseFloat(form.horimetroInicial) < maiorHorimetroConhecido) {
-        setError(`Horímetro inicial (${form.horimetroInicial}h) não pode ser menor que a última leitura conhecida dessa máquina (${maiorHorimetroConhecido}h). Verifique o valor digitado.`)
-        return false
+      // A checagem de "maior horímetro conhecido" só roda na CRIAÇÃO
+      // (sem id). Em modo de edição, o valor vindo de /api/maquinas pode
+      // refletir o próprio registro sendo editado (se for o mais recente
+      // da máquina), o que bloquearia edições legítimas sem o usuário
+      // ter mudado nada. O servidor (PUT) já faz essa validação
+      // corretamente excluindo o próprio registro — é ele quem decide de
+      // verdade nesse caso.
+      if (!id) {
+        const maquinaSelecionada: any = maquinas.find((m: any) => m.id === form.maquinaId)
+        const maiorHorimetroConhecido = Math.max(
+          maquinaSelecionada?.ultimoHorimetroAtividade ?? 0,
+          maquinaSelecionada?.ultimoHorimetro ?? 0
+        )
+        if (parseFloat(form.horimetroInicial) < maiorHorimetroConhecido) {
+          setError(`Horímetro inicial (${form.horimetroInicial}h) não pode ser menor que a última leitura conhecida dessa máquina (${maiorHorimetroConhecido}h). Verifique o valor digitado.`)
+          return false
+        }
       }
     }
     return true
@@ -223,7 +239,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   }, [form.data, form.horaEntrada, form.horaSaida, form.passouDiretoAlmoco, form.funcionarioId, funcionarios, config, estaNaSafra, session])
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
-      {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600 text-sm">{error}</p></div>}
+      {error && <div ref={erroRef} className="p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600 text-sm">{error}</p></div>}
 
       {isGestor && (
         <div className="card border-l-4 border-primary">
