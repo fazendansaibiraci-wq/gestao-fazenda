@@ -166,6 +166,27 @@ export async function POST(request: NextRequest) {
     const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 6=Sab
     const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config)
 
+    // Compensação de falta via Banco de Horas: se o motivo da falta for
+    // "banco_horas" e o funcionário tiver saldo suficiente, o dia deixa de
+    // contar como falta e passa a ser um dia cheio trabalhado, debitando as
+    // horas do Banco de Horas do funcionário.
+    const isCompensacaoBancoHoras = !!body.isFalta && body.motivoFalta === 'banco_horas'
+    let bancoHorasFuncionario = null as { saldoHoras: number } | null
+
+    if (isCompensacaoBancoHoras) {
+      bancoHorasFuncionario = await prisma.bancoHoras.findUnique({ where: { funcionarioId } })
+      const saldoDisponivel = bancoHorasFuncionario?.saldoHoras || 0
+      if (saldoDisponivel < cargaHorariaDia) {
+        return NextResponse.json(
+          {
+            error: `Saldo insuficiente no Banco de Horas para compensar esta falta. Saldo atual: ${saldoDisponivel}h. Necessário: ${cargaHorariaDia}h.`,
+          },
+          { status: 400 }
+        )
+      }
+      horasCalculadas = cargaHorariaDia
+    }
+
     // Horas extras e devidas
     let horasExtras = 0
     let horasDevidas = 0
@@ -192,9 +213,9 @@ export async function POST(request: NextRequest) {
         horaSaida: body.horaSaida || null,
         horasCalculadas,
         horasprevistasdia: cargaHorariaDia,
-        talhaoId: body.talhaoId,
+        talhaoId: isCompensacaoBancoHoras ? null : body.talhaoId,
         safraId: body.safraId,
-        tipoAtividade: body.tipoAtividade,
+        tipoAtividade: isCompensacaoBancoHoras ? 'BANCO_HORAS' : body.tipoAtividade,
         status: body.status || 'CONCLUIDO',
         observacao: body.observacao || null,
         fotoEvidencia: body.fotoEvidencia || null,
@@ -208,7 +229,7 @@ export async function POST(request: NextRequest) {
         horimetroFinal: body.horimetroFinal || null,
         horasMaquina: body.horasMaquina || null,
         implementoUtilizado: body.implementoUtilizado || null,
-        isFalta: body.isFalta || false,
+        isFalta: isCompensacaoBancoHoras ? false : (body.isFalta || false),
         motivoFalta: body.motivoFalta || null,
         periodoFalta: body.periodoFalta || null,
         passouDiretoAlmoco: body.passouDiretoAlmoco || false,
@@ -229,6 +250,16 @@ export async function POST(request: NextRequest) {
           data: { ultimoHorimetro: body.horimetroFinal },
         })
       }
+    }
+
+    if (isCompensacaoBancoHoras && bancoHorasFuncionario) {
+      await prisma.bancoHoras.update({
+        where: { funcionarioId },
+        data: {
+          saldoHoras: { decrement: cargaHorariaDia },
+          horasAbatidas: { increment: cargaHorariaDia },
+        },
+      })
     }
 
     // Se esta é uma atividade real (não falta), remove qualquer falta automática
