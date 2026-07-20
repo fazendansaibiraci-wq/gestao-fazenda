@@ -2,243 +2,119 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { searchParams } = new URL(request.url)
-    const data = searchParams.get('data')
-    const status = searchParams.get('status')
-
-    const where: any = {}
-
-    if (session.user?.role === 'FUNCIONARIO') {
-      where.funcionarioId = session.user?.id
-    }
-
-    if (data) {
-      const dateStart = new Date(data)
-      const dateEnd = new Date(data)
-      dateEnd.setDate(dateEnd.getDate() + 1)
-      where.data = {
-        gte: dateStart,
-        lt: dateEnd,
-      }
-    }
-
-    if (status) {
-      where.status = status
-    }
-
-    const registros = await prisma.registroAtividade.findMany({
-      where,
-      include: {
-        talhao: { select: { nome: true } },
-        safra: { select: { nome: true } },
-        funcionario: { select: { name: true } },
-        maquina: { select: { nome: true } },
-      },
-      orderBy: { data: 'desc' },
-    })
-
-    return NextResponse.json({ success: true, data: registros })
-  } catch (error) {
-    console.error('GET /api/registros-atividade:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
+import { put, del } from '@vercel/blob'
+import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = await request.json()
+    const formData = await request.formData()
+    const file = formData.get('file') as File | null
+    const registroId = formData.get('registroId') as string | null
 
-    if (!body.data || !body.horaEntrada || !body.talhaoId || !body.safraId) {
-      return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
+    if (!file || !registroId) {
+      return NextResponse.json({ error: 'Arquivo e registro são obrigatórios' }, { status: 400 })
     }
 
-    if (body.maquinaId) {
-      if (!body.horimetroInicial || !body.horimetroFinal) {
-        return NextResponse.json(
-          { error: 'Horímetro inicial e final obrigatórios ao usar máquina' },
-          { status: 400 }
-        )
-      }
-      if (body.horimetroFinal <= body.horimetroInicial) {
-        return NextResponse.json(
-          { error: 'Horímetro final deve ser maior que inicial' },
-          { status: 400 }
-        )
-      }
-      const ultimaAtividadeMaquina = await prisma.registroAtividade.findFirst({
-        where: { maquinaId: body.maquinaId, horimetroFinal: { not: null } },
-        orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
-        select: { horimetroFinal: true },
-      })
-      const ultimoHorimetroAtividade = ultimaAtividadeMaquina?.horimetroFinal || 0
-      if (body.horimetroInicial < ultimoHorimetroAtividade) {
-        return NextResponse.json(
-          {
-            error: `Horímetro inicial (${body.horimetroInicial}h) não pode ser menor que o horímetro final do último Registro de Atividade dessa máquina (${ultimoHorimetroAtividade}h). Verifique o valor digitado.`,
-          },
-          { status: 400 }
-        )
-      }
+    if (file.type !== 'application/pdf') {
+      return NextResponse.json({ error: 'Só é permitido anexar arquivos PDF' }, { status: 400 })
     }
 
-    const funcionarioId = body.funcionarioId || session.user?.id as string
+    if (file.size > 4.5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Arquivo maior que 4,5MB' }, { status: 400 })
+    }
+
+    const registro = await prisma.registroAtividade.findUnique({ where: { id: registroId } })
+    if (!registro) {
+      return NextResponse.json({ error: 'Registro não encontrado' }, { status: 404 })
+    }
+
+    const blob = await put(`atestados/${registroId}-${file.name}`, file, {
+      access: 'public',
+      addRandomSuffix: true,
+    })
+
+    // Atestado anexado com sucesso: deixa de contar como falta e passa a
+    // contar como dia normal trabalhado, creditando a carga horária cheia
+    // do dia (sem desconto pro funcionário). Sem talhão, pois não é
+    // atividade feita em nenhum lugar real.
     const [funcionario, config] = await Promise.all([
       prisma.user.findUnique({
-        where: { id: funcionarioId },
+        where: { id: registro.funcionarioId },
         select: {
-          cargaHorariaSafra: true,
           cargaHorariaSegSex: true,
           cargaHorariaSabado: true,
           cargaHorariaDomingo: true,
-          valorHoraExtraEntressafra: true,
-          valorHoraExtraSafra: true,
-          salarioEntressafra: true,
-          salarioSafra: true,
-          tipoSalario: true,
+          domingosPorMes: true,
         },
       }),
       prisma.configuracaoGlobal.findFirst(),
     ])
 
-    let estaNaSafra = false
-    if (config?.inicioSafra && config?.fimSafra) {
-      const dataRegistro = new Date(body.data)
-      estaNaSafra = dataRegistro >= new Date(config.inicioSafra) && dataRegistro <= new Date(config.fimSafra)
-    }
+    const cargaHorariaDia = calcularCargaHorariaDia(registro.data, funcionario, config)
 
-    let horasBrutas = null
-    if (body.horaEntrada && body.horaSaida) {
-      const [hE, mE] = body.horaEntrada.split(':').map(Number)
-      const [hS, mS] = body.horaSaida.split(':').map(Number)
-      const entrada = hE * 60 + mE
-      const saida = hS * 60 + mS
-      if (saida > entrada) {
-        horasBrutas = (saida - entrada) / 60
-      }
-    }
-
-    let horasCalculadas = horasBrutas
-    let horaAlmocoComoExtra = false
-
-    if (horasBrutas !== null && !body.isFalta) {
-      if (!estaNaSafra) {
-        horasCalculadas = Math.max(0, horasBrutas - 1)
-      } else {
-        if (body.passouDiretoAlmoco) {
-          horasCalculadas = horasBrutas
-          horaAlmocoComoExtra = true
-        } else {
-          horasCalculadas = Math.max(0, horasBrutas - 1)
-        }
-      }
-    }
-
-    const dataRegistro = new Date(body.data)
-    const diaSemana = dataRegistro.getUTCDay()
-
-    let cargaHorariaDia: number
-    if (estaNaSafra) {
-      cargaHorariaDia = funcionario?.cargaHorariaSafra || 8
-    } else {
-      if (diaSemana === 0) {
-        cargaHorariaDia = funcionario?.cargaHorariaDomingo ?? (config?.cargaHorariaEntressafra || 8)
-      } else if (diaSemana === 6) {
-        cargaHorariaDia = funcionario?.cargaHorariaSabado ?? (config?.cargaHorariaEntressafra || 8)
-      } else {
-        cargaHorariaDia = funcionario?.cargaHorariaSegSex ?? (config?.cargaHorariaEntressafra || 8)
-      }
-    }
-
-    let horasExtras = 0
-    let horasDevidas = 0
-    let ehHoraExtra = false
-
-    if (horasCalculadas !== null && !body.isFalta) {
-      if (horasCalculadas > cargaHorariaDia) {
-        horasExtras = horasCalculadas - cargaHorariaDia
-        ehHoraExtra = true
-      } else if (horasCalculadas < cargaHorariaDia) {
-        horasDevidas = cargaHorariaDia - horasCalculadas
-      }
-    }
-
-    const valorHoraExtra = estaNaSafra
-      ? (funcionario?.valorHoraExtraSafra || 0)
-      : (funcionario?.valorHoraExtraEntressafra || 0)
-
-    const registro = await prisma.registroAtividade.create({
+    const atualizado = await prisma.registroAtividade.update({
+      where: { id: registroId },
       data: {
-        funcionarioId,
-        data: new Date(new Date(body.data).toISOString().split('T')[0] + 'T12:00:00.000Z'),
-        horaEntrada: body.horaEntrada,
-        horaSaida: body.horaSaida || null,
-        horasCalculadas,
+        atestadoUrl: blob.url,
+        isFalta: false,
+        talhaoId: null,
+        tipoAtividade: 'ATESTADO_MEDICO',
+        horasCalculadas: cargaHorariaDia,
         horasprevistasdia: cargaHorariaDia,
-        talhaoId: body.talhaoId,
-        safraId: body.safraId,
-        tipoAtividade: body.tipoAtividade,
-        status: body.status || 'CONCLUIDO',
-        observacao: body.observacao || null,
-        fotoEvidencia: body.fotoEvidencia || null,
-        totalBombas: body.totalBombas || null,
-        tipoAdubo: body.tipoAdubo || null,
-        quantidadeAdubo: body.quantidadeAdubo || null,
-        tipoCorretivo: body.tipoCorretivo || null,
-        quantidadeCorretivo: body.quantidadeCorretivo || null,
-        maquinaId: body.maquinaId || null,
-        horimetroInicial: body.horimetroInicial || null,
-        horimetroFinal: body.horimetroFinal || null,
-        horasMaquina: body.horasMaquina || null,
-        implementoUtilizado: body.implementoUtilizado || null,
-        isFalta: body.isFalta || false,
-        motivoFalta: body.motivoFalta || null,
-        periodoFalta: body.periodoFalta || null,
-        passouDiretoAlmoco: body.passouDiretoAlmoco || false,
-        ehHoraExtra,
-        statusAprovacao: ehHoraExtra ? 'pendente' : 'aprovado',
-      },
-      include: {
-        talhao: { select: { nome: true } },
-        safra: { select: { nome: true } },
       },
     })
 
-    if (body.maquinaId && body.horimetroFinal) {
-      const maquinaAtual = await prisma.maquina.findUnique({ where: { id: body.maquinaId } })
-      if (maquinaAtual && body.horimetroFinal > (maquinaAtual.ultimoHorimetro || 0)) {
-        await prisma.maquina.update({
-          where: { id: body.maquinaId },
-          data: { ultimoHorimetro: body.horimetroFinal },
-        })
+    return NextResponse.json({ success: true, data: atualizado })
+  } catch (error) {
+    console.error('POST /api/registros-atividade/atestado:', error)
+    return NextResponse.json({ error: 'Erro ao enviar o atestado' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { searchParams } = new URL(request.url)
+    const registroId = searchParams.get('registroId')
+
+    if (!registroId) {
+      return NextResponse.json({ error: 'registroId é obrigatório' }, { status: 400 })
+    }
+
+    const registro = await prisma.registroAtividade.findUnique({ where: { id: registroId } })
+    if (!registro) {
+      return NextResponse.json({ error: 'Registro não encontrado' }, { status: 404 })
+    }
+
+    if (registro.atestadoUrl) {
+      try {
+        await del(registro.atestadoUrl)
+      } catch (err) {
+        console.error('Erro ao apagar blob do atestado (seguindo mesmo assim):', err)
       }
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: registro,
-        message: 'Atividade registrada com sucesso',
-        horasExtras: horasExtras > 0 ? horasExtras : null,
-        horasDevidas: horasDevidas > 0 ? horasDevidas : null,
-        valorHoraExtra: horasExtras > 0 ? valorHoraExtra * horasExtras : null,
-        estaNaSafra,
-        cargaHorariaDia,
-        horaAlmocoComoExtra,
-        diaSemana: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][diaSemana],
+    // Remover o atestado reverte o registro pra falta de novo — sem prova
+    // anexada, volta a contar como ausência não justificada.
+    await prisma.registroAtividade.update({
+      where: { id: registroId },
+      data: {
+        atestadoUrl: null,
+        isFalta: true,
+        talhaoId: null,
+        tipoAtividade: 'GERAIS',
+        horasCalculadas: null,
       },
-      { status: 201 }
-    )
+    })
+
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('POST /api/registros-atividade:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('DELETE /api/registros-atividade/atestado:', error)
+    return NextResponse.json({ error: 'Erro ao remover o atestado' }, { status: 500 })
   }
 }
