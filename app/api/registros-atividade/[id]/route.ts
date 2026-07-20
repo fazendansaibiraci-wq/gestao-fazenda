@@ -129,6 +129,49 @@ export async function PUT(
       ehHoraExtra = horasCalculadas !== null && horasCalculadas > cargaHorariaDia
     }
 
+    // Compensação de falta via Banco de Horas: compara o estado anterior do
+    // registro (era) com o novo estado pedido no body (será), pra creditar de
+    // volta ou debitar apenas na transição — e não fazer nada se o motivo da
+    // falta não mudou.
+    const eraCompensacaoBancoHoras = registro.isFalta && registro.motivoFalta === 'banco_horas'
+    const isFaltaFinal = body.isFalta !== undefined ? body.isFalta : registro.isFalta
+    const motivoFaltaFinal = body.motivoFalta ?? null
+    const seraCompensacaoBancoHoras = !!isFaltaFinal && motivoFaltaFinal === 'banco_horas'
+
+    if (eraCompensacaoBancoHoras && !seraCompensacaoBancoHoras) {
+      // Deixou de ser compensação: credita de volta as horas debitadas.
+      await prisma.bancoHoras.update({
+        where: { funcionarioId },
+        data: {
+          saldoHoras: { increment: registro.horasCalculadas || 0 },
+          horasAbatidas: { decrement: registro.horasCalculadas || 0 },
+        },
+      }).catch(() => {})
+    } else if (!eraCompensacaoBancoHoras && seraCompensacaoBancoHoras) {
+      // Passou a ser compensação agora: verifica saldo e debita.
+      const bancoHorasFuncionario = await prisma.bancoHoras.findUnique({ where: { funcionarioId } })
+      const saldoDisponivel = bancoHorasFuncionario?.saldoHoras || 0
+      if (saldoDisponivel < cargaHorariaDia) {
+        return NextResponse.json(
+          {
+            error: `Saldo insuficiente no Banco de Horas para compensar esta falta. Saldo atual: ${saldoDisponivel}h. Necessário: ${cargaHorariaDia}h.`,
+          },
+          { status: 400 }
+        )
+      }
+      await prisma.bancoHoras.update({
+        where: { funcionarioId },
+        data: {
+          saldoHoras: { decrement: cargaHorariaDia },
+          horasAbatidas: { increment: cargaHorariaDia },
+        },
+      })
+    }
+
+    if (seraCompensacaoBancoHoras) {
+      horasCalculadas = cargaHorariaDia
+    }
+
     const updated = await prisma.registroAtividade.update({
       where: { id: params.id },
       data: {
@@ -137,9 +180,9 @@ export async function PUT(
         horaSaida: body.horaSaida ?? null,
         horasCalculadas,
         horasprevistasdia: cargaHorariaDia,
-        talhaoId: body.talhaoId || undefined,
+        talhaoId: seraCompensacaoBancoHoras ? null : (body.talhaoId || undefined),
         safraId: body.safraId || undefined,
-        tipoAtividade: body.tipoAtividade || undefined,
+        tipoAtividade: seraCompensacaoBancoHoras ? 'BANCO_HORAS' : (body.tipoAtividade || undefined),
         status: body.status || undefined,
         observacao: body.observacao ?? null,
         fotoEvidencia: body.fotoEvidencia ?? null,
@@ -153,7 +196,7 @@ export async function PUT(
         horimetroFinal: body.horimetroFinal ?? null,
         horasMaquina: body.horasMaquina ?? null,
         implementoUtilizado: body.implementoUtilizado ?? null,
-        isFalta: body.isFalta !== undefined ? body.isFalta : undefined,
+        isFalta: seraCompensacaoBancoHoras ? false : (body.isFalta !== undefined ? body.isFalta : undefined),
         motivoFalta: body.motivoFalta ?? null,
         periodoFalta: body.periodoFalta ?? null,
         passouDiretoAlmoco: body.passouDiretoAlmoco !== undefined ? body.passouDiretoAlmoco : undefined,
