@@ -1,3 +1,4 @@
+import { CanvasFactory } from 'pdf-parse/worker'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const { PDFParse } = require('pdf-parse')
-    const parser = new PDFParse({ data: buffer })
+    const parser = new PDFParse({ data: new Uint8Array(buffer), CanvasFactory })
     let textoExtraido: string
     try {
       const resultado = await parser.getText()
