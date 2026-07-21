@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { parseInventarioIdeagri } from '@/lib/parseInventarioIdeagri'
-import { extractText, getDocumentProxy } from 'unpdf'
+import { parseInventarioIdeagriCSV } from '@/lib/parseInventarioIdeagriCSV'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,14 +18,15 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const pdf = await getDocumentProxy(new Uint8Array(buffer))
-    const { text: textoExtraido } = await extractText(pdf, { mergePages: true })
+    // O Ideagri exporta em ISO-8859-1 (Latin-1), não UTF-8 — decodificar
+    // errado corrompe os acentos (ÁCIDO BÓRICO, CAFÉ, etc).
+    const textoCSV = buffer.toString('latin1')
 
-    const { produtos, linhasNaoReconhecidas } = parseInventarioIdeagri(textoExtraido)
+    const { produtos, linhasComProblema } = parseInventarioIdeagriCSV(textoCSV)
 
     if (produtos.length === 0) {
       return NextResponse.json(
-        { error: 'Nenhum produto foi identificado nesse PDF. Confira se é o arquivo de Inventário certo.' },
+        { error: 'Nenhum produto foi identificado nesse CSV. Confira se é o arquivo de Inventário certo.' },
         { status: 400 }
       )
     }
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
       const existente = mapaExistentes.get(p.nome.trim().toUpperCase())
       return {
         nome: p.nome,
+        categoriaSugerida: p.categoriaSugerida,
         quantidadeTotal: p.quantidadeTotal,
         estoqueMinimoTotal: p.estoqueMinimoTotal,
         unidade: p.unidade,
@@ -57,13 +58,13 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         produtos: preview,
-        linhasNaoReconhecidas,
+        linhasNaoReconhecidas: linhasComProblema,
         totalNovos: preview.filter((p) => !p.existe).length,
         totalAtualizacoes: preview.filter((p) => p.existe).length,
       },
     })
   } catch (error) {
     console.error('POST /api/produtos/importar-estoque:', error)
-    return NextResponse.json({ error: 'Erro ao processar o PDF' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao processar o CSV' }, { status: 500 })
   }
 }
