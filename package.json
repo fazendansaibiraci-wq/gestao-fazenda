@@ -35,8 +35,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^3.9.2",
-    "tailwindcss": "^3.3.6",
-    "unpdf": "^1.6.2"
+    "tailwindcss": "^3.3.6"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

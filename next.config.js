@@ -71,7 +71,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  serverExternalPackages: ['unpdf'],
+  serverExternalPackages: [],
 };
 
 module.exports = withPWA(nextConfig);
