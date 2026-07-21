@@ -95,6 +95,7 @@ domingosPorMes        Int?   @default(2)
   aprovacoesPendentes AprovacaoHoraExtra[]
 
   conferenciasEstoque ConferenciaEstoque[]
+  saidasProdutoRegistradas SaidaProduto[]
 
   receitasCriadas  ReceitaBase[]     @relation("ReceitaBaseCriador")
   ajustesReceita   AjusteReceita[]
@@ -196,6 +197,7 @@ model Talhao {
   chegadasTerreiro   ChegadaTerreiro[]
   aplicacoesInsumo   AplicacaoInsumo[]
   historicoAplicacao HistoricoAplicacao[]
+  saidasProduto      SaidaProduto[]
 
   @@map("talhoes")
 }
@@ -251,9 +253,31 @@ model Produto {
   produtosAplicacao ProdutoAplicacao[]
   produtosReceita   ProdutoReceita[] @relation("ProdutoReceitaBase")
   ajustes           AjusteReceita[]  @relation("AjusteReceitaProduto")
+  saidas            SaidaProduto[]
 
   @@map("produtos")
 }
+model SaidaProduto {
+  id              String   @id @default(cuid())
+  produto         Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId       String
+  quantidade      Float
+  data            DateTime
+  talhao          Talhao?  @relation(fields: [talhaoId], references: [id])
+  talhaoId        String?
+  safra           Safra?   @relation(fields: [safraId], references: [id])
+  safraId         String?
+  observacao      String?
+  registradoPor   User     @relation(fields: [registradoPorId], references: [id])
+  registradoPorId String
+
+  dataCriacao DateTime @default(now())
+
+  @@index([produtoId])
+  @@index([talhaoId])
+  @@map("saidas_produto")
+}
+
 
 model Receita {
   id           String       @id @default(cuid())
@@ -321,6 +345,7 @@ model Safra {
   historico          HistoricoAplicacao[] @relation("HistoricoAplicacaoSafra")
   safraReceita       SafraReceita?        @relation("SafraReceitasRelacao")
   safraExtended      SafraExtended?
+  saidasProduto      SaidaProduto[]
 
   @@map("safras")
 }
