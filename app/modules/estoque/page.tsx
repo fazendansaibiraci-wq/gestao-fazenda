@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { redirect } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Search, AlertTriangle } from 'lucide-react'
+import { RegistrarSaidaProduto } from '@/components/RegistrarSaidaProduto'
 
 export default function EstoquePage() {
   const { status } = useSession()
@@ -53,6 +54,8 @@ export default function EstoquePage() {
           R$ {valorTotalEstoque.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </p>
       </div>
+
+      <RegistrarSaidaProduto produtos={produtos} onAtualizado={load} />
 
       <div className="card">
         <div className="relative">
