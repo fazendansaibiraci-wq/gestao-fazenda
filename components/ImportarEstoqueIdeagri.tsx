@@ -5,6 +5,7 @@ import { Upload, X, Check, AlertTriangle } from 'lucide-react'
 
 interface ItemPreview {
   nome: string
+  categoriaSugerida?: string
   quantidadeTotal: number
   estoqueMinimoTotal: number
   unidade: string
@@ -55,7 +56,7 @@ export function ImportarEstoqueIdeagri({ onImportado }: { onImportado: () => voi
         return
       }
 
-      setItens(data.data.produtos.map((p: ItemPreview) => ({ ...p, categoria: 'outro', incluir: true })))
+      setItens(data.data.produtos.map((p: ItemPreview) => ({ ...p, categoria: p.categoriaSugerida || 'outro', incluir: true })))
       setLinhasNaoReconhecidas(data.data.linhasNaoReconhecidas)
     } catch (err) {
       setErro('Erro ao enviar o arquivo')
@@ -112,7 +113,7 @@ export function ImportarEstoqueIdeagri({ onImportado }: { onImportado: () => voi
         className="flex items-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg hover:bg-primary/5"
       >
         <Upload className="w-4 h-4" />
-        Importar Estoque (PDF Ideagri)
+        Importar Estoque (CSV Ideagri)
       </button>
     )
   }
@@ -128,8 +129,8 @@ export function ImportarEstoqueIdeagri({ onImportado }: { onImportado: () => voi
 
       {itens.length === 0 && !resultado && (
         <div>
-          <input type="file" accept="application/pdf" onChange={handleArquivo} disabled={carregando} />
-          {carregando && <p className="text-sm text-gray-500 mt-2">Lendo o PDF...</p>}
+          <input type="file" accept=".csv,text/csv" onChange={handleArquivo} disabled={carregando} />
+          {carregando && <p className="text-sm text-gray-500 mt-2">Lendo o CSV...</p>}
         </div>
       )}
 
