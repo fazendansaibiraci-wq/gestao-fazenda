@@ -45,6 +45,24 @@ export async function POST(request: NextRequest) {
     const horasTrabalhadad = abastecimentoAnterior
       ? Math.max(0, body.horimetroAtual - abastecimentoAnterior.horimetroAtual)
       : 0
+
+    // Trava física: o horímetro não pode ter avançado mais horas do que
+    // o tempo real que passou desde o abastecimento anterior dessa
+    // máquina. Isso pega erros de digitação (dígito a mais/faltando) na
+    // hora do cadastro, antes de virar um número impossível no histórico.
+    if (abastecimentoAnterior) {
+      const elapsedMs = new Date(body.data).getTime() - new Date(abastecimentoAnterior.data).getTime()
+      const elapsedHoras = elapsedMs / (1000 * 60 * 60)
+      if (horasTrabalhadad > elapsedHoras) {
+        return NextResponse.json(
+          {
+            error: `Horímetro implausível: essa leitura indicaria ${horasTrabalhadad.toFixed(1)}h de uso da máquina, mas só se passaram ${elapsedHoras.toFixed(1)}h desde o abastecimento anterior (${new Date(abastecimentoAnterior.data).toLocaleDateString('pt-BR')}). Um horímetro não pode avançar mais rápido que o tempo real — confira se não faltou ou sobrou um dígito no valor digitado.`,
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     const consumoLporH = horasTrabalhadad > 0 ? body.litrosAbastecidos / horasTrabalhadad : 0
     const custoAbastecimento = body.litrosAbastecidos * body.valorPorLitro
 
