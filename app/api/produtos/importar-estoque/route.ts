@@ -1,9 +1,9 @@
-import { CanvasFactory } from 'pdf-parse/worker'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseInventarioIdeagri } from '@/lib/parseInventarioIdeagri'
+import { extractText, getDocumentProxy } from 'unpdf'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,15 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const { PDFParse } = require('pdf-parse')
-    const parser = new PDFParse({ data: new Uint8Array(buffer), CanvasFactory })
-    let textoExtraido: string
-    try {
-      const resultado = await parser.getText()
-      textoExtraido = resultado.text
-    } finally {
-      await parser.destroy()
-    }
+    const pdf = await getDocumentProxy(new Uint8Array(buffer))
+    const { text: textoExtraido } = await extractText(pdf, { mergePages: true })
 
     const { produtos, linhasNaoReconhecidas } = parseInventarioIdeagri(textoExtraido)
 
