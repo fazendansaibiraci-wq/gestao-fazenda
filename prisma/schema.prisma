@@ -199,6 +199,7 @@ model Talhao {
   aplicacoesInsumo   AplicacaoInsumo[]
   historicoAplicacao HistoricoAplicacao[]
   saidasProduto      SaidaProduto[]
+  abastecimentos     AbastecimentoTrator[]
 
   @@map("talhoes")
 }
@@ -368,6 +369,7 @@ model Safra {
   safraReceita       SafraReceita?        @relation("SafraReceitasRelacao")
   safraExtended      SafraExtended?
   saidasProduto      SaidaProduto[]
+  abastecimentos     AbastecimentoTrator[]
 
   @@map("safras")
 }
@@ -502,6 +504,12 @@ model AbastecimentoTrator {
 
   saidaProduto   SaidaProduto? @relation(fields: [saidaProdutoId], references: [id])
   saidaProdutoId String?       @unique
+
+  talhao        Talhao?  @relation(fields: [talhaoId], references: [id])
+  talhaoId      String?
+  safra         Safra?   @relation(fields: [safraId], references: [id])
+  safraId       String?
+  tipoAtividade String?
 
   @@index([maquinaId, data])
   @@map("abastecimentos_trator")
