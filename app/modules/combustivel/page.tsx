@@ -98,6 +98,9 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
   const { data: session } = useSession()
   const isGestor = session?.user?.role === 'GESTOR'
   const [abastecimentos, setAbastecimentos] = useState([])
+  const [talhoes, setTalhoes] = useState<any[]>([])
+  const [safras, setSafras] = useState<any[]>([])
+  const [tiposAtividade, setTiposAtividade] = useState<any[]>([])
   const [form, setForm] = useState({
     maquinaId: '',
     data: new Date().toISOString().split('T')[0],
@@ -105,12 +108,18 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
     litrosAbastecidos: '',
     valorPorLitro: '',
     observacao: '',
+    talhaoId: '',
+    safraId: '',
+    tipoAtividade: '',
   })
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     load()
     carregarUltimoValorDiesel()
+    fetch('/api/talhoes').then((r) => r.json()).then((d) => setTalhoes(d.data || []))
+    fetch('/api/safras').then((r) => r.json()).then((d) => setSafras(d.data || []))
+    fetch('/api/tipos-atividade?ativo=true').then((r) => r.json()).then((d) => setTiposAtividade(d.data || []))
   }, [])
 
   const load = async () => {
@@ -170,6 +179,9 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
         litrosAbastecidos: '',
         valorPorLitro: '',
         observacao: '',
+        talhaoId: '',
+        safraId: '',
+        tipoAtividade: '',
       })
       load()
     } catch (err) {
@@ -256,6 +268,45 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
               onChange={(e) => setForm({ ...form, observacao: e.target.value })}
               className="w-full border rounded px-3 py-2 text-sm"
             />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Talhão (opcional)</label>
+            <select
+              value={form.talhaoId}
+              onChange={(e) => setForm({ ...form, talhaoId: e.target.value })}
+              className="w-full border rounded px-3 py-2 text-sm"
+            >
+              <option value="">Selecionar talhão</option>
+              {talhoes.map((t: any) => (
+                <option key={t.id} value={t.id}>{t.nome}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Atividade (opcional)</label>
+            <select
+              value={form.tipoAtividade}
+              onChange={(e) => setForm({ ...form, tipoAtividade: e.target.value })}
+              className="w-full border rounded px-3 py-2 text-sm"
+            >
+              <option value="">Selecionar atividade</option>
+              {tiposAtividade.map((t: any) => (
+                <option key={t.id} value={t.nome}>{t.nome}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Safra (opcional)</label>
+            <select
+              value={form.safraId}
+              onChange={(e) => setForm({ ...form, safraId: e.target.value })}
+              className="w-full border rounded px-3 py-2 text-sm"
+            >
+              <option value="">Selecionar safra</option>
+              {safras.map((s: any) => (
+                <option key={s.id} value={s.id}>{s.nome}</option>
+              ))}
+            </select>
           </div>
         </div>
         <button type="submit" disabled={loading} className="btn btn-primary">
