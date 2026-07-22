@@ -96,6 +96,7 @@ domingosPorMes        Int?   @default(2)
 
   conferenciasEstoque ConferenciaEstoque[]
   saidasProdutoRegistradas SaidaProduto[]
+  ajustesEstoqueRegistrados AjusteEstoque[]
 
   receitasCriadas  ReceitaBase[]     @relation("ReceitaBaseCriador")
   ajustesReceita   AjusteReceita[]
@@ -254,6 +255,7 @@ model Produto {
   produtosReceita   ProdutoReceita[] @relation("ProdutoReceitaBase")
   ajustes           AjusteReceita[]  @relation("AjusteReceitaProduto")
   saidas            SaidaProduto[]
+  ajustesEstoque     AjusteEstoque[]
 
   @@map("produtos")
 }
@@ -278,6 +280,24 @@ model SaidaProduto {
   @@index([produtoId])
   @@index([talhaoId])
   @@map("saidas_produto")
+}
+
+model AjusteEstoque {
+  id                 String   @id @default(cuid())
+  produto            Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId          String
+  quantidadeAnterior Float
+  quantidadeNova     Float
+  diferenca          Float
+  data               DateTime
+  observacao         String
+  registradoPor      User     @relation(fields: [registradoPorId], references: [id])
+  registradoPorId    String
+
+  dataCriacao DateTime @default(now())
+
+  @@index([produtoId])
+  @@map("ajustes_estoque")
 }
 
 
