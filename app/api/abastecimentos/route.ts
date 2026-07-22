@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     const abastecimentos = await prisma.abastecimentoTrator.findMany({
-      include: { maquina: true },
+      include: { maquina: true, talhao: true, safra: true },
       orderBy: { data: 'desc' },
     })
 
@@ -107,7 +107,9 @@ export async function POST(request: NextRequest) {
           produtoId: produtoDiesel.id,
           quantidade: body.litrosAbastecidos,
           data: new Date(body.data),
-          observacao: `Abastecimento da máquina ${maquinaInfo?.nome || body.maquinaId}`,
+          talhaoId: body.talhaoId || null,
+          safraId: body.safraId || null,
+          observacao: `Abastecimento da máquina ${maquinaInfo?.nome || body.maquinaId}${body.tipoAtividade ? ` (${body.tipoAtividade})` : ''}`,
           registradoPorId: session.user.id as string,
         },
       })
@@ -130,8 +132,11 @@ export async function POST(request: NextRequest) {
           alertaConsumo,
           observacao: body.observacao,
           saidaProdutoId: saida.id,
+          talhaoId: body.talhaoId || null,
+          safraId: body.safraId || null,
+          tipoAtividade: body.tipoAtividade || null,
         },
-        include: { maquina: true },
+        include: { maquina: true, talhao: true, safra: true },
       })
     })
 
