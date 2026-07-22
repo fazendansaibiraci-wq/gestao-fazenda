@@ -95,6 +95,8 @@ export default function CombustivelPage() {
 
 // Aba 1: Abastecimento de Trator
 function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
+  const { data: session } = useSession()
+  const isGestor = session?.user?.role === 'GESTOR'
   const [abastecimentos, setAbastecimentos] = useState([])
   const [form, setForm] = useState({
     maquinaId: '',
@@ -118,6 +120,17 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
       setAbastecimentos(data.data || [])
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  const handleDeleteAbastecimento = async (id: string) => {
+    if (!confirm('Excluir esse abastecimento? O diesel debitado volta pro estoque.')) return
+    try {
+      const res = await fetch(`/api/abastecimentos/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Erro')
+      load()
+    } catch (err) {
+      alert('Erro ao excluir')
     }
   }
 
@@ -263,6 +276,7 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
                 <th className="px-4 py-2 text-left">Litros</th>
                 <th className="px-4 py-2 text-left">Consumo L/h</th>
                 <th className="px-4 py-2 text-left">Custo</th>
+                {isGestor && <th className="px-4 py-2 text-left">Ações</th>}
               </tr>
             </thead>
             <tbody>
@@ -274,6 +288,13 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
                   <td className="px-4 py-2">{a.litrosAbastecidos.toFixed(2)}L</td>
                   <td className="px-4 py-2">{a.consumoLporH?.toFixed(2) || '-'}</td>
                   <td className="px-4 py-2">R$ {a.custoAbastecimento?.toFixed(2)}</td>
+                  {isGestor && (
+                    <td className="px-4 py-2">
+                      <button onClick={() => handleDeleteAbastecimento(a.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition-colors" title="Excluir">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
