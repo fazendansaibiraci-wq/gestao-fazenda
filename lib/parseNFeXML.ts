@@ -18,7 +18,7 @@ export interface ResultadoParseNFe {
 }
 
 export function parseNFeXML(xmlTexto: string): ResultadoParseNFe {
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' })
+  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', parseTagValue: false })
   const obj = parser.parse(xmlTexto)
 
   // A NFe pode vir dentro de <nfeProc><NFe>...</NFe></nfeProc> (com
