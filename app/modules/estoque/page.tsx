@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Search, AlertTriangle } from 'lucide-react'
 import { RegistrarSaidaProduto } from '@/components/RegistrarSaidaProduto'
+import { AjustarEstoque } from '@/components/AjustarEstoque'
 
 export default function EstoquePage() {
   const { status } = useSession()
@@ -56,6 +57,7 @@ export default function EstoquePage() {
       </div>
 
       <RegistrarSaidaProduto produtos={produtos} onAtualizado={load} />
+      <AjustarEstoque produtos={produtos} onAtualizado={load} />
 
       <div className="card">
         <div className="relative">
