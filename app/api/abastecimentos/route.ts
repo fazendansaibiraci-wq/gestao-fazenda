@@ -101,8 +101,21 @@ export async function POST(request: NextRequest) {
     }
     const maquinaInfo = await prisma.maquina.findUnique({ where: { id: body.maquinaId } })
 
-    const [abastecimento] = await prisma.$transaction([
-      prisma.abastecimentoTrator.create({
+    const abastecimento = await prisma.$transaction(async (tx) => {
+      const saida = await tx.saidaProduto.create({
+        data: {
+          produtoId: produtoDiesel.id,
+          quantidade: body.litrosAbastecidos,
+          data: new Date(body.data),
+          observacao: `Abastecimento da máquina ${maquinaInfo?.nome || body.maquinaId}`,
+          registradoPorId: session.user.id as string,
+        },
+      })
+      await tx.produto.update({
+        where: { id: produtoDiesel.id },
+        data: { quantidadeEstoque: { decrement: body.litrosAbastecidos } },
+      })
+      return tx.abastecimentoTrator.create({
         data: {
           data: new Date(body.data),
           maquinaId: body.maquinaId,
@@ -116,23 +129,11 @@ export async function POST(request: NextRequest) {
           consumoMedio,
           alertaConsumo,
           observacao: body.observacao,
+          saidaProdutoId: saida.id,
         },
         include: { maquina: true },
-      }),
-      prisma.saidaProduto.create({
-        data: {
-          produtoId: produtoDiesel.id,
-          quantidade: body.litrosAbastecidos,
-          data: new Date(body.data),
-          observacao: `Abastecimento da máquina ${maquinaInfo?.nome || body.maquinaId}`,
-          registradoPorId: session.user.id as string,
-        },
-      }),
-      prisma.produto.update({
-        where: { id: produtoDiesel.id },
-        data: { quantidadeEstoque: { decrement: body.litrosAbastecidos } },
-      }),
-    ])
+      })
+    })
 
     // Atualizar horímetro da máquina (reaproveitando maquinaInfo já buscado acima)
     if (maquinaInfo && body.horimetroAtual > (maquinaInfo.ultimoHorimetro || 0)) {
