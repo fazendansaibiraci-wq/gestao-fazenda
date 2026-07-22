@@ -273,6 +273,8 @@ model SaidaProduto {
 
   dataCriacao DateTime @default(now())
 
+  abastecimento AbastecimentoTrator?
+
   @@index([produtoId])
   @@index([talhaoId])
   @@map("saidas_produto")
@@ -477,6 +479,9 @@ model AbastecimentoTrator {
   observacao        String?
   dataCriacao       DateTime @default(now())
   ultimaAtualizacao DateTime @updatedAt
+
+  saidaProduto   SaidaProduto? @relation(fields: [saidaProdutoId], references: [id])
+  saidaProdutoId String?       @unique
 
   @@index([maquinaId, data])
   @@map("abastecimentos_trator")
