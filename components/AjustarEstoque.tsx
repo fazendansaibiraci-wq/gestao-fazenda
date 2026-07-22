@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { ClipboardCheck } from 'lucide-react'
 
 export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; onAtualizado: () => void }) {
+  const { data: session } = useSession()
+  const isGestor = session?.user?.role === 'GESTOR'
   const [aberto, setAberto] = useState(false)
   const [ajustes, setAjustes] = useState<any[]>([])
   const [carregandoHistorico, setCarregandoHistorico] = useState(true)
@@ -67,6 +70,10 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
     } finally {
       setSalvando(false)
     }
+  }
+
+  if (!isGestor) {
+    return null
   }
 
   return (
