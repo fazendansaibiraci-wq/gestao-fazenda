@@ -98,6 +98,7 @@ domingosPorMes        Int?   @default(2)
   saidasProdutoRegistradas SaidaProduto[]
   ajustesEstoqueRegistrados AjusteEstoque[]
   entradasProdutoRegistradas EntradaProduto[]
+  ajustesHorimetroRegistrados AjusteHorimetro[]
 
   receitasCriadas  ReceitaBase[]     @relation("ReceitaBaseCriador")
   ajustesReceita   AjusteReceita[]
@@ -235,6 +236,7 @@ model Maquina {
 
   registrosAtividade RegistroAtividade[]
   abastecimentos     AbastecimentoTrator[] @relation("AbastecimentoTrator")
+  ajustesHorimetro   AjusteHorimetro[]
 
   @@map("maquinas")
 }
@@ -301,6 +303,23 @@ model AjusteEstoque {
 
   @@index([produtoId])
   @@map("ajustes_estoque")
+}
+
+model AjusteHorimetro {
+  id                String   @id @default(cuid())
+  maquina           Maquina  @relation(fields: [maquinaId], references: [id], onDelete: Cascade)
+  maquinaId         String
+  horimetroAnterior Float
+  horimetroNovo     Float
+  data              DateTime
+  observacao        String
+  registradoPor     User     @relation(fields: [registradoPorId], references: [id])
+  registradoPorId   String
+
+  dataCriacao DateTime @default(now())
+
+  @@index([maquinaId])
+  @@map("ajustes_horimetro")
 }
 
 model EntradaProduto {
