@@ -173,7 +173,10 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
           valorPorLitro: parseFloat(form.valorPorLitro),
         }),
       })
-      if (!res.ok) throw new Error('Erro')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Erro ao salvar')
+      }
       setForm({
         maquinaId: '',
         data: new Date().toISOString().split('T')[0],
@@ -187,7 +190,7 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
       })
       load()
     } catch (err) {
-      alert('Erro ao salvar')
+      alert(err instanceof Error ? err.message : 'Erro ao salvar')
     } finally {
       setLoading(false)
     }
