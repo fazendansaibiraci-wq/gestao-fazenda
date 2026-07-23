@@ -10,25 +10,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Total de entradas
-    const entradas = await prisma.entradaDiesel.findMany()
-    const totalEntradas = entradas.reduce((acc, e) => acc + e.litrosRecebidos, 0)
-    const custoTotalEntradas = entradas.reduce((acc, e) => acc + (e.custoTotal || 0), 0)
-    const custoMedioLitro = entradas.length > 0
-      ? custoTotalEntradas / totalEntradas
-      : 0
+    const produtoDiesel = await prisma.produto.findFirst({
+      where: { nomeComercial: { contains: 'DIESEL', mode: 'insensitive' } },
+    })
 
-    // Total de abastecimentos
+    const entradasAntigas = await prisma.entradaDiesel.findMany()
+    const totalEntradasAntigas = entradasAntigas.reduce((acc, e) => acc + e.litrosRecebidos, 0)
+    const custoEntradasAntigas = entradasAntigas.reduce((acc, e) => acc + (e.custoTotal || 0), 0)
+
+    const entradasNovas = produtoDiesel
+      ? await prisma.entradaProduto.findMany({ where: { produtoId: produtoDiesel.id } })
+      : []
+    const totalEntradasNovas = entradasNovas.reduce((acc, e) => acc + e.quantidade, 0)
+    const custoEntradasNovas = entradasNovas.reduce((acc, e) => acc + e.quantidade * e.valorUnitario, 0)
+
+    const totalEntradas = totalEntradasAntigas + totalEntradasNovas
+    const custoTotalEntradas = custoEntradasAntigas + custoEntradasNovas
+    const custoMedioLitro = totalEntradas > 0 ? custoTotalEntradas / totalEntradas : 0
+
     const abastecimentos = await prisma.abastecimentoTrator.findMany()
     const totalAbastecimentos = abastecimentos.reduce((acc, a) => acc + a.litrosAbastecidos, 0)
     const custoTotalConsumo = abastecimentos.reduce((acc, a) => acc + (a.custoAbastecimento || 0), 0)
     const totalHoras = abastecimentos.reduce((acc, a) => acc + (a.horasTrabalhadad || 0), 0)
     const custoMedioHora = totalHoras > 0 ? custoTotalConsumo / totalHoras : 0
 
-    // Estoque
-    const estoqueTeorico = totalEntradas - totalAbastecimentos
+    const estoqueTeorico = produtoDiesel
+      ? produtoDiesel.quantidadeEstoque
+      : totalEntradas - totalAbastecimentos
 
-    // Pegar última conferência
     const ultimaConferencia = await prisma.conferenciaEstoque.findFirst({
       orderBy: { data: 'desc' },
     })
