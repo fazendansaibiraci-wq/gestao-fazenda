@@ -59,17 +59,19 @@ export default function CombustivelPage() {
           <Fuel className="inline w-4 h-4 mr-2" />
           Abastecimento
         </button>
-        <button
-          onClick={() => setActiveTab('entrada')}
-          className={`px-4 py-3 font-medium transition-colors border-b-2 ${
-            activeTab === 'entrada'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <Droplet className="inline w-4 h-4 mr-2" />
-          Entrada Diesel
-        </button>
+        {session?.user?.role === 'GESTOR' && (
+          <button
+            onClick={() => setActiveTab('entrada')}
+            className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              activeTab === 'entrada'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Droplet className="inline w-4 h-4 mr-2" />
+            Entrada Diesel
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('estoque')}
           className={`px-4 py-3 font-medium transition-colors border-b-2 ${
@@ -361,14 +363,6 @@ function AbaEntrada() {
   const { data: session } = useSession()
   const isGestor = session?.user?.role === 'GESTOR'
   const [entradas, setEntradas] = useState([])
-  const [form, setForm] = useState({
-    data: new Date().toISOString().split('T')[0],
-    litrosRecebidos: '',
-    valorPorLitro: '',
-    nf: '',
-    fornecedor: '',
-  })
-  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     load()
@@ -398,96 +392,12 @@ function AbaEntrada() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      const res = await fetch('/api/entradas-diesel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          litrosRecebidos: parseFloat(form.litrosRecebidos),
-          valorPorLitro: parseFloat(form.valorPorLitro),
-        }),
-      })
-      if (!res.ok) throw new Error('Erro')
-      setForm({
-        data: new Date().toISOString().split('T')[0],
-        litrosRecebidos: '',
-        valorPorLitro: '',
-        nf: '',
-        fornecedor: '',
-      })
-      load()
-    } catch (err) {
-      alert('Erro ao salvar')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded-lg space-y-4">
-        <h3 className="font-semibold text-primary">Nova Entrada de Diesel</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="text-sm font-medium block mb-1">Data/Hora *</label>
-            <input
-              type="datetime-local"
-              value={form.data}
-              onChange={(e) => setForm({ ...form, data: e.target.value })}
-              required
-              className="w-full border rounded px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium block mb-1">Litros Recebidos *</label>
-            <input
-              type="number"
-              value={form.litrosRecebidos}
-              onChange={(e) => setForm({ ...form, litrosRecebidos: e.target.value })}
-              required
-              step="0.01"
-              className="w-full border rounded px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium block mb-1">Valor R$/Litro *</label>
-            <input
-              type="number"
-              value={form.valorPorLitro}
-              onChange={(e) => setForm({ ...form, valorPorLitro: e.target.value })}
-              required
-              step="0.01"
-              className="w-full border rounded px-3 py-2 text-sm"
-              placeholder="0,00"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium block mb-1">NF</label>
-            <input
-              type="text"
-              value={form.nf}
-              onChange={(e) => setForm({ ...form, nf: e.target.value })}
-              className="w-full border rounded px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium block mb-1">Fornecedor</label>
-            <input
-              type="text"
-              value={form.fornecedor}
-              onChange={(e) => setForm({ ...form, fornecedor: e.target.value })}
-              className="w-full border rounded px-3 py-2 text-sm"
-            />
-          </div>
-        </div>
-        <button type="submit" disabled={loading} className="btn btn-primary">
-          {loading ? 'Salvando...' : 'Registrar Entrada'}
-        </button>
-      </form>
+      <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg text-sm text-amber-800">
+        Novas entradas de diesel agora são feitas via <strong>Estoque → Entrada de Produtos (NF-e)</strong>,
+        anexando a XML da nota fiscal. Essa tela abaixo mostra só o histórico de entradas antigas, como referência.
+      </div>
 
       {/* Histórico */}
       <div>
