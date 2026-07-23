@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { FileUp, X, Check, AlertTriangle } from 'lucide-react'
 
 interface ItemPreview {
@@ -26,6 +27,8 @@ const CATEGORIAS = [
 ]
 
 export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void }) {
+  const { data: session } = useSession()
+  const isGestor = session?.user?.role === 'GESTOR'
   const [aberto, setAberto] = useState(false)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
@@ -111,6 +114,10 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
     setNota(null)
     setErro('')
     setResultado(null)
+  }
+
+  if (!isGestor) {
+    return null
   }
 
   if (!aberto) {
