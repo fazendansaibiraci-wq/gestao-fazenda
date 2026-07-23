@@ -1,8 +1,21 @@
-// Calcula qual número de domingo é este no mês (1º, 2º, 3º ou 4º)
-function getNumeroDomingoNoMes(data: Date): number {
-  const dia = data.getUTCDate()
-  return Math.ceil(dia / 7)
-}
+// Calcula a carga horária prevista para um dia específico, com base no dia
+// da semana do registro.
+//
+// Domingo é especial: quando domingosPorMes está entre 1 e 3, não existe
+// regra fixa de qual domingo é de trabalho — os funcionários combinam
+// informalmente entre eles. Por isso:
+// - No contexto de um Registro de Atividade real (contextoFalta=false, o
+//   padrão): o próprio registro já é prova de que era a vez do
+//   funcionário, então sempre retorna a carga prevista de domingo.
+// - No contexto do cron de falta automática (contextoFalta=true): como
+//   não dá pra prever qual domingo é de quem, nunca gera expectativa de
+//   trabalho (e portanto nunca falta automática) num domingo quando
+//   domingosPorMes está entre 1 e 3. Só considera domingo "esperado" se
+//   domingosPorMes for 0 (nunca) ou >=4 (sempre) — os dois únicos casos
+//   sem ambiguidade.
+//
+// Esta função é usada tanto na criação (POST) quanto na edição (PUT) de
+// registros de atividade, e também pelo cron de alerta de ausência.
 
 interface FuncionarioCargaHoraria {
   cargaHorariaSegSex?: number | null
@@ -15,44 +28,33 @@ interface ConfigCargaHoraria {
   cargaHorariaEntressafra?: number | null
 }
 
-/**
- * Calcula a carga horária prevista para um dia específico, com base no dia da semana
- * do registro. Para domingos, verifica se aquele domingo específico é dia de trabalho
- * de acordo com funcionario.domingosPorMes (1º e 3º domingo quando domingosPorMes === 2,
- * os primeiros N domingos quando for 1 ou 3, todos quando >= 4, nenhum quando 0).
- *
- * Esta função é usada tanto na criação (POST) quanto na edição (PUT) de registros de
- * atividade, para que a carga horária prevista do dia seja sempre calculada da mesma
- * forma, independente de o funcionário estar em período de safra ou não.
- */
 export function calcularCargaHorariaDia(
   dataRegistro: Date,
   funcionario: FuncionarioCargaHoraria | null | undefined,
-  config: ConfigCargaHoraria | null | undefined
+  config: ConfigCargaHoraria | null | undefined,
+  contextoFalta: boolean = false
 ): number {
   const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 6=Sab
   const domingosPorMes = funcionario?.domingosPorMes ?? 2
 
   if (diaSemana === 0) {
-    // Domingo — verificar se este domingo é dia de trabalho
-    const numeroDomingo = getNumeroDomingoNoMes(dataRegistro)
-    let trabalhaEsteDomingo = false
-
+    // Domingo
     if (domingosPorMes === 0) {
-      trabalhaEsteDomingo = false
-    } else if (domingosPorMes >= 4) {
-      trabalhaEsteDomingo = true
-    } else if (domingosPorMes === 2) {
-      // Trabalha no 1º e 3º domingo (alternado)
-      trabalhaEsteDomingo = numeroDomingo === 1 || numeroDomingo === 3
-    } else {
-      // 1 ou 3 domingos: trabalha nos primeiros N
-      trabalhaEsteDomingo = numeroDomingo <= domingosPorMes
+      return 0 // nunca trabalha domingo
     }
-
-    return trabalhaEsteDomingo
-      ? (funcionario?.cargaHorariaDomingo ?? (config?.cargaHorariaEntressafra || 8))
-      : 0 // Domingo de folga: carga = 0, logo qualquer hora é extra
+    if (domingosPorMes >= 4) {
+      // trabalha todo domingo, sem ambiguidade
+      return funcionario?.cargaHorariaDomingo ?? (config?.cargaHorariaEntressafra || 8)
+    }
+    // domingosPorMes entre 1 e 3: alternância informal, sem regra fixa
+    if (contextoFalta) {
+      // Não dá pra prever qual domingo é a vez do funcionário — nunca
+      // gera expectativa de trabalho (e portanto nunca falta automática)
+      // nesse caso.
+      return 0
+    }
+    // Contexto de registro real: o registro já prova que era a vez dele.
+    return funcionario?.cargaHorariaDomingo ?? (config?.cargaHorariaEntressafra || 8)
   } else if (diaSemana === 6) {
     return funcionario?.cargaHorariaSabado ?? (config?.cargaHorariaEntressafra || 8)
   } else {
