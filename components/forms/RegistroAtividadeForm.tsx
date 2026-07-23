@@ -195,7 +195,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         const registroId = responseData.data?.id
         if (registroId) await uploadAtestado(registroId)
       }
-      router.push('/modules/atividades')
+      router.back()
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
