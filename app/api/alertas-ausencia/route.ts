@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
 
       for (let dia = 1; dia <= ultimoDia; dia++) {
         const dataDia = new Date(ano, mesNum - 1, dia)
-        const cargaDia = calcularCargaHorariaDia(dataDia, func, config)
+        const cargaDia = calcularCargaHorariaDia(dataDia, func, config, true)
 
         if (cargaDia > 0) {
           const chave = `${ano}-${String(mesNum).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
