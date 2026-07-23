@@ -56,7 +56,15 @@ export async function PUT(
 
     const body = await request.json()
 
-    if (body.maquinaId && body.horimetroInicial != null && body.horimetroFinal != null) {
+    // Só revalida o horímetro se ele estiver de fato mudando nessa
+    // edição — sem isso, editar qualquer outro campo (tipo de
+    // atividade, observação etc.) de um registro antigo falharia toda
+    // vez que uma atividade mais nova da mesma máquina já tivesse
+    // avançado o horímetro, mesmo sem ninguém ter tocado nesse campo.
+    const horimetroMudou =
+      body.horimetroInicial !== registro.horimetroInicial ||
+      body.horimetroFinal !== registro.horimetroFinal
+    if (body.maquinaId && body.horimetroInicial != null && body.horimetroFinal != null && horimetroMudou) {
       if (body.horimetroFinal <= body.horimetroInicial) {
         return NextResponse.json(
           { error: 'Horímetro final deve ser maior que inicial' },
