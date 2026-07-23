@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
-import { redirect } from 'next/navigation'
+import { redirect, useRouter, useSearchParams } from 'next/navigation'
 import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 
 const DIAS_SEMANA_ABREV = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
@@ -49,19 +49,21 @@ interface AlertaAusencia {
 
 export default function AtividadesPage() {
   const { data: session, status } = useSession()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [atividades, setAtividades] = useState<Atividade[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtroData, setFiltroData] = useState('')
-  const [filtroMes, setFiltroMes] = useState('')
-  const [filtroFuncionario, setFiltroFuncionario] = useState('')
+  const [filtroData, setFiltroData] = useState(() => searchParams.get('data') || '')
+  const [filtroMes, setFiltroMes] = useState(() => searchParams.get('mes') || '')
+  const [filtroFuncionario, setFiltroFuncionario] = useState(() => searchParams.get('funcionario') || '')
   const [atestadoModal, setAtestadoModal] = useState<{ url: string; nome: string } | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState('')
   const [alertasAusencia, setAlertasAusencia] = useState<AlertaAusencia[]>([])
   const [alertaAusenciaExpandido, setAlertaAusenciaExpandido] = useState(false)
-  const [filtroTalhao, setFiltroTalhao] = useState('')
-  const [filtroTipoAtividade, setFiltroTipoAtividade] = useState('')
-  const [filtroMaquina, setFiltroMaquina] = useState('')
+  const [filtroTalhao, setFiltroTalhao] = useState(() => searchParams.get('talhao') || '')
+  const [filtroTipoAtividade, setFiltroTipoAtividade] = useState(() => searchParams.get('tipoAtividade') || '')
+  const [filtroMaquina, setFiltroMaquina] = useState(() => searchParams.get('maquina') || '')
   const [talhoes, setTalhoes] = useState<{ id: string; nome: string }[]>([])
   const [tiposAtividade, setTiposAtividade] = useState<{ id: number; nome: string }[]>([])
   const [maquinas, setMaquinas] = useState<{ id: string; nome: string }[]>([])
@@ -106,6 +108,18 @@ export default function AtividadesPage() {
     setLoading(true)
     load()
   }, [filtroData, filtroMes])
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (filtroData) params.set('data', filtroData)
+    if (filtroMes) params.set('mes', filtroMes)
+    if (filtroFuncionario) params.set('funcionario', filtroFuncionario)
+    if (filtroTalhao) params.set('talhao', filtroTalhao)
+    if (filtroTipoAtividade) params.set('tipoAtividade', filtroTipoAtividade)
+    if (filtroMaquina) params.set('maquina', filtroMaquina)
+    const query = params.toString()
+    router.replace(query ? `/modules/atividades?${query}` : '/modules/atividades', { scroll: false })
+  }, [filtroData, filtroMes, filtroFuncionario, filtroTalhao, filtroTipoAtividade, filtroMaquina])
 
   const loadAlertasAusencia = async () => {
     try {
