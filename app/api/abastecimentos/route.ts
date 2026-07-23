@@ -35,28 +35,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
     }
 
-    // Obter horímetro anterior
-    const abastecimentoAnterior = await prisma.abastecimentoTrator.findFirst({
-      where: { maquinaId: body.maquinaId, data: { lt: new Date(body.data) } },
-      orderBy: { data: 'desc' },
-    })
+    // Obter horímetro de referência: o mais recente entre o último
+    // abastecimento e o último Ajuste de Horímetro dessa máquina.
+    const [abastecimentoAnterior, ajusteAnterior] = await Promise.all([
+      prisma.abastecimentoTrator.findFirst({
+        where: { maquinaId: body.maquinaId, data: { lt: new Date(body.data) } },
+        orderBy: { data: 'desc' },
+      }),
+      prisma.ajusteHorimetro.findFirst({
+        where: { maquinaId: body.maquinaId, data: { lt: new Date(body.data) } },
+        orderBy: { data: 'desc' },
+      }),
+    ])
 
-    const horimetroAnterior = abastecimentoAnterior?.horimetroAtual || 0
-    const horasTrabalhadad = abastecimentoAnterior
-      ? Math.max(0, body.horimetroAtual - abastecimentoAnterior.horimetroAtual)
+    let horimetroReferencia = 0
+    let dataReferencia: Date | null = null
+    let origemReferencia = ''
+    if (abastecimentoAnterior && (!ajusteAnterior || abastecimentoAnterior.data >= ajusteAnterior.data)) {
+      horimetroReferencia = abastecimentoAnterior.horimetroAtual
+      dataReferencia = abastecimentoAnterior.data
+      origemReferencia = `abastecimento anterior (${new Date(abastecimentoAnterior.data).toLocaleDateString('pt-BR')})`
+    } else if (ajusteAnterior) {
+      horimetroReferencia = ajusteAnterior.horimetroNovo
+      dataReferencia = ajusteAnterior.data
+      origemReferencia = `ajuste de horímetro (${new Date(ajusteAnterior.data).toLocaleDateString('pt-BR')})`
+    }
+
+    const horimetroAnterior = horimetroReferencia
+    const horasTrabalhadad = dataReferencia
+      ? Math.max(0, body.horimetroAtual - horimetroReferencia)
       : 0
 
     // Trava física: o horímetro não pode ter avançado mais horas do que
-    // o tempo real que passou desde o abastecimento anterior dessa
-    // máquina. Isso pega erros de digitação (dígito a mais/faltando) na
-    // hora do cadastro, antes de virar um número impossível no histórico.
-    if (abastecimentoAnterior) {
-      const elapsedMs = new Date(body.data).getTime() - new Date(abastecimentoAnterior.data).getTime()
+    // o tempo real que passou desde a última leitura conhecida dessa
+    // máquina (abastecimento ou ajuste, o que for mais recente). Isso
+    // pega erros de digitação (dígito a mais/faltando) na hora do
+    // cadastro, antes de virar um número impossível no histórico.
+    if (dataReferencia) {
+      const elapsedMs = new Date(body.data).getTime() - dataReferencia.getTime()
       const elapsedHoras = elapsedMs / (1000 * 60 * 60)
       if (horasTrabalhadad > elapsedHoras) {
         return NextResponse.json(
           {
-            error: `Horímetro implausível: essa leitura indicaria ${horasTrabalhadad.toFixed(1)}h de uso da máquina, mas só se passaram ${elapsedHoras.toFixed(1)}h desde o abastecimento anterior (${new Date(abastecimentoAnterior.data).toLocaleDateString('pt-BR')}). Um horímetro não pode avançar mais rápido que o tempo real — confira se não faltou ou sobrou um dígito no valor digitado.`,
+            error: `Horímetro implausível: essa leitura indicaria ${horasTrabalhadad.toFixed(1)}h de uso da máquina, mas só se passaram ${elapsedHoras.toFixed(1)}h desde o(a) ${origemReferencia}. Um horímetro não pode avançar mais rápido que o tempo real — confira se não faltou ou sobrou um dígito no valor digitado. Se o valor no painel da máquina realmente estiver fora dessa faixa, use o Ajuste de Horímetro (GESTOR) pra corrigir a referência antes de registrar esse abastecimento.`,
           },
           { status: 400 }
         )
