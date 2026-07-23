@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import { Fuel, BarChart3, Droplet, Trash2 } from 'lucide-react'
+import { AjustarHorimetro } from '@/components/AjustarHorimetro'
 
 export default function CombustivelPage() {
   const { data: session, status } = useSession()
@@ -357,6 +358,8 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
           </table>
         </div>
       </div>
+
+      <AjustarHorimetro maquinas={maquinas} />
     </div>
   )
 }
