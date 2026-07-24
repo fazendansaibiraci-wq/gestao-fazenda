@@ -36,6 +36,7 @@ const menuItems = [
   { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR' },
   { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO|GERENTE' },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO|GERENTE' },
+  { label: 'Meus Relatórios', href: '/modules/meus-relatorios', icon: BarChart3, role: 'FUNCIONARIO' },
   { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO|GERENTE' },
   { label: 'Cadastro Usuários', href: '/settings', icon: Settings, role: 'GESTOR' },
 ]

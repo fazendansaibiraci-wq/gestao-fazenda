@@ -71,6 +71,7 @@ export function Sidebar() {
 
   const relatorioItems = [
     { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO|GERENTE' },
+    { label: 'Meus Relatórios', href: '/modules/meus-relatorios', icon: BarChart3, role: 'FUNCIONARIO' },
     { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
 
