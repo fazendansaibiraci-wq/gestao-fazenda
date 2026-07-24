@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, FileSpreadsheet, FileText } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 interface DiariaTurma {
@@ -30,6 +30,7 @@ export default function TurmasPage() {
     const [filtroDataFim, setFiltroDataFim] = useState('')
     const [filtroTalhao, setFiltroTalhao] = useState('')
     const [filtroTurma, setFiltroTurma] = useState('')
+    const [exportando, setExportando] = useState(false)
 
   const userRole = (session?.user as any)?.role || ''
     const podeAcessar = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -99,6 +100,100 @@ export default function TurmasPage() {
         }
   }
 
+  const colunasExportacao = ['Data', 'Turma', 'Talhão', 'Safra', 'Atividade', 'Pessoas', 'Valor Diária', 'Valor Total']
+  const linhasExportacao = () => diarias.map((d) => [
+    new Date(d.data).toLocaleDateString('pt-BR'),
+    d.turma?.nome || '',
+    d.talhao?.nome || '',
+    d.safra?.nome || '',
+    d.tipoAtividade || '',
+    d.quantidadePessoas,
+    Number(d.valorDiaria).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+    Number(d.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+  ])
+  const exportarExcel = async () => {
+    setExportando(true)
+    try {
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      wb.creator = 'Gestão Fazenda'
+      wb.created = new Date()
+      const ws = wb.addWorksheet('Turmas')
+      const headerRow = ws.addRow(colunasExportacao)
+      headerRow.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2d6a4f' } }
+        cell.alignment = { horizontal: 'center' }
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FF000000' } } }
+      })
+      linhasExportacao().forEach((linha, idx) => {
+        const row = ws.addRow(linha)
+        if (idx % 2 === 1) {
+          row.eachCell((cell) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F7F4' } }
+          })
+        }
+      })
+      ws.columns.forEach((col) => {
+        let max = 12
+        col.eachCell?.({ includeEmpty: false }, (cell) => {
+          const len = cell.value ? String(cell.value).length : 0
+          if (len > max) max = len
+        })
+        col.width = Math.min(max + 4, 40)
+      })
+      const buffer = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `turmas_${new Date().toISOString().split('T')[0]}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao exportar Excel')
+    } finally {
+      setExportando(false)
+    }
+  }
+  const exportarPDF = async () => {
+    setExportando(true)
+    try {
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
+      const doc = new jsPDF({ orientation: 'landscape' })
+      const dataHoje = new Date().toLocaleDateString('pt-BR')
+      doc.setFontSize(16)
+      doc.setTextColor(45, 106, 79)
+      doc.text('Gestão Fazenda — Turmas', 14, 16)
+      doc.setFontSize(11)
+      doc.setTextColor(100)
+      doc.text(`Diárias de turmas de diaristas   |   Gerado em: ${dataHoje}`, 14, 23)
+      autoTable(doc, {
+        head: [colunasExportacao],
+        body: linhasExportacao(),
+        startY: 28,
+        headStyles: {
+          fillColor: [45, 106, 79],
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 9,
+        },
+        bodyStyles: { fontSize: 8 },
+        alternateRowStyles: { fillColor: [240, 247, 244] },
+        styles: { cellPadding: 3 },
+        margin: { left: 14, right: 14 },
+      })
+      doc.save(`turmas_${new Date().toISOString().split('T')[0]}.pdf`)
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao exportar PDF')
+    } finally {
+      setExportando(false)
+    }
+  }
+
   const custoTotal = diarias.reduce((acc, d) => acc + (d.valorTotal || 0), 0)
 
   if (status === 'loading' || loading) {
@@ -112,12 +207,30 @@ export default function TurmasPage() {
                                           <h1 className="text-3xl font-bold text-primary">Turmas</h1>
                                           <p className="text-gray-600 mt-1">Diarias de turmas de diaristas</p>
                                 </div>
-                                <Link href="/modules/turmas/nova">
-                                          <button className="btn btn-primary">
-                                                      <Plus className="w-5 h-5" />
-                                                      Nova Diaria
+                                <div className="flex items-center gap-2">
+                                          <button
+                                            onClick={exportarExcel}
+                                            disabled={exportando || diarias.length === 0}
+                                            className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
+                                          >
+                                            <FileSpreadsheet className="w-4 h-4" />
+                                            {exportando ? 'Exportando...' : 'Excel'}
                                           </button>
-                                </Link>
+                                          <button
+                                            onClick={exportarPDF}
+                                            disabled={exportando || diarias.length === 0}
+                                            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+                                          >
+                                            <FileText className="w-4 h-4" />
+                                            {exportando ? 'Exportando...' : 'PDF'}
+                                          </button>
+                                          <Link href="/modules/turmas/nova">
+                                                    <button className="btn btn-primary">
+                                                                <Plus className="w-5 h-5" />
+                                                                Nova Diaria
+                                                    </button>
+                                          </Link>
+                                </div>
                         </div>
                   
                         <div className="card space-y-3">
