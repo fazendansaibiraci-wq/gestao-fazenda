@@ -36,6 +36,16 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
   const [itens, setItens] = useState<ItemPreview[]>([])
   const [confirmando, setConfirmando] = useState(false)
   const [resultado, setResultado] = useState<{ criados: number; atualizados: number } | null>(null)
+  const [produtos, setProdutos] = useState<{ id: string; nomeComercial: string }[]>([])
+
+  useEffect(() => {
+    if (aberto) {
+      fetch('/api/produtos')
+        .then((r) => r.json())
+        .then((d) => setProdutos((d.data || []).map((p: any) => ({ id: p.id, nomeComercial: p.nomeComercial }))))
+        .catch(() => {})
+    }
+  }, [aberto])
 
   const handleArquivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -75,6 +85,12 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
 
   const atualizarItem = (index: number, campo: string, valor: any) => {
     setItens((prev) => prev.map((item, i) => (i === index ? { ...item, [campo]: valor } : item)))
+  }
+
+  const handleSelecionarProduto = (index: number, produtoId: string) => {
+    setItens((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, produtoId: produtoId || null, existe: !!produtoId } : item))
+    )
   }
 
   const handleConfirmar = async () => {
@@ -179,7 +195,7 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
                   <th className="px-3 py-2 text-left">Qtd.</th>
                   <th className="px-3 py-2 text-left">Unid.</th>
                   <th className="px-3 py-2 text-left">Vl. Unitário</th>
-                  <th className="px-3 py-2 text-left">Status</th>
+                  <th className="px-3 py-2 text-left">Produto correspondente</th>
                   <th className="px-3 py-2 text-left">Categoria (se novo)</th>
                 </tr>
               </thead>
@@ -198,11 +214,22 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
                     <td className="px-3 py-2">{item.unidade}</td>
                     <td className="px-3 py-2">R$ {item.valorUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td className="px-3 py-2">
-                      {item.existe ? (
-                        <span className="text-blue-600">Soma no estoque</span>
-                      ) : (
-                        <span className="text-green-600">Novo produto</span>
-                      )}
+                      <select
+                        value={item.produtoId || ''}
+                        onChange={(e) => handleSelecionarProduto(i, e.target.value)}
+                        className="border rounded px-2 py-1 text-sm w-full min-w-[180px]"
+                      >
+                        <option value="">— Novo produto —</option>
+                        {produtos
+                          .slice()
+                          .sort((a, b) => a.nomeComercial.localeCompare(b.nomeComercial))
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>{p.nomeComercial}</option>
+                          ))}
+                      </select>
+                      <p className={`text-xs mt-1 ${item.existe ? 'text-blue-600' : 'text-green-600'}`}>
+                        {item.existe ? 'Vai somar no estoque desse produto' : 'Vai criar como produto novo'}
+                      </p>
                     </td>
                     <td className="px-3 py-2">
                       {!item.existe && (
