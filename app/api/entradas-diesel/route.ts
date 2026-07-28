@@ -10,11 +10,45 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const entradas = await prisma.entradaDiesel.findMany({
+    const entradasAntigas = await prisma.entradaDiesel.findMany({
       orderBy: { data: 'desc' },
     })
 
-    return NextResponse.json({ success: true, data: entradas })
+    const produtoDiesel = await prisma.produto.findFirst({
+      where: { nomeComercial: { contains: 'DIESEL', mode: 'insensitive' } },
+    })
+
+    const entradasNovas = produtoDiesel
+      ? await prisma.entradaProduto.findMany({
+          where: { produtoId: produtoDiesel.id },
+          orderBy: { data: 'desc' },
+        })
+      : []
+
+    const listaUnificada = [
+      ...entradasAntigas.map((e) => ({
+        id: e.id,
+        data: e.data,
+        litrosRecebidos: e.litrosRecebidos,
+        valorPorLitro: e.valorPorLitro,
+        custoTotal: e.custoTotal,
+        nf: e.nf,
+        fornecedor: e.fornecedor,
+        origem: 'antigo' as const,
+      })),
+      ...entradasNovas.map((e) => ({
+        id: e.id,
+        data: e.data,
+        litrosRecebidos: e.quantidade,
+        valorPorLitro: e.valorUnitario,
+        custoTotal: e.quantidade * e.valorUnitario,
+        nf: e.numeroNota,
+        fornecedor: e.fornecedor,
+        origem: 'nfe' as const,
+      })),
+    ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+
+    return NextResponse.json({ success: true, data: listaUnificada })
   } catch (error) {
     console.error('GET /api/entradas-diesel:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
