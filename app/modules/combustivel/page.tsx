@@ -382,12 +382,17 @@ function AbaEntrada() {
                   <td className="px-4 py-2">{e.litrosRecebidos.toFixed(2)}L</td>
                   <td className="px-4 py-2">R$ {e.valorPorLitro.toFixed(2)}</td>
                   <td className="px-4 py-2">R$ {e.custoTotal?.toFixed(2) || (e.litrosRecebidos * e.valorPorLitro).toFixed(2)}</td>
-                  <td className="px-4 py-2">{e.nf || '-'}</td>
+                  <td className="px-4 py-2">
+                    {e.nf || '-'}
+                    {e.origem === 'nfe' && <span className="ml-1 text-xs text-blue-600">(NF-e)</span>}
+                  </td>
                   {isGestor && (
                     <td className="px-4 py-2">
-                      <button onClick={() => handleDelete(e.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition-colors" title="Excluir">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {e.origem !== 'nfe' && (
+                        <button onClick={() => handleDelete(e.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition-colors" title="Excluir">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   )}
                 </tr>
