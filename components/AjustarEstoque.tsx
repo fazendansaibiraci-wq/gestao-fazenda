@@ -144,6 +144,7 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
         </form>
       )}
 
+      {aberto && (
       <div className="border-t pt-4">
         <p className="text-sm font-medium text-gray-600 mb-2">Histórico de ajustes</p>
         {carregandoHistorico ? (
@@ -183,6 +184,7 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

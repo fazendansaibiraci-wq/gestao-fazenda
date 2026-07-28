@@ -167,6 +167,7 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
         </form>
       )}
 
+      {aberto && (
       <div className="border-t pt-4">
         <p className="text-sm font-medium text-gray-600 mb-2">Histórico de saídas</p>
         {carregandoHistorico ? (
@@ -208,6 +209,7 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }
