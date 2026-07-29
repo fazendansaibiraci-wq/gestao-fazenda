@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Trash2, FileSpreadsheet, FileText } from 'lucide-react'
+import { Plus, Trash2, FileSpreadsheet, FileText, MessageSquare } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 interface DiariaTurma {
@@ -199,7 +199,7 @@ export default function TurmasPage() {
   if (status === 'loading' || loading) {
         return <div className="flex items-center justify-center h-64"><div className="spinner"></div></div>
           }
-          
+
             return (
                   <div className="space-y-6">
                         <div className="flex items-center justify-between">
@@ -232,7 +232,7 @@ export default function TurmasPage() {
                                           </Link>
                                 </div>
                         </div>
-                  
+
                         <div className="card space-y-3">
                                 <h3 className="font-semibold text-primary">Filtros</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -254,7 +254,7 @@ export default function TurmasPage() {
                                           </select>
                                 </div>
                         </div>
-                  
+
                         <div className="card overflow-x-auto">
                                 <table className="w-full text-sm">
                                           <thead>
@@ -267,13 +267,14 @@ export default function TurmasPage() {
                                                                     <th className="px-4 py-3 text-right font-semibold">Pessoas</th>
                                                                     <th className="px-4 py-3 text-right font-semibold">Valor Diaria</th>
                                                                     <th className="px-4 py-3 text-right font-semibold">Valor Total</th>
+                                                                    <th className="px-4 py-3 text-center font-semibold">Obs</th>
                                                                     <th className="px-4 py-3 text-right font-semibold">Acoes</th>
                                                       </tr>
                                           </thead>
                                           <tbody>
                                             {diarias.length === 0 ? (
                                   <tr>
-                                                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                                                  <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                                                                     Nenhuma diaria de turma registrada
                                                   </td>
                                   </tr>
@@ -288,6 +289,13 @@ export default function TurmasPage() {
                                                                       <td className="px-4 py-3 text-right">{d.quantidadePessoas}</td>
                                                                       <td className="px-4 py-3 text-right">R$ {Number(d.valorDiaria).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                                                       <td className="px-4 py-3 text-right font-semibold">R$ {Number(d.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                                                      <td className="px-4 py-3 text-center">
+                                                                                          {d.observacao && (
+                                                                                              <span title={d.observacao}>
+                                                                                                  <MessageSquare className="w-4 h-4 text-blue-500 inline-block" />
+                                                                                              </span>
+                                                                                          )}
+                                                                      </td>
                                                                       <td className="px-4 py-3 text-right">
                                                                                           <div className="flex items-center justify-end gap-2">
                                                                                                                 <Link href={`/modules/turmas/${d.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Editar</Link>
@@ -302,7 +310,7 @@ export default function TurmasPage() {
                                           </tbody>
                                 </table>
                         </div>
-                  
+
                         <div className="card">
                                 <p className="text-gray-600 text-sm">Custo Total do Periodo Filtrado</p>
                                 <p className="text-3xl font-bold text-primary mt-2">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
