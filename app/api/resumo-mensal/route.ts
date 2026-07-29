@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
         valorHoraExtraSafra: true,
         cargaHorariaSafra: true,
         pagamentoProporcionalDiario: true,
+        domingosPorMes: true,
       },
     })
 
@@ -131,6 +132,7 @@ export async function GET(request: NextRequest) {
             horasExtras: 0,
             horasDevidas: 0,
             isFalta: true,
+            isFolga: false,
             motivoFalta: reg.motivoFalta,
             passouDiretoAlmoco: false,
           }
@@ -165,10 +167,49 @@ export async function GET(request: NextRequest) {
           horasExtras: Math.round(horasExtras * 100) / 100,
           horasDevidas: Math.round(horasDevidas * 100) / 100,
           isFalta: false,
+          isFolga: false,
           motivoFalta: null,
           passouDiretoAlmoco: reg.passouDiretoAlmoco,
         }
       })
+
+      // Domingos sem NENHUM registro (nem atividade nem falta) — quando
+      // o funcionário não tem expectativa garantida de trabalhar todo
+      // domingo (domingosPorMes < 4), isso é esperado (combinado
+      // informalmente), não um buraco de dado. Gera uma linha "Folga"
+      // só pra exibição, sem criar nada no banco.
+      const domingosPorMes = func.domingosPorMes ?? 2
+      const diasComRegistro = new Set(registrosFuncionario.map((r) => r.data.toISOString().split('T')[0]))
+      const folgasSemRegistro: typeof registrosDiarios = []
+      if (domingosPorMes < 4) {
+        const cursor = new Date(inicioMes)
+        while (cursor <= fimMes) {
+          if (cursor.getDay() === 0) {
+            const chave = cursor.toISOString().split('T')[0]
+            if (!diasComRegistro.has(chave)) {
+              folgasSemRegistro.push({
+                data: new Date(cursor),
+                horaEntrada: null,
+                horaSaida: null,
+                horasBrutas: 0,
+                descontoAlmoco: 0,
+                horasTrabalhadas: 0,
+                cargaContratual: 0,
+                horasExtras: 0,
+                horasDevidas: 0,
+                isFalta: false,
+                isFolga: true,
+                motivoFalta: null,
+                passouDiretoAlmoco: false,
+              })
+            }
+          }
+          cursor.setDate(cursor.getDate() + 1)
+        }
+      }
+      const registrosDiariosCompletos = [...registrosDiarios, ...folgasSemRegistro].sort(
+        (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime()
+      )
 
       // Cálculo acumulado
       const valorHorasExtras = totalHorasExtras * valorHoraExtra
@@ -202,7 +243,7 @@ export async function GET(request: NextRequest) {
         descontoHorasDevidas: Math.round(descontoHorasDevidas * 100) / 100,
         descontoFaltas: Math.round(descontoFaltas * 100) / 100,
         totalAcumulado: Math.round(totalAcumuladoFinal * 100) / 100,
-        registrosDiarios,
+        registrosDiarios: registrosDiariosCompletos,
       }
     })
 
