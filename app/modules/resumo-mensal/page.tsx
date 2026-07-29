@@ -247,6 +247,16 @@ export default function ResumoMensalPage() {
                         />
                       ))
                     )}
+                    <div className="flex justify-center pt-3">
+                      <button
+                        onClick={() => toggleExpandir(r.funcionario.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Ocultar registros diários"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                        Fechar
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -340,6 +350,16 @@ export default function ResumoMensalPage() {
                                     />
                                   ))
                                 )}
+                              </div>
+                              <div className="flex justify-center pt-3">
+                                <button
+                                  onClick={() => toggleExpandir(r.funcionario.id)}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+                                  title="Ocultar registros diários"
+                                >
+                                  <ChevronUp className="w-4 h-4" />
+                                  Fechar
+                                </button>
                               </div>
                             </td>
                           </tr>
