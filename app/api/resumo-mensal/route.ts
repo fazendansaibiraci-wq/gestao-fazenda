@@ -187,8 +187,11 @@ export async function GET(request: NextRequest) {
           if (cursor.getDay() === 0) {
             const chave = cursor.toISOString().split('T')[0]
             if (!diasComRegistro.has(chave)) {
+              const [anoFolga, mesFolga, diaFolga] = chave.split('-').map(Number)
               folgasSemRegistro.push({
-                data: new Date(cursor),
+                // Meio-dia UTC evita que a conversão pro fuso do navegador
+                // (ex.: Brasil, UTC-3) empurre a data pro dia anterior na exibição.
+                data: new Date(Date.UTC(anoFolga, mesFolga - 1, diaFolga, 12, 0, 0)),
                 horaEntrada: null,
                 horaSaida: null,
                 horasBrutas: 0,
