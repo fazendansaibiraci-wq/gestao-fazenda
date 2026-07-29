@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Trash2, FileSpreadsheet, FileText, MessageSquare } from 'lucide-react'
+import { Plus, Trash2, FileSpreadsheet, FileText, MessageSquare, Fuel } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 interface DiariaTurma {
@@ -231,6 +231,13 @@ export default function TurmasPage() {
                                                     </button>
                                           </Link>
                                 </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                          <Fuel className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                          <p className="text-sm text-amber-800">
+                            <strong>Lembrete:</strong> não esqueça de descontar o diesel usado pelas turmas no pagamento semanal.
+                          </p>
                         </div>
 
                         <div className="card space-y-3">
