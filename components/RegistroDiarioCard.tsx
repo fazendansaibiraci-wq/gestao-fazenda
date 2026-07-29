@@ -13,6 +13,7 @@ export interface RegistroDiario {
   horasExtras: number
   horasDevidas: number
   isFalta: boolean
+  isFolga?: boolean
   motivoFalta: string | null
   passouDiretoAlmoco: boolean
 }
@@ -34,6 +35,8 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario }:
       className={`rounded-lg p-3 text-sm ${
         dia.isFalta
           ? 'bg-red-50 border border-red-100'
+          : dia.isFolga
+          ? 'bg-blue-50 border border-blue-100'
           : dia.horasExtras > 0
           ? 'bg-green-50 border border-green-100'
           : dia.horasDevidas > 0 && !pagamentoProporcionalDiario
@@ -50,6 +53,10 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario }:
         {dia.isFalta ? (
           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
             Falta {dia.motivoFalta ? `— ${dia.motivoFalta}` : ''}
+          </span>
+        ) : dia.isFolga ? (
+          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+            Folga
           </span>
         ) : dia.horasExtras > 0 ? (
           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
@@ -70,7 +77,7 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario }:
         )}
       </div>
 
-      {!dia.isFalta && (
+      {!dia.isFalta && !dia.isFolga && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs text-gray-600">
           <div>
             <span className="block text-gray-400">Entrada</span>
