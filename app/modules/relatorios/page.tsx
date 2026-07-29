@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3 } from 'lucide-react'
+import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3, Package } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -27,6 +27,10 @@ export default function RelatoriosPage() {
   const [exportando, setExportando] = useState(false)
   const [abastecimentos, setAbastecimentos] = useState<any[]>([])
   const [custoHHHM, setCustoHHHM] = useState<{ talhaoId: string; nomeTalhao: string; custoHHPorHa: number | null; custoHMPorHa: number | null; horasTurma?: number; custoTurmasPorHa?: number | null }[]>([])
+  const [estoqueRelatorio, setEstoqueRelatorio] = useState<{
+    resumoPorProduto: { nome: string; categoria: string; unidade: string; quantidadeEstoque: number; valorUnitario: number; valorEmEstoque: number }[]
+    movimentacoes: { data: string; tipo: 'entrada' | 'saida' | 'ajuste'; produto: string; unidade: string; quantidade: number; talhao: string | null; safra: string | null; registradoPor: string | null; observacao: string | null }[]
+  }>({ resumoPorProduto: [], movimentacoes: [] })
 
   const [filtros, setFiltros] = useState({
     safraId: '',
@@ -84,9 +88,27 @@ export default function RelatoriosPage() {
     }
   }
 
+  const loadEstoqueRelatorio = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (filtros.dataInicio) params.set('dataInicio', filtros.dataInicio)
+      if (filtros.dataFim) params.set('dataFim', filtros.dataFim)
+      const res = await fetch(`/api/relatorios/estoque?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setEstoqueRelatorio(data.data || { resumoPorProduto: [], movimentacoes: [] })
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   useEffect(() => {
     if (aba === 'custos') {
       loadCustoHHHM()
+    }
+    if (aba === 'estoque') {
+      loadEstoqueRelatorio()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aba, filtros.dataInicio, filtros.dataFim])
@@ -163,6 +185,7 @@ export default function RelatoriosPage() {
     { id: 'custos', label: 'Custos', icon: DollarSign },
     { id: 'combustivel', label: 'Combustível', icon: Fuel },
     { id: 'comparativo-hh-hm', label: 'Comparativo HH/HM', icon: BarChart3 },
+    { id: 'estoque', label: 'Estoque', icon: Package },
   ]
 
   const getNomeAba = () => abas.find(a => a.id === aba)?.label || aba
@@ -306,6 +329,34 @@ export default function RelatoriosPage() {
                 d.operador,
                 `${d.horasHomem.toFixed(1)}h`,
                 `${d.horasMaquina.toFixed(1)}h`,
+              ]),
+            },
+          ],
+        }
+      case 'estoque':
+        return {
+          sheets: [
+            {
+              nome: 'Resumo do Estoque',
+              colunas: ['Produto', 'Categoria', 'Quantidade', 'Valor Unitário', 'Valor em Estoque'],
+              linhas: estoqueRelatorio.resumoPorProduto.map(p => [
+                p.nome,
+                p.categoria,
+                `${p.quantidadeEstoque.toLocaleString('pt-BR')} ${p.unidade}`,
+                `R$ ${p.valorUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                `R$ ${p.valorEmEstoque.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+              ]),
+            },
+            {
+              nome: 'Movimentações',
+              colunas: ['Data', 'Tipo', 'Produto', 'Quantidade', 'Talhão', 'Registrado por'],
+              linhas: estoqueRelatorio.movimentacoes.map(m => [
+                new Date(m.data).toLocaleDateString('pt-BR'),
+                m.tipo === 'entrada' ? 'Entrada' : m.tipo === 'saida' ? 'Saída' : 'Ajuste',
+                m.produto,
+                `${m.quantidade > 0 && m.tipo === 'ajuste' ? '+' : ''}${m.quantidade.toLocaleString('pt-BR')} ${m.unidade}`,
+                m.talhao || '-',
+                m.registradoPor || '-',
               ]),
             },
           ],
@@ -528,7 +579,7 @@ export default function RelatoriosPage() {
         <div className="flex gap-2">
           <button
             onClick={exportarExcel}
-            disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : registrosFiltrados.length === 0)}
+            disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : aba === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0)}
             className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
           >
             <FileSpreadsheet className="w-4 h-4" />
@@ -536,7 +587,7 @@ export default function RelatoriosPage() {
           </button>
           <button
             onClick={exportarPDF}
-            disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : registrosFiltrados.length === 0)}
+            disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : aba === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0)}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
           >
             <FileText className="w-4 h-4" />
@@ -547,7 +598,7 @@ export default function RelatoriosPage() {
 
       {loading ? (
         <div className="card text-center py-12 text-gray-500">Carregando dados...</div>
-      ) : (aba !== 'combustivel' && registrosFiltrados.length === 0) ? (
+      ) : (aba !== 'combustivel' && aba !== 'estoque' && registrosFiltrados.length === 0) ? (
         <div className="card text-center py-12 text-gray-500">Nenhum registro encontrado com os filtros selecionados.</div>
       ) : (
         <>
