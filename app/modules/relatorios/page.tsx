@@ -896,6 +896,86 @@ export default function RelatoriosPage() {
               </div>
             </div>
           )}
+
+          {aba === 'estoque' && (
+            <div className="space-y-6">
+              <div className="card">
+                <h3 className="text-lg font-semibold text-primary mb-4">Resumo do Estoque</h3>
+                {estoqueRelatorio.resumoPorProduto.length === 0 ? (
+                  <p className="text-center py-12 text-gray-500">Nenhum produto cadastrado.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-3 text-gray-600">Produto</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Categoria</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Quantidade</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Valor Unitário</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Valor em Estoque</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {estoqueRelatorio.resumoPorProduto.map((p: any) => (
+                          <tr key={p.nome} className="border-b hover:bg-gray-50">
+                            <td className="py-2 px-3 font-medium">{p.nome}</td>
+                            <td className="py-2 px-3">{p.categoria}</td>
+                            <td className="py-2 px-3">{p.quantidadeEstoque} {p.unidade}</td>
+                            <td className="py-2 px-3">R$ {p.valorUnitario.toFixed(2)}</td>
+                            <td className="py-2 px-3">R$ {p.valorEmEstoque.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div className="card">
+                <h3 className="text-lg font-semibold text-primary mb-4">Movimentações no Período</h3>
+                {estoqueRelatorio.movimentacoes.length === 0 ? (
+                  <p className="text-center py-12 text-gray-500">Nenhuma movimentação encontrada no período selecionado.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-3 text-gray-600">Data</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Tipo</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Produto</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Quantidade</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Talhão</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Responsável</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Observação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {estoqueRelatorio.movimentacoes.map((m: any, i: number) => (
+                          <tr key={i} className="border-b hover:bg-gray-50">
+                            <td className="py-2 px-3">{new Date(m.data).toLocaleDateString('pt-BR')}</td>
+                            <td className="py-2 px-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                m.tipo === 'entrada' ? 'bg-green-100 text-green-800' :
+                                m.tipo === 'saida' ? 'bg-red-100 text-red-800' :
+                                'bg-amber-100 text-amber-800'
+                              }`}>
+                                {m.tipo === 'entrada' ? 'Entrada' : m.tipo === 'saida' ? 'Saída' : 'Ajuste'}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 font-medium">{m.produto}</td>
+                            <td className="py-2 px-3">{m.quantidade} {m.unidade}</td>
+                            <td className="py-2 px-3">{m.talhao || '-'}</td>
+                            <td className="py-2 px-3">{m.registradoPor || '-'}</td>
+                            <td className="py-2 px-3">{m.observacao || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
