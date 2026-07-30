@@ -50,29 +50,29 @@ export function Sidebar() {
   }
 
   const cadastroItems = [
-    { label: 'Cadastro de Produtos', href: '/modules/produtos', icon: Package, excludeRoles: 'FUNCIONARIO|GERENTE' },
+    { label: 'Cadastro de Produtos', href: '/modules/produtos', icon: Package, excludeRoles: 'FUNCIONARIO' },
     { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
-    { label: 'Tipos de Atividade', href: '/modules/tipos-atividade', icon: Tag, role: 'GESTOR' },
-    { label: 'Implementos', href: '/modules/implementos', icon: Tractor, role: 'GESTOR' },
-    { label: 'Turmas (Cadastro)', href: '/modules/turmas-cadastro', icon: Users, role: 'GESTOR' },
-    { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR' },
-    { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO|GERENTE' },
-    { label: 'Cadastro Usuários', href: '/settings', icon: Settings, role: 'GESTOR' },
+    { label: 'Tipos de Atividade', href: '/modules/tipos-atividade', icon: Tag, role: 'GESTOR|GERENTE' },
+    { label: 'Implementos', href: '/modules/implementos', icon: Tractor, role: 'GESTOR|GERENTE' },
+    { label: 'Turmas (Cadastro)', href: '/modules/turmas-cadastro', icon: Users, role: 'GESTOR|GERENTE' },
+    { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR|GERENTE' },
+    { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
+    { label: 'Cadastro Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
 
   const operacionalItems = [
     { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Registro de Atividades', href: '/modules/atividades', icon: ClipboardList, excludeRoles: 'AGRONOMO' },
-    { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO|GERENTE' },
+    { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
     { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Turmas', href: '/modules/turmas', icon: UserPlus, role: 'GESTOR|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
 
   const relatorioItems = [
-    { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO|GERENTE' },
+    { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Meus Relatórios', href: '/modules/meus-relatorios', icon: BarChart3, role: 'FUNCIONARIO' },
-    { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO|GERENTE' },
+    { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO' },
   ].filter(item => show(item.role, item.excludeRoles))
 
   const cadastroAtivo = cadastroItems.some(i => isActive(i.href))
