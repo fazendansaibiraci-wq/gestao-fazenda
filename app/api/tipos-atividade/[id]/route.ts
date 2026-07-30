@@ -9,7 +9,7 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || session.user?.role !== 'GESTOR') {
+    if (!session || (session.user?.role !== 'GESTOR' && session.user?.role !== 'GERENTE')) {
       return NextResponse.json({ error: 'Acesso restrito ao gestor' }, { status: 403 })
     }
 
@@ -53,7 +53,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || session.user?.role !== 'GESTOR') {
+    if (!session || (session.user?.role !== 'GESTOR' && session.user?.role !== 'GERENTE')) {
       return NextResponse.json({ error: 'Acesso restrito ao gestor' }, { status: 403 })
     }
 
