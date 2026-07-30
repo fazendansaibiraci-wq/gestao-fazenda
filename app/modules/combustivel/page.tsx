@@ -113,6 +113,8 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
     tipoAtividade: '',
   })
   const [loading, setLoading] = useState(false)
+  const [paginaAbastecimentos, setPaginaAbastecimentos] = useState(0)
+  const ITENS_POR_PAGINA = 10
 
   useEffect(() => {
     load()
@@ -124,6 +126,7 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
       const res = await fetch('/api/abastecimentos')
       const data = await res.json()
       setAbastecimentos(data.data || [])
+      setPaginaAbastecimentos(0)
     } catch (err) {
       console.error(err)
     }
@@ -190,6 +193,12 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
       setLoading(false)
     }
   }
+
+  const totalPaginasAbastecimentos = Math.max(1, Math.ceil(abastecimentos.length / ITENS_POR_PAGINA))
+  const abastecimentosPagina = abastecimentos.slice(
+    paginaAbastecimentos * ITENS_POR_PAGINA,
+    paginaAbastecimentos * ITENS_POR_PAGINA + ITENS_POR_PAGINA
+  )
 
   return (
     <div className="space-y-6">
@@ -292,7 +301,7 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
               </tr>
             </thead>
             <tbody>
-              {abastecimentos.slice(0, 10).map((a: any) => (
+              {abastecimentosPagina.map((a: any) => (
                 <tr key={a.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-2">{new Date(a.data).toLocaleDateString('pt-BR')}</td>
                   <td className="px-4 py-2 font-medium">{a.maquina?.nome}</td>
@@ -312,6 +321,33 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
             </tbody>
           </table>
         </div>
+        {abastecimentos.length > ITENS_POR_PAGINA && (
+          <div className="flex items-center justify-between mt-3 text-sm text-gray-600">
+            <span>
+              Mostrando {abastecimentosPagina.length === 0 ? 0 : paginaAbastecimentos * ITENS_POR_PAGINA + 1}
+              –{Math.min((paginaAbastecimentos + 1) * ITENS_POR_PAGINA, abastecimentos.length)} de {abastecimentos.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPaginaAbastecimentos((p) => Math.max(0, p - 1))}
+                disabled={paginaAbastecimentos === 0}
+                className="px-3 py-1.5 border rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Anterior
+              </button>
+              <span>Página {paginaAbastecimentos + 1} de {totalPaginasAbastecimentos}</span>
+              <button
+                type="button"
+                onClick={() => setPaginaAbastecimentos((p) => Math.min(totalPaginasAbastecimentos - 1, p + 1))}
+                disabled={paginaAbastecimentos >= totalPaginasAbastecimentos - 1}
+                className="px-3 py-1.5 border rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <AjustarHorimetro maquinas={maquinas} />
@@ -503,3 +539,4 @@ function AbaPainelEstoque() {
     </div>
   )
 }
+
