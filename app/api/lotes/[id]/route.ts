@@ -46,7 +46,7 @@ export async function DELETE(
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // Apenas usuários com role GESTOR podem deletar
-    if (session.user?.role !== 'GESTOR') {
+    if (session.user?.role !== 'GESTOR' && session.user?.role !== 'GERENTE') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
