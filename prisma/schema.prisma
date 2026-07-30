@@ -1145,6 +1145,8 @@ model ConfiguracaoGlobal {
   inicioSafra             DateTime?
   fimSafra                DateTime?
   updatedAt               DateTime  @updatedAt
+  lembreteTurmasTexto     String?
+  lembreteTurmasAtivo     Boolean   @default(false)
 
   @@map("configuracao_global")
 }
