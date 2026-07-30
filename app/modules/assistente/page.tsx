@@ -24,7 +24,7 @@ export default function AssistentePage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
-    if (session?.user?.role !== 'GESTOR' && session?.user?.role !== 'PROPRIETARIO') {
+    if (session?.user?.role !== 'GESTOR' && session?.user?.role !== 'GERENTE' && session?.user?.role !== 'PROPRIETARIO') {
       redirect('/modules')
     }
   }, [status])
@@ -142,7 +142,7 @@ export default function AssistentePage() {
     return <div className="flex justify-center py-12"><div className="spinner"></div></div>
   }
 
-  if (session?.user?.role !== 'GESTOR' && session?.user?.role !== 'PROPRIETARIO') {
+  if (session?.user?.role !== 'GESTOR' && session?.user?.role !== 'GERENTE' && session?.user?.role !== 'PROPRIETARIO') {
     return (
       <div className="card bg-red-50 border-l-4 border-red-500">
         <p className="text-red-800 font-medium">
