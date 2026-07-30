@@ -163,8 +163,8 @@ export async function DELETE(request: NextRequest) {
 
     // Apenas GESTOR pode desativar/deletar usuários
     const userRole = (session.user as any)?.role
-    if (userRole !== 'GESTOR') {
-      return NextResponse.json({ error: 'Apenas GESTOR pode gerenciar usuários' }, { status: 403 })
+    if (userRole !== 'GESTOR' && userRole !== 'GERENTE') {
+      return NextResponse.json({ error: 'Apenas GESTOR ou GERENTE pode gerenciar usuários' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -224,8 +224,8 @@ export async function PATCH(request: NextRequest) {
 
     // Apenas GESTOR pode reativar usuários
     const userRole = (session.user as any)?.role
-    if (userRole !== 'GESTOR') {
-      return NextResponse.json({ error: 'Apenas GESTOR pode reativar usuários' }, { status: 403 })
+    if (userRole !== 'GESTOR' && userRole !== 'GERENTE') {
+      return NextResponse.json({ error: 'Apenas GESTOR ou GERENTE pode reativar usuários' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
