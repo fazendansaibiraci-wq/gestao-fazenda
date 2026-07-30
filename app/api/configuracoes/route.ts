@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
           cargaHorariaEntressafra: 8,
           inicioSafra: null,
           fimSafra: null,
+          lembreteTurmasTexto: null,
+          lembreteTurmasAtivo: false,
         },
       })
     }
@@ -45,6 +47,8 @@ export async function PUT(request: NextRequest) {
           cargaHorariaEntressafra: body.cargaHorariaEntressafra ?? 8,
           inicioSafra: body.inicioSafra ? new Date(body.inicioSafra) : null,
           fimSafra: body.fimSafra ? new Date(body.fimSafra) : null,
+          lembreteTurmasTexto: body.lembreteTurmasTexto ?? null,
+          lembreteTurmasAtivo: body.lembreteTurmasAtivo ?? false,
         },
       })
     } else {
@@ -54,6 +58,10 @@ export async function PUT(request: NextRequest) {
           cargaHorariaEntressafra: body.cargaHorariaEntressafra ?? config.cargaHorariaEntressafra,
           inicioSafra: body.inicioSafra ? new Date(body.inicioSafra) : null,
           fimSafra: body.fimSafra ? new Date(body.fimSafra) : null,
+          lembreteTurmasTexto:
+            body.lembreteTurmasTexto !== undefined ? body.lembreteTurmasTexto : config.lembreteTurmasTexto,
+          lembreteTurmasAtivo:
+            body.lembreteTurmasAtivo !== undefined ? body.lembreteTurmasAtivo : config.lembreteTurmasAtivo,
         },
       })
     }
