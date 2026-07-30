@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || (session.user as any)?.role !== 'GESTOR') {
+    if (!session || ((session.user as any)?.role !== 'GESTOR' && (session.user as any)?.role !== 'GERENTE')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
