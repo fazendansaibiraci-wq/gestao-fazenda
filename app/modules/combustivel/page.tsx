@@ -60,7 +60,7 @@ export default function CombustivelPage() {
           <Fuel className="inline w-4 h-4 mr-2" />
           Abastecimento
         </button>
-        {session?.user?.role === 'GESTOR' && (
+        {(session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE') && (
           <button
             onClick={() => setActiveTab('entrada')}
             className={`px-4 py-3 font-medium transition-colors border-b-2 ${
@@ -99,7 +99,7 @@ export default function CombustivelPage() {
 // Aba 1: Abastecimento de Trator
 function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
   const { data: session } = useSession()
-  const isGestor = session?.user?.role === 'GESTOR'
+  const isGestor = session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE'
   const [abastecimentos, setAbastecimentos] = useState([])
   const [form, setForm] = useState({
     maquinaId: '',
@@ -358,7 +358,7 @@ function AbaAbastecimento({ maquinas }: { maquinas: any[] }) {
 // Aba 2: Entrada de Diesel
 function AbaEntrada() {
   const { data: session } = useSession()
-  const isGestor = session?.user?.role === 'GESTOR'
+  const isGestor = session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE'
   const [entradas, setEntradas] = useState([])
   const [paginaEntradas, setPaginaEntradas] = useState(0)
   const ITENS_POR_PAGINA_ENTRADAS = 10
