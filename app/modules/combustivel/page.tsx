@@ -360,6 +360,8 @@ function AbaEntrada() {
   const { data: session } = useSession()
   const isGestor = session?.user?.role === 'GESTOR'
   const [entradas, setEntradas] = useState([])
+  const [paginaEntradas, setPaginaEntradas] = useState(0)
+  const ITENS_POR_PAGINA_ENTRADAS = 10
 
   useEffect(() => {
     load()
@@ -370,6 +372,7 @@ function AbaEntrada() {
       const res = await fetch('/api/entradas-diesel')
       const data = await res.json()
       setEntradas(data.data || [])
+      setPaginaEntradas(0)
     } catch (err) {
       console.error(err)
     }
@@ -388,6 +391,12 @@ function AbaEntrada() {
       alert(err instanceof Error ? err.message : 'Erro ao excluir')
     }
   }
+
+  const totalPaginasEntradas = Math.max(1, Math.ceil(entradas.length / ITENS_POR_PAGINA_ENTRADAS))
+  const entradasPagina = entradas.slice(
+    paginaEntradas * ITENS_POR_PAGINA_ENTRADAS,
+    paginaEntradas * ITENS_POR_PAGINA_ENTRADAS + ITENS_POR_PAGINA_ENTRADAS
+  )
 
   return (
     <div className="space-y-6">
@@ -412,7 +421,7 @@ function AbaEntrada() {
               </tr>
             </thead>
             <tbody>
-              {entradas.slice(0, 10).map((e: any) => (
+              {entradasPagina.map((e: any) => (
                 <tr key={e.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-2">{new Date(e.data).toLocaleDateString('pt-BR')}</td>
                   <td className="px-4 py-2">{e.litrosRecebidos.toFixed(2)}L</td>
@@ -436,6 +445,33 @@ function AbaEntrada() {
             </tbody>
           </table>
         </div>
+        {entradas.length > ITENS_POR_PAGINA_ENTRADAS && (
+          <div className="flex items-center justify-between mt-3 text-sm text-gray-600">
+            <span>
+              Mostrando {entradasPagina.length === 0 ? 0 : paginaEntradas * ITENS_POR_PAGINA_ENTRADAS + 1}
+              –{Math.min((paginaEntradas + 1) * ITENS_POR_PAGINA_ENTRADAS, entradas.length)} de {entradas.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPaginaEntradas((p) => Math.max(0, p - 1))}
+                disabled={paginaEntradas === 0}
+                className="px-3 py-1.5 border rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Anterior
+              </button>
+              <span>Página {paginaEntradas + 1} de {totalPaginasEntradas}</span>
+              <button
+                type="button"
+                onClick={() => setPaginaEntradas((p) => Math.min(totalPaginasEntradas - 1, p + 1))}
+                disabled={paginaEntradas >= totalPaginasEntradas - 1}
+                className="px-3 py-1.5 border rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
