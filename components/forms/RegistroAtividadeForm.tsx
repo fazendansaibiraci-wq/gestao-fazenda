@@ -26,7 +26,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [produtos, setProdutos] = useState([])
   const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
   const userRole = (session?.user as any)?.role || ''
-  const podeEditarHorimetroInicial = userRole === 'GESTOR'
+  const podeEditarHorimetroInicial = userRole === 'GESTOR' || userRole === 'GERENTE'
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
   const [atestadoFile, setAtestadoFile] = useState<File | null>(null)
   const [atestadoUploading, setAtestadoUploading] = useState(false)
