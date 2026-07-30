@@ -225,7 +225,7 @@ export default function SettingsPage() {
     return <div className="flex justify-center py-12"><div className="spinner"></div></div>
   }
 
-  const isGestor = (session?.user as any)?.role === 'GESTOR'
+  const isGestor = (session?.user as any)?.role === 'GESTOR' || (session?.user as any)?.role === 'GERENTE'
 
   return (
     <div className="space-y-6">
