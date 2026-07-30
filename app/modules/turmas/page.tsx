@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Trash2, FileSpreadsheet, FileText, MessageSquare, Fuel } from 'lucide-react'
+import { Plus, Trash2, FileSpreadsheet, FileText, MessageSquare, Fuel, Pencil, Save, X } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 interface DiariaTurma {
@@ -20,6 +20,11 @@ interface DiariaTurma {
     criadoPor?: { name: string }
 }
 
+interface ConfiguracaoLembrete {
+    lembreteTurmasTexto: string | null
+    lembreteTurmasAtivo: boolean
+}
+
 export default function TurmasPage() {
     const { data: session, status } = useSession()
     const [diarias, setDiarias] = useState<DiariaTurma[]>([])
@@ -32,8 +37,14 @@ export default function TurmasPage() {
     const [filtroTurma, setFiltroTurma] = useState('')
     const [exportando, setExportando] = useState(false)
 
+    const [config, setConfig] = useState<ConfiguracaoLembrete | null>(null)
+    const [editingLembrete, setEditingLembrete] = useState(false)
+    const [lembreteForm, setLembreteForm] = useState({ texto: '', ativo: false })
+    const [savingLembrete, setSavingLembrete] = useState(false)
+
   const userRole = (session?.user as any)?.role || ''
     const podeAcessar = ['GESTOR', 'GERENTE'].includes(userRole)
+    const isGestor = userRole === 'GESTOR'
 
   useEffect(() => {
         if (status === 'unauthenticated') redirect('/login')
@@ -41,6 +52,7 @@ export default function TurmasPage() {
         if (status === 'authenticated') {
                 loadTalhoes()
                 loadTurmas()
+                loadConfig()
                 load()
         }
   }, [status])
@@ -50,6 +62,49 @@ export default function TurmasPage() {
                 const res = await fetch('/api/talhoes')
                 if (res.ok) setTalhoes((await res.json()).data)
         } catch (err) { console.error(err) }
+  }
+
+  const loadConfig = async () => {
+        try {
+                const res = await fetch('/api/configuracoes')
+                if (res.ok) {
+                          const data = await res.json()
+                          setConfig(data.data)
+                }
+        } catch (err) { console.error(err) }
+  }
+
+  const handleEditLembrete = () => {
+        setLembreteForm({
+                texto: config?.lembreteTurmasTexto || '',
+                ativo: config?.lembreteTurmasAtivo || false,
+        })
+        setEditingLembrete(true)
+  }
+
+  const handleSaveLembrete = async () => {
+        setSavingLembrete(true)
+        try {
+                const res = await fetch('/api/configuracoes', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                                    lembreteTurmasTexto: lembreteForm.texto,
+                                    lembreteTurmasAtivo: lembreteForm.ativo,
+                          }),
+                })
+                if (res.ok) {
+                          await loadConfig()
+                          setEditingLembrete(false)
+                } else {
+                          alert('Erro ao salvar lembrete')
+                }
+        } catch (err) {
+                console.error(err)
+                alert('Erro ao salvar lembrete')
+        } finally {
+                setSavingLembrete(false)
+        }
   }
 
   const loadTurmas = async () => {
@@ -157,6 +212,7 @@ export default function TurmasPage() {
       setExportando(false)
     }
   }
+
   const exportarPDF = async () => {
     setExportando(true)
     try {
@@ -233,12 +289,80 @@ export default function TurmasPage() {
                                 </div>
                         </div>
 
-                        <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                          <Fuel className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                          <p className="text-sm text-amber-800">
-                            <strong>Lembrete:</strong> não esqueça de descontar o diesel usado pelas turmas no pagamento semanal.
-                          </p>
-                        </div>
+                        {isGestor ? (
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                            {editingLembrete ? (
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <Fuel className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                                  <span className="text-sm font-medium text-amber-800">Lembrete de Turmas</span>
+                                </div>
+                                <textarea
+                                  value={lembreteForm.texto}
+                                  onChange={(e) => setLembreteForm({ ...lembreteForm, texto: e.target.value })}
+                                  className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm"
+                                  rows={2}
+                                  placeholder="Ex: não esqueça de descontar o diesel usado pelas turmas no pagamento semanal."
+                                />
+                                <label className="flex items-center gap-2 text-sm text-amber-800">
+                                  <input
+                                    type="checkbox"
+                                    checked={lembreteForm.ativo}
+                                    onChange={(e) => setLembreteForm({ ...lembreteForm, ativo: e.target.checked })}
+                                  />
+                                  Exibir lembrete para todos os usuários
+                                </label>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={handleSaveLembrete}
+                                    disabled={savingLembrete}
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                                  >
+                                    <Save className="w-4 h-4" />
+                                    {savingLembrete ? 'Salvando...' : 'Salvar'}
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingLembrete(false)}
+                                    disabled={savingLembrete}
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 disabled:opacity-50 transition-colors"
+                                  >
+                                    <X className="w-4 h-4" />
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <Fuel className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                                  {config?.lembreteTurmasAtivo && config?.lembreteTurmasTexto ? (
+                                    <p className="text-sm text-amber-800">
+                                      <strong>Lembrete:</strong> {config.lembreteTurmasTexto}
+                                    </p>
+                                  ) : (
+                                    <p className="text-sm text-amber-700 italic">Lembrete desativado</p>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={handleEditLembrete}
+                                  className="p-2 hover:bg-amber-100 rounded transition flex-shrink-0"
+                                  title="Editar lembrete"
+                                >
+                                  <Pencil className="w-4 h-4 text-amber-700" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          config?.lembreteTurmasAtivo && config?.lembreteTurmasTexto && (
+                            <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                              <Fuel className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                              <p className="text-sm text-amber-800">
+                                <strong>Lembrete:</strong> {config.lembreteTurmasTexto}
+                              </p>
+                            </div>
+                          )
+                        )}
 
                         <div className="card space-y-3">
                                 <h3 className="font-semibold text-primary">Filtros</h3>
