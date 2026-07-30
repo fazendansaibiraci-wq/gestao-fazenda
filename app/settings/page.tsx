@@ -23,14 +23,14 @@ interface ConfiguracaoGlobal {
 
 const roleLabels = {
   FUNCIONARIO: 'Funcionário',
-  GERENTE: 'Gerente',
+  GERENTE: 'Consultor',
   AGRONOMO: 'Agrônomo',
   GESTOR: 'Gestor',
 }
 
 const roleOptions = [
   { value: 'FUNCIONARIO', label: 'Funcionário' },
-  { value: 'GERENTE', label: 'Gerente' },
+  { value: 'GERENTE', label: 'Consultor' },
   { value: 'AGRONOMO', label: 'Agrônomo' },
   { value: 'GESTOR', label: 'Gestor' },
 ]
