@@ -44,7 +44,7 @@ export default function TurmasPage() {
 
   const userRole = (session?.user as any)?.role || ''
     const podeAcessar = ['GESTOR', 'GERENTE'].includes(userRole)
-    const isGestor = userRole === 'GESTOR'
+    const isGestor = userRole === 'GESTOR' || userRole === 'GERENTE'
 
   useEffect(() => {
         if (status === 'unauthenticated') redirect('/login')
