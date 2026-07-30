@@ -26,7 +26,7 @@ interface Turma {
 
                               useEffect(() => {
                                   if (status === 'unauthenticated') redirect('/login')
-                                      if (status === 'authenticated' && userRole !== 'GESTOR') redirect('/dashboard')
+                                      if (status === 'authenticated' && userRole !== 'GESTOR' && userRole !== 'GERENTE') redirect('/dashboard')
                                           if (status === 'authenticated') buscarTurmas()
                                             }, [status])
 
