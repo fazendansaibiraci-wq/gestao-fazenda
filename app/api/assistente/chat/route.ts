@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // Apenas GESTOR
-    if (session.user?.role !== 'GESTOR') {
+    if (session.user?.role !== 'GESTOR' && session.user?.role !== 'GERENTE') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
