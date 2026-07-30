@@ -17,7 +17,7 @@ export async function DELETE(
     if (!feriado) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
 
     // Apenas permitir deletar feriados municipais
-    if (feriado.tipo === 'nacional' && session.user?.role !== 'GESTOR') {
+    if (feriado.tipo === 'nacional' && session.user?.role !== 'GESTOR' && session.user?.role !== 'GERENTE') {
       return NextResponse.json({ error: 'Não pode deletar feriado nacional' }, { status: 403 })
     }
 
