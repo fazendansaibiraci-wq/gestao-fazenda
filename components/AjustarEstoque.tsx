@@ -6,7 +6,7 @@ import { ClipboardCheck } from 'lucide-react'
 
 export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; onAtualizado: () => void }) {
   const { data: session } = useSession()
-  const isGestor = session?.user?.role === 'GESTOR'
+  const isGestor = session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE'
   const [aberto, setAberto] = useState(false)
   const [ajustes, setAjustes] = useState<any[]>([])
   const [carregandoHistorico, setCarregandoHistorico] = useState(true)

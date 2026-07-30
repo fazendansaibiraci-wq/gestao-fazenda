@@ -28,7 +28,7 @@ const CATEGORIAS = [
 
 export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void }) {
   const { data: session } = useSession()
-  const isGestor = session?.user?.role === 'GESTOR'
+  const isGestor = session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE'
   const [aberto, setAberto] = useState(false)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
