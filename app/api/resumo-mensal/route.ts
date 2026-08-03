@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     const whereUser: any = {
       active: true,
-      role: { in: ['FUNCIONARIO', 'GERENTE', 'AGRONOMO'] },
+      role: { in: ['FUNCIONARIO', 'AGRONOMO'] },
     }
 
     if (isFuncionario) {
