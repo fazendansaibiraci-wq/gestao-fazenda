@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3, Package } from 'lucide-react'
+import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3, Package, ChevronDown } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -559,63 +559,51 @@ export default function RelatoriosPage() {
         </div>
       </div>
 
-      {/* Abas de navegação — compactas no desktop, dropdown no mobile */}
-      <div className="hidden md:flex gap-1.5 flex-wrap">
-        {abas.map(a => (
-          <button
-            key={a.id}
-            onClick={() => setAba(a.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              aba === a.id ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            <a.icon className="w-3.5 h-3.5" />
-            {a.label}
-          </button>
-        ))}
-      </div>
+      {/* Acordeão de relatórios */}
+      <div className="space-y-3">
+        {abas.map(a => {
+          const vazio = a.id === 'combustivel' ? resumoCombustivel.length === 0 : a.id === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0
+          return (
+            <div key={a.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+              <button
+                onClick={() => setAba(a.id)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              >
+                <span className="flex items-center gap-2 font-medium text-gray-700">
+                  <a.icon className="w-4 h-4 text-primary" />
+                  {a.label}
+                </span>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${aba === a.id ? 'rotate-180' : ''}`} />
+              </button>
 
-      <div className="md:hidden flex items-center gap-2">
-        <span className="text-sm text-gray-500 whitespace-nowrap">Ver:</span>
-        <select
-          value={aba}
-          onChange={e => setAba(e.target.value)}
-          className="flex-1"
-          aria-label="Selecionar relatório"
-        >
-          {abas.map(a => (
-            <option key={a.id} value={a.id}>{a.label}</option>
-          ))}
-        </select>
-      </div>
+              {aba === a.id && (
+                <div className="border-t border-gray-200 px-4 py-4 space-y-4">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={exportarExcel}
+                      disabled={exportando || vazio}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      {exportando ? 'Exportando...' : 'Excel'}
+                    </button>
+                    <button
+                      onClick={exportarPDF}
+                      disabled={exportando || vazio}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    >
+                      <FileText className="w-4 h-4" />
+                      {exportando ? 'Exportando...' : 'PDF'}
+                    </button>
+                  </div>
 
-      {/* Exportação */}
-      <div className="flex justify-end gap-2">
-        <button
-          onClick={exportarExcel}
-          disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : aba === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0)}
-          className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          {exportando ? 'Exportando...' : 'Excel'}
-        </button>
-        <button
-          onClick={exportarPDF}
-          disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : aba === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0)}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
-        >
-          <FileText className="w-4 h-4" />
-          {exportando ? 'Exportando...' : 'PDF'}
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="card text-center py-12 text-gray-500">Carregando dados...</div>
-      ) : (aba !== 'combustivel' && aba !== 'estoque' && registrosFiltrados.length === 0) ? (
-        <div className="card text-center py-12 text-gray-500">Nenhum registro encontrado com os filtros selecionados.</div>
-      ) : (
-        <>
-          {aba === 'historico' && (
+                  {loading ? (
+                    <div className="text-center py-12 text-gray-500">Carregando dados...</div>
+                  ) : vazio ? (
+                    <div className="text-center py-12 text-gray-500">Nenhum registro encontrado com os filtros selecionados.</div>
+                  ) : (
+                    <>
+                      {aba === 'historico' && (
             <div className="card">
               <h3 className="text-lg font-semibold text-primary mb-4">Histórico de Atividades</h3>
               <div className="overflow-x-auto">
@@ -655,7 +643,7 @@ export default function RelatoriosPage() {
             </div>
           )}
 
-          {aba === 'operacional' && (
+                      {aba === 'operacional' && (
             <div className="space-y-6">
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-4">Desempenho por Operador</h3>
@@ -719,7 +707,7 @@ export default function RelatoriosPage() {
             </div>
           )}
 
-          {aba === 'custos' && (
+                      {aba === 'custos' && (
             <div className="space-y-6">
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-2">Custos por Talhão</h3>
@@ -800,7 +788,7 @@ export default function RelatoriosPage() {
             </div>
           )}
 
-          {aba === 'combustivel' && (
+                      {aba === 'combustivel' && (
             <div className="card">
               <h3 className="text-lg font-semibold text-primary mb-2">Comparativo de Combustível por Máquina</h3>
               <div className="flex flex-wrap gap-4 text-xs text-gray-500 mb-4">
@@ -884,7 +872,7 @@ export default function RelatoriosPage() {
             </div>
           )}
 
-          {aba === 'comparativo-hh-hm' && (
+                      {aba === 'comparativo-hh-hm' && (
             <div className="space-y-6">
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-4">
@@ -961,7 +949,7 @@ export default function RelatoriosPage() {
             </div>
           )}
 
-          {aba === 'estoque' && (
+                      {aba === 'estoque' && (
             <div className="space-y-6">
               <div className="card">
                 <h3 className="text-lg font-semibold text-primary mb-4">Resumo do Estoque</h3>
@@ -1040,8 +1028,14 @@ export default function RelatoriosPage() {
               </div>
             </div>
           )}
-        </>
-      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
