@@ -559,41 +559,40 @@ export default function RelatoriosPage() {
         </div>
       </div>
 
-      {/* Abas + Botões de exportação */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2 flex-wrap">
-          {abas.map(a => (
-            <button
-              key={a.id}
-              onClick={() => setAba(a.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                aba === a.id ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <a.icon className="w-4 h-4" />
-              {a.label}
-            </button>
-          ))}
-        </div>
+      {/* Abas de navegação */}
+      <div className="flex gap-2 flex-wrap">
+        {abas.map(a => (
+          <button
+            key={a.id}
+            onClick={() => setAba(a.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              aba === a.id ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <a.icon className="w-4 h-4" />
+            {a.label}
+          </button>
+        ))}
+      </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={exportarExcel}
-            disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : aba === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            {exportando ? 'Exportando...' : 'Excel'}
-          </button>
-          <button
-            onClick={exportarPDF}
-            disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : aba === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0)}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
-          >
-            <FileText className="w-4 h-4" />
-            {exportando ? 'Exportando...' : 'PDF'}
-          </button>
-        </div>
+      {/* Exportação */}
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={exportarExcel}
+          disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : aba === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0)}
+          className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          {exportando ? 'Exportando...' : 'Excel'}
+        </button>
+        <button
+          onClick={exportarPDF}
+          disabled={exportando || (aba === 'combustivel' ? resumoCombustivel.length === 0 : aba === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0)}
+          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+        >
+          <FileText className="w-4 h-4" />
+          {exportando ? 'Exportando...' : 'PDF'}
+        </button>
       </div>
 
       {loading ? (
