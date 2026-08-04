@@ -559,20 +559,34 @@ export default function RelatoriosPage() {
         </div>
       </div>
 
-      {/* Abas de navegação */}
-      <div className="flex gap-2 flex-wrap">
+      {/* Abas de navegação — compactas no desktop, dropdown no mobile */}
+      <div className="hidden md:flex gap-1.5 flex-wrap">
         {abas.map(a => (
           <button
             key={a.id}
             onClick={() => setAba(a.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               aba === a.id ? 'bg-primary text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <a.icon className="w-4 h-4" />
+            <a.icon className="w-3.5 h-3.5" />
             {a.label}
           </button>
         ))}
+      </div>
+
+      <div className="md:hidden flex items-center gap-2">
+        <span className="text-sm text-gray-500 whitespace-nowrap">Ver:</span>
+        <select
+          value={aba}
+          onChange={e => setAba(e.target.value)}
+          className="flex-1"
+          aria-label="Selecionar relatório"
+        >
+          {abas.map(a => (
+            <option key={a.id} value={a.id}>{a.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Exportação */}
