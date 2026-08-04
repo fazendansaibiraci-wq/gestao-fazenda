@@ -566,7 +566,7 @@ export default function RelatoriosPage() {
           return (
             <div key={a.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
               <button
-                onClick={() => setAba(a.id)}
+                onClick={() => setAba(aba === a.id ? '' : a.id)}
                 className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
               >
                 <span className="flex items-center gap-2 font-medium text-gray-700">
