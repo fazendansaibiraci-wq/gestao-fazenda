@@ -18,7 +18,7 @@ import { calcularCombustivelPorMaquina } from '@/lib/calculoCombustivelPorMaquin
 
 export default function RelatoriosPage() {
   const { data: session } = useSession()
-  const [aba, setAba] = useState('historico')
+  const [aba, setAba] = useState('')
   const [registros, setRegistros] = useState<any[]>([])
   const [talhoes, setTalhoes] = useState<any[]>([])
   const [safras, setSafras] = useState<any[]>([])
