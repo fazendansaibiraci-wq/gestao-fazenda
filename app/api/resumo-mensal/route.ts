@@ -220,8 +220,15 @@ export async function GET(request: NextRequest) {
       const descontoFaltas = func.tipoSalario === 'DIARIO' ? 0 : totalFaltas * valorDia
       const totalDescontos = descontoHorasDevidas + descontoFaltas
 
-      // Total acumulado = (salário ÷ 30 × dias trabalhados) + horas extras - descontos
-      const acumuladoDiasTrabalhados = diasTrabalhados * valorDia
+      // Total acumulado:
+      // - MENSAL: salário cheio do mês + horas extras - descontos (Faltas formais e Horas Devidas).
+      //   NÃO reduz proporcionalmente por dias sem registro (ex: domingos de folga) —
+      //   só desconta o que está formalmente registrado como Falta ou Hora Devida.
+      // - DIARIO: mantém o cálculo por dias trabalhados, já que salarioBase representa
+      //   o valor por dia, não um total mensal — diarista só recebe pelos dias que trabalhou.
+      const acumuladoDiasTrabalhados = func.tipoSalario === 'DIARIO'
+        ? diasTrabalhados * valorDia
+        : salarioBase
       const totalAcumulado = acumuladoDiasTrabalhados + valorHorasExtras - totalDescontos
 
       // Para funcionários com pagamento proporcional por hora, o total acumulado é
