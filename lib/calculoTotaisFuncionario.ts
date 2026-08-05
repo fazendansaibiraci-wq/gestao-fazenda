@@ -8,6 +8,7 @@ interface RegistroParaCalculo {
   horasCalculadas: number | null
   horasprevistasdia: number | null
   isFalta: boolean
+  passouDiretoAlmoco?: boolean
 }
 
 function chaveDataDoRegistro(data: Date | string): string {
@@ -87,8 +88,11 @@ export function calcularTotaisHoras(
       // Um intervalo real (>= 1h) somado entre os turnos já cobre o
       // almoço, então não desconta nada a mais. Turnos colados (sem
       // intervalo, ou com menos de 1h somado) descontam 1h cheia, uma
-      // única vez no dia.
-      const descontoAlmocoDia = intervaloTotalDia >= 1 ? 0 : 1
+      // única vez no dia — EXCETO se algum dos turnos do dia foi marcado
+      // como "passou direto do almoço", caso em que não há desconto
+      // algum, independente do intervalo entre os turnos.
+      const algumTurnoPassouDiretoAlmoco = regsDoDia.some(r => r.passouDiretoAlmoco)
+      const descontoAlmocoDia = algumTurnoPassouDiretoAlmoco ? 0 : (intervaloTotalDia >= 1 ? 0 : 1)
       somaHorasDia = Math.max(0, somaBruta - descontoAlmocoDia)
     }
     const cargaDia = regsDoDia[0].horasprevistasdia ?? cargaFallback
