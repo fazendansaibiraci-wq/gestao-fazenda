@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
               return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
       }
 
-      const quantidadePessoas = parseInt(body.quantidadePessoas)
+      const quantidadePessoas = parseFloat(body.quantidadePessoas)
           const valorDiaria = parseFloat(body.valorDiaria)
           const valorTotal = parseFloat((valorDiaria * quantidadePessoas).toFixed(2))
 

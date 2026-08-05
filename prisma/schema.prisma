@@ -488,7 +488,7 @@ model DiariaTurma {
   data              DateTime
   turma             Turma    @relation(fields: [turmaId], references: [id])
   turmaId           String
-  quantidadePessoas Int
+  quantidadePessoas Float
 
   talhao   Talhao @relation(fields: [talhaoId], references: [id])
   talhaoId String

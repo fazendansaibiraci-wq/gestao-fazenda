@@ -50,7 +50,7 @@ export function DiariaTurmaForm({ id, initialData }: DiariaTurmaFormProps) {
         setForm(prev => ({ ...prev, [name]: value }))
   }
 
-  const valorTotal = (parseFloat(form.valorDiaria) || 0) * (parseInt(form.quantidadePessoas) || 0)
+  const valorTotal = (parseFloat(form.valorDiaria) || 0) * (parseFloat(form.quantidadePessoas) || 0)
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -68,7 +68,7 @@ export function DiariaTurmaForm({ id, initialData }: DiariaTurmaFormProps) {
                 const payload = {
                           ...form,
                           data: new Date(form.data + 'T12:00:00'),
-                          quantidadePessoas: parseInt(form.quantidadePessoas),
+                          quantidadePessoas: parseFloat(form.quantidadePessoas),
                           valorDiaria: parseFloat(form.valorDiaria),
                 }
                 const response = await fetch(url, {
@@ -141,7 +141,7 @@ export function DiariaTurmaForm({ id, initialData }: DiariaTurmaFormProps) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="form-group">
                                                           <label htmlFor="quantidadePessoas">Quantidade de Pessoas *</label>
-                                                          <input type="number" id="quantidadePessoas" name="quantidadePessoas" value={form.quantidadePessoas} onChange={handleChange} required disabled={loading} min="1" step="1" placeholder="0" />
+                                                          <input type="number" id="quantidadePessoas" name="quantidadePessoas" value={form.quantidadePessoas} onChange={handleChange} required disabled={loading} min="1" step="0.5" placeholder="0" />
                                             </div>
                                             <div className="form-group">
                                                           <label htmlFor="valorDiaria">Valor da Diária (por pessoa) *</label>

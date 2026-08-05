@@ -55,7 +55,7 @@ export async function PUT(
 
       const body = await request.json()
 
-      const quantidadePessoas = body.quantidadePessoas !== undefined ? parseInt(body.quantidadePessoas) : diaria.quantidadePessoas
+      const quantidadePessoas = body.quantidadePessoas !== undefined ? parseFloat(body.quantidadePessoas) : diaria.quantidadePessoas
           const valorDiaria = body.valorDiaria !== undefined ? parseFloat(body.valorDiaria) : diaria.valorDiaria
           const valorTotal = parseFloat((valorDiaria * quantidadePessoas).toFixed(2))
 
