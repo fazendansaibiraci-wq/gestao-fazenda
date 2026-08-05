@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const data = searchParams.get('data')
     const mes = searchParams.get('mes')
+    const dataInicio = searchParams.get('dataInicio')
+    const dataFim = searchParams.get('dataFim')
     const status = searchParams.get('status')
     const funcionarioNome = searchParams.get('funcionario')
 
@@ -21,7 +23,15 @@ export async function GET(request: NextRequest) {
       where.funcionarioId = session.user?.id
     }
 
-    if (data) {
+    if (dataInicio || dataFim) {
+      where.data = {}
+      if (dataInicio) where.data.gte = new Date(dataInicio + 'T00:00:00')
+      if (dataFim) {
+        const fim = new Date(dataFim + 'T00:00:00')
+        fim.setDate(fim.getDate() + 1)
+        where.data.lt = fim
+      }
+    } else if (data) {
       const dateStart = new Date(data)
       const dateEnd = new Date(data)
       dateEnd.setDate(dateEnd.getDate() + 1)

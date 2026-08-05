@@ -53,8 +53,8 @@ export default function AtividadesPage() {
   const searchParams = useSearchParams()
   const [atividades, setAtividades] = useState<Atividade[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtroData, setFiltroData] = useState(() => searchParams.get('data') || '')
-  const [filtroMes, setFiltroMes] = useState(() => searchParams.get('mes') || '')
+  const [filtroDataInicio, setFiltroDataInicio] = useState(() => searchParams.get('dataInicio') || '')
+  const [filtroDataFim, setFiltroDataFim] = useState(() => searchParams.get('dataFim') || '')
   const [filtroFuncionario, setFiltroFuncionario] = useState(() => searchParams.get('funcionario') || '')
   const [atestadoModal, setAtestadoModal] = useState<{ url: string; nome: string } | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
@@ -90,8 +90,8 @@ export default function AtividadesPage() {
     try {
       let url = '/api/registros-atividade'
       const params = new URLSearchParams()
-      if (filtroData) params.append('data', filtroData)
-      if (filtroMes) params.append('mes', filtroMes)
+      if (filtroDataInicio) params.append('dataInicio', filtroDataInicio)
+      if (filtroDataFim) params.append('dataFim', filtroDataFim)
       if (params.toString()) url += '?' + params.toString()
       const response = await fetch(url)
       if (!response.ok) throw new Error('Erro')
@@ -107,19 +107,19 @@ export default function AtividadesPage() {
   useEffect(() => {
     setLoading(true)
     load()
-  }, [filtroData, filtroMes])
+  }, [filtroDataInicio, filtroDataFim])
 
   useEffect(() => {
     const params = new URLSearchParams()
-    if (filtroData) params.set('data', filtroData)
-    if (filtroMes) params.set('mes', filtroMes)
+    if (filtroDataInicio) params.set('dataInicio', filtroDataInicio)
+    if (filtroDataFim) params.set('dataFim', filtroDataFim)
     if (filtroFuncionario) params.set('funcionario', filtroFuncionario)
     if (filtroTalhao) params.set('talhao', filtroTalhao)
     if (filtroTipoAtividade) params.set('tipoAtividade', filtroTipoAtividade)
     if (filtroMaquina) params.set('maquina', filtroMaquina)
     const query = params.toString()
     router.replace(query ? `/modules/atividades?${query}` : '/modules/atividades', { scroll: false })
-  }, [filtroData, filtroMes, filtroFuncionario, filtroTalhao, filtroTipoAtividade, filtroMaquina])
+  }, [filtroDataInicio, filtroDataFim, filtroFuncionario, filtroTalhao, filtroTipoAtividade, filtroMaquina])
 
   const loadAlertasAusencia = async () => {
     try {
@@ -343,14 +343,17 @@ export default function AtividadesPage() {
         <div className={`grid grid-cols-1 gap-4 ${isGestor ? 'md:grid-cols-3 lg:grid-cols-6' : 'md:grid-cols-2'}`}>
           <input
             type="date"
-            value={filtroData}
-            onChange={(e) => { setFiltroData(e.target.value); if (e.target.value) setFiltroMes('') }}
+            value={filtroDataInicio}
+            onChange={(e) => setFiltroDataInicio(e.target.value)}
+            placeholder="Data início"
             className="border rounded-lg px-3 py-2 text-sm"
           />
           <input
-            type="month"
-            value={filtroMes}
-            onChange={(e) => { setFiltroMes(e.target.value); if (e.target.value) setFiltroData('') }}
+            type="date"
+            value={filtroDataFim}
+            onChange={(e) => setFiltroDataFim(e.target.value)}
+            placeholder="Data fim"
+            min={filtroDataInicio || undefined}
             className="border rounded-lg px-3 py-2 text-sm"
           />
           {isGestor && (
