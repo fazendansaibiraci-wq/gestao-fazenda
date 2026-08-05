@@ -218,6 +218,14 @@ export default function ResumoMensalPage() {
                       </span>
                     </div>
                   )}
+                  <div className="border-t-2 pt-3 flex justify-between items-center">
+                    <span className="text-gray-700 font-semibold text-sm">
+                      Total
+                    </span>
+                    <span className="font-bold text-xl text-primary">
+                      {fmt(r.totalAcumulado)}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Botão expandir */}
