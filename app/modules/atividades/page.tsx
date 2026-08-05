@@ -53,6 +53,7 @@ export default function AtividadesPage() {
   const searchParams = useSearchParams()
   const [atividades, setAtividades] = useState<Atividade[]>([])
   const [loading, setLoading] = useState(true)
+  const [atualizandoFiltro, setAtualizandoFiltro] = useState(false)
   const [filtroDataInicio, setFiltroDataInicio] = useState(() => searchParams.get('dataInicio') || '')
   const [filtroDataFim, setFiltroDataFim] = useState(() => searchParams.get('dataFim') || '')
   const [filtroFuncionario, setFiltroFuncionario] = useState(() => searchParams.get('funcionario') || '')
@@ -102,11 +103,13 @@ export default function AtividadesPage() {
     } finally {
       setLoading(false)
     }
+    // (mantém setLoading(false) aqui — cobre o carregamento inicial da página;
+    // atualizações por filtro de data usam atualizandoFiltro separadamente, sem re-triggar este bloco)
   }
 
   useEffect(() => {
-    setLoading(true)
-    load()
+    setAtualizandoFiltro(true)
+    load().finally(() => setAtualizandoFiltro(false))
   }, [filtroDataInicio, filtroDataFim])
 
   useEffect(() => {
@@ -403,6 +406,7 @@ export default function AtividadesPage() {
         )}
       </div>
 
+      <div className={atualizandoFiltro ? 'opacity-50 transition-opacity' : 'transition-opacity'}>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -660,6 +664,7 @@ export default function AtividadesPage() {
             )}
           </tbody>
         </table>
+      </div>
       </div>
 
       <div className="card">
