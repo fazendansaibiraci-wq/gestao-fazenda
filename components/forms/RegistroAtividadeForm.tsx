@@ -120,6 +120,11 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         setError('Horímetro final deve ser maior que inicial')
         return false
       }
+      const horasCalculadasHorimetro = parseFloat(form.horimetroFinal) - parseFloat(form.horimetroInicial)
+      if (horasCalculadasHorimetro > 24) {
+        setError(`A diferença entre os horímetros é de ${horasCalculadasHorimetro.toFixed(1)}h, o que não é possível num único dia. Confira se os valores de horímetro inicial e final foram digitados corretamente (ex: vírgula decimal no lugar errado).`)
+        return false
+      }
       // A checagem de "maior horímetro conhecido" só roda na CRIAÇÃO
       // (sem id). Em modo de edição, o valor vindo de /api/maquinas pode
       // refletir o próprio registro sendo editado (se for o mais recente

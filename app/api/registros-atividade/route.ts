@@ -95,6 +95,12 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+      if (body.horimetroFinal - body.horimetroInicial > 24) {
+        return NextResponse.json(
+          { error: 'Diferença de horímetro inválida: máximo de 24h por registro' },
+          { status: 400 }
+        )
+      }
       // Trava física: horímetro nunca pode retroceder em relação ao
       // horímetro final do último Registro de Atividade dessa máquina.
       // Abastecimento NÃO entra nessa conta — é uma leitura separada.
