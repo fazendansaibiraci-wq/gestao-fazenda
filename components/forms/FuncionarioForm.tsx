@@ -32,6 +32,7 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
    domingosPorMes: String(initialData?.domingosPorMes ?? '2'),
     active: initialData?.active !== undefined ? initialData.active : true,
     pagamentoProporcionalDiario: initialData?.pagamentoProporcionalDiario || false,
+    ocultarRegistroAtividades: initialData?.ocultarRegistroAtividades || false,
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -185,6 +186,11 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
           <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
             <input type="checkbox" id="pagamentoProporcionalDiario" name="pagamentoProporcionalDiario" checked={form.pagamentoProporcionalDiario} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
             <label htmlFor="pagamentoProporcionalDiario" style={{fontSize:'14px', fontWeight:500, cursor:'pointer', margin:0}}>Pagamento proporcional por hora (desconta/paga exatamente pelas horas trabalhadas no dia, sem regra de falta de horas)</label>
+          </div>
+
+          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+            <input type="checkbox" id="ocultarRegistroAtividades" name="ocultarRegistroAtividades" checked={form.ocultarRegistroAtividades} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
+            <label htmlFor="ocultarRegistroAtividades" style={{fontSize:'14px', fontWeight:500, cursor:'pointer', margin:0}}>Ocultar aba "Registro de Atividades" pra esse usuário</label>
           </div>
         </div>
       </div>

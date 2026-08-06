@@ -76,6 +76,9 @@ export default function AtividadesPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
+    if (status === 'authenticated' && (session?.user as any)?.ocultarRegistroAtividades) {
+      redirect('/dashboard')
+    }
     if (status === 'authenticated') {
       load()
       loadAlertasAusencia()

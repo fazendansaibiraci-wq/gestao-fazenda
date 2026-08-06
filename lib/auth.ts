@@ -60,13 +60,14 @@ export const authOptions: NextAuthOptions = {
         // Buscar nome atualizado do banco a cada sessão
         const userAtualizado = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { name: true, role: true },
+          select: { name: true, role: true, ocultarRegistroAtividades: true },
         })
         session.user.role = token.role as string
         session.user.id = token.id as string
         if (userAtualizado) {
           session.user.name = userAtualizado.name
           session.user.role = userAtualizado.role
+          session.user.ocultarRegistroAtividades = userAtualizado.ocultarRegistroAtividades
         }
       }
       return session

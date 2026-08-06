@@ -73,7 +73,9 @@ export function Sidebar() {
     { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
     { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Turmas', href: '/modules/turmas', icon: UserPlus, role: 'GESTOR|GERENTE' },
-  ].filter(item => show(item.role, item.excludeRoles))
+  ]
+    .filter(item => show(item.role, item.excludeRoles))
+    .filter(item => !(item.href === '/modules/atividades' && (session?.user as any)?.ocultarRegistroAtividades))
 
   const relatorioItems = [
     { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },

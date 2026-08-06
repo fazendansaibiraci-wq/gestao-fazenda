@@ -35,6 +35,7 @@ export async function GET(
         domingosPorMes: true,
         bancoHorasAtivo: true,
         pagamentoProporcionalDiario: true,
+        ocultarRegistroAtividades: true,
       },
     })
 
@@ -108,6 +109,7 @@ export async function PUT(
       domingosPorMes: body.domingosPorMes !== undefined ? parseInt(body.domingosPorMes) : 2,
       bancoHorasAtivo: body.bancoHorasAtivo !== undefined ? body.bancoHorasAtivo : undefined,
       pagamentoProporcionalDiario: body.pagamentoProporcionalDiario !== undefined ? body.pagamentoProporcionalDiario === true : undefined,
+      ocultarRegistroAtividades: body.ocultarRegistroAtividades !== undefined ? body.ocultarRegistroAtividades === true : undefined,
     }
 
     if (body.password) {

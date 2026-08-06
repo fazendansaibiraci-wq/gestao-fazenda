@@ -82,6 +82,7 @@ model User {
   valorHoraExtraSafra       Float?
   bancoHorasAtivo           Boolean      @default(false)
   pagamentoProporcionalDiario Boolean    @default(false)
+  ocultarRegistroAtividades Boolean @default(false)
   cargaHorariaSafra         Float?
   cargaHorariaSegSex        Float?
   cargaHorariaSabado        Float?
