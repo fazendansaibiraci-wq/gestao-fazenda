@@ -17,7 +17,6 @@ export default function CalendarioResumoMensalPage() {
   const [loading, setLoading] = useState(true)
   const [mes, setMes] = useState(new Date().getMonth() + 1)
   const [ano, setAno] = useState(new Date().getFullYear())
-  const [funcionarioSelecionadoId, setFuncionarioSelecionadoId] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
@@ -40,14 +39,6 @@ export default function CalendarioResumoMensalPage() {
     }
   }
 
-  // Seleciona automaticamente o primeiro funcionário assim que os dados
-  // chegarem, se ainda não houver nenhum selecionado.
-  useEffect(() => {
-    if (!funcionarioSelecionadoId && resumo.length > 0) {
-      setFuncionarioSelecionadoId(resumo[0].funcionario.id)
-    }
-  }, [resumo])
-
   if (status === 'loading' || loading) {
     return <div className="flex justify-center py-12"><div className="spinner"></div></div>
   }
@@ -62,9 +53,6 @@ export default function CalendarioResumoMensalPage() {
   ]
   const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-  const funcionarioAtual = resumo.find(r => r.funcionario.id === funcionarioSelecionadoId)
-  const registrosDiarios = funcionarioAtual?.registrosDiarios || []
-
   const fmtHCompacto = (h: number) => {
     const horas = Math.floor(h)
     const minutos = Math.round((h - horas) * 60)
@@ -75,11 +63,6 @@ export default function CalendarioResumoMensalPage() {
   // já usado no resto do app (ex: RegistroDiarioCard usa toLocaleDateString
   // direto em cima de new Date(dia.data)) pra evitar problemas de fuso.
   const chaveDia = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
-
-  const registrosPorDia = new Map<string, RegistroDiario>()
-  registrosDiarios.forEach((r) => {
-    registrosPorDia.set(chaveDia(new Date(r.data)), r)
-  })
 
   const diasNoMes = new Date(ano, mes, 0).getDate()
   const primeiroDiaSemana = new Date(ano, mes - 1, 1).getDay()
@@ -136,18 +119,11 @@ export default function CalendarioResumoMensalPage() {
         </div>
       </div>
 
-      <div>
-        <label className="text-sm font-medium block mb-1">Funcionário</label>
-        <select
-          value={funcionarioSelecionadoId}
-          onChange={(e) => setFuncionarioSelecionadoId(e.target.value)}
-          className="w-full sm:w-80 border rounded-lg px-3 py-2 text-sm"
-        >
-          {resumo.length === 0 && <option value="">Nenhum funcionário encontrado</option>}
-          {resumo.map((r) => (
-            <option key={r.funcionario.id} value={r.funcionario.id}>{r.funcionario.name}</option>
-          ))}
-        </select>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
+        <span className="flex items-center gap-1">🟩 Trabalhou normal</span>
+        <span className="flex items-center gap-1">🟥 Falta</span>
+        <span className="flex items-center gap-1">🟨 Devendo horas / período parcial</span>
+        <span className="flex items-center gap-1">⬜ Sem expectativa (folga)</span>
       </div>
 
       {resumo.length === 0 ? (
@@ -155,38 +131,43 @@ export default function CalendarioResumoMensalPage() {
           Nenhum registro encontrado para este período
         </div>
       ) : (
-        <div className="card">
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {diasSemana.map((d) => (
-              <div key={d} className="text-center text-xs font-semibold text-gray-500 py-1">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {celulasVazias.map((_, i) => (
-              <div key={`vazio-${i}`} />
-            ))}
-            {dias.map((dia) => {
-              const chave = `${ano}-${mes}-${dia}`
-              const registro = registrosPorDia.get(chave)
-              const texto = textoDaCelula(registro)
-              return (
-                <div
-                  key={dia}
-                  className={`aspect-square rounded-lg border p-1.5 flex flex-col items-center justify-center ${corDaCelula(registro)}`}
-                >
-                  <span className="text-sm font-medium text-gray-700">{dia}</span>
-                  {texto && <span className="text-[10px] text-gray-600 mt-0.5 text-center leading-tight">{texto}</span>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {resumo.map((r) => {
+            const registrosPorDia = new Map<string, RegistroDiario>()
+            r.registrosDiarios.forEach((reg) => {
+              registrosPorDia.set(chaveDia(new Date(reg.data)), reg)
+            })
+            return (
+              <div key={r.funcionario.id} className="card">
+                <h3 className="font-semibold text-sm text-primary mb-2 truncate" title={r.funcionario.name}>
+                  {r.funcionario.name}
+                </h3>
+                <div className="grid grid-cols-7 gap-0.5 mb-1">
+                  {diasSemana.map((d) => (
+                    <div key={d} className="text-center text-[9px] font-semibold text-gray-400">{d[0]}</div>
+                  ))}
                 </div>
-              )
-            })}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t text-xs text-gray-600">
-            <span className="flex items-center gap-1">🟩 Trabalhou normal</span>
-            <span className="flex items-center gap-1">🟥 Falta</span>
-            <span className="flex items-center gap-1">🟨 Devendo horas / período parcial</span>
-            <span className="flex items-center gap-1">⬜ Sem expectativa (folga)</span>
-          </div>
+                <div className="grid grid-cols-7 gap-0.5">
+                  {celulasVazias.map((_, i) => (
+                    <div key={`vazio-${i}`} />
+                  ))}
+                  {dias.map((dia) => {
+                    const chave = `${ano}-${mes}-${dia}`
+                    const registro = registrosPorDia.get(chave)
+                    return (
+                      <div
+                        key={dia}
+                        title={textoDaCelula(registro) || undefined}
+                        className={`aspect-square rounded border flex items-center justify-center text-[9px] font-medium text-gray-600 ${corDaCelula(registro)}`}
+                      >
+                        {dia}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
