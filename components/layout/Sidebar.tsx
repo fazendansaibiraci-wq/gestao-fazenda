@@ -31,6 +31,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(true)
   const [cadastrosAberto, setCadastrosAberto] = useState(false)
+  const [combustivelAberto, setCombustivelAberto] = useState(false)
   const { data: session } = useSession()
   const userRole = (session?.user as any)?.role || ''
 
@@ -60,11 +61,15 @@ export function Sidebar() {
     { label: 'Cadastro Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
 
+  const combustivelItems = ([
+    { label: 'Abastecimento', href: '/modules/combustivel', icon: Fuel },
+    { label: 'Histórico de Abastecimentos', href: '/modules/combustivel/historico', icon: Fuel },
+  ] as { label: string; href: string; icon: typeof Fuel; role?: string; excludeRoles?: string }[]).filter(item => show(item.role, item.excludeRoles))
+
   const operacionalItems = [
     { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Registro de Atividades', href: '/modules/atividades', icon: ClipboardList, excludeRoles: 'AGRONOMO' },
     { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
-    { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Turmas', href: '/modules/turmas', icon: UserPlus, role: 'GESTOR|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
@@ -76,6 +81,7 @@ export function Sidebar() {
   ].filter(item => show(item.role, item.excludeRoles))
 
   const cadastroAtivo = cadastroItems.some(i => isActive(i.href))
+  const combustivelAtivo = combustivelItems.some(i => isActive(i.href))
 
   return (
     <>
@@ -104,6 +110,33 @@ export function Sidebar() {
               {isOpen && <span className="truncate">{label}</span>}
             </Link>
           ))}
+
+          {show('', 'FUNCIONARIO|AGRONOMO') && (
+            <>
+              <button
+                onClick={() => setCombustivelAberto(o => !o)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${combustivelAtivo ? 'bg-secondary/30' : 'hover:bg-secondary/20'} text-light`}
+              >
+                <Fuel className="w-5 h-5 flex-shrink-0" />
+                {isOpen && (
+                  <>
+                    <span className="flex-1 text-left truncate">Combustível</span>
+                    {(combustivelAberto || combustivelAtivo) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                  </>
+                )}
+              </button>
+              {(combustivelAberto || combustivelAtivo) && isOpen && (
+                <div className="ml-4 border-l border-white/20 pl-3 space-y-1">
+                  {combustivelItems.map(({ label, href, icon: Icon }) => (
+                    <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${isActive(href) ? 'bg-secondary text-primary font-semibold' : 'text-light hover:bg-secondary/20'}`}>
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
           {/* Cadastros — sub-menu */}
           {cadastroItems.length > 0 && (
