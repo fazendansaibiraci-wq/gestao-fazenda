@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Filter } from 'lucide-react'
 
 export default function HistoricoAbastecimentosPage() {
   const { data: session, status } = useSession()
@@ -12,18 +12,44 @@ export default function HistoricoAbastecimentosPage() {
   const [loading, setLoading] = useState(true)
   const [paginaAbastecimentos, setPaginaAbastecimentos] = useState(0)
   const ITENS_POR_PAGINA = 10
+  const [maquinas, setMaquinas] = useState<any[]>([])
+  const [filtroDataInicio, setFiltroDataInicio] = useState('')
+  const [filtroDataFim, setFiltroDataFim] = useState('')
+  const [filtroMaquina, setFiltroMaquina] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
     if (session?.user?.role && !['GERENTE', 'GESTOR'].includes(session.user.role)) {
       redirect('/dashboard')
     }
-    if (status === 'authenticated') load()
+    if (status === 'authenticated') {
+      load()
+      carregarMaquinas()
+    }
   }, [status, session])
+
+  useEffect(() => {
+    if (status === 'authenticated') load()
+  }, [filtroDataInicio, filtroDataFim, filtroMaquina])
+
+  const carregarMaquinas = async () => {
+    try {
+      const res = await fetch('/api/maquinas')
+      const data = await res.json()
+      setMaquinas(data.data?.filter((m: any) => m.status === 'ATIVA') || [])
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const load = async () => {
     try {
-      const res = await fetch('/api/abastecimentos')
+      const params = new URLSearchParams()
+      if (filtroDataInicio) params.append('dataInicio', filtroDataInicio)
+      if (filtroDataFim) params.append('dataFim', filtroDataFim)
+      if (filtroMaquina) params.append('maquinaId', filtroMaquina)
+      const url = params.toString() ? `/api/abastecimentos?${params.toString()}` : '/api/abastecimentos'
+      const res = await fetch(url)
       const data = await res.json()
       setAbastecimentos(data.data || [])
       setPaginaAbastecimentos(0)
@@ -64,6 +90,46 @@ export default function HistoricoAbastecimentosPage() {
       <div>
         <h1 className="text-3xl font-bold text-primary">Histórico de Abastecimentos</h1>
         <p className="text-gray-600 mt-1">Consulte todos os abastecimentos já registrados</p>
+      </div>
+
+      <div className="card">
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <Filter className="w-4 h-4" /> Filtros
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="text-sm font-medium block mb-1">Data início</label>
+            <input
+              type="date"
+              value={filtroDataInicio}
+              onChange={(e) => setFiltroDataInicio(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Data fim</label>
+            <input
+              type="date"
+              value={filtroDataFim}
+              onChange={(e) => setFiltroDataFim(e.target.value)}
+              min={filtroDataInicio || undefined}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Máquina</label>
+            <select
+              value={filtroMaquina}
+              onChange={(e) => setFiltroMaquina(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="">Todas as máquinas</option>
+              {maquinas.map((m: any) => (
+                <option key={m.id} value={m.id}>{m.nome}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="card overflow-x-auto">

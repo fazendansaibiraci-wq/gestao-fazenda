@@ -10,7 +10,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const dataInicio = searchParams.get('dataInicio')
+    const dataFim = searchParams.get('dataFim')
+    const maquinaId = searchParams.get('maquinaId')
+    const where: any = {}
+    if (maquinaId) where.maquinaId = maquinaId
+    if (dataInicio || dataFim) {
+      where.data = {}
+      if (dataInicio) where.data.gte = new Date(dataInicio + 'T00:00:00')
+      if (dataFim) {
+        const fim = new Date(dataFim + 'T00:00:00')
+        fim.setDate(fim.getDate() + 1)
+        where.data.lt = fim
+      }
+    }
     const abastecimentos = await prisma.abastecimentoTrator.findMany({
+      where,
       include: { maquina: true, talhao: true, safra: true },
       orderBy: { data: 'desc' },
     })
