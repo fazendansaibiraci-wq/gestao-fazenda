@@ -32,6 +32,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(true)
   const [cadastrosAberto, setCadastrosAberto] = useState(false)
   const [combustivelAberto, setCombustivelAberto] = useState(false)
+  const [resumoMensalAberto, setResumoMensalAberto] = useState(false)
   const { data: session } = useSession()
   const userRole = (session?.user as any)?.role || ''
 
@@ -77,11 +78,16 @@ export function Sidebar() {
   const relatorioItems = [
     { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Meus Relatórios', href: '/modules/meus-relatorios', icon: BarChart3, role: 'FUNCIONARIO' },
-    { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO' },
   ].filter(item => show(item.role, item.excludeRoles))
+
+  const resumoMensalItems = ([
+    { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO' },
+    { label: 'Calendário', href: '/modules/resumo-mensal/calendario', icon: Calendar, role: 'GESTOR|GERENTE' },
+  ] as { label: string; href: string; icon: typeof DollarSign; role?: string; excludeRoles?: string }[]).filter(item => show(item.role, item.excludeRoles))
 
   const cadastroAtivo = cadastroItems.some(i => isActive(i.href))
   const combustivelAtivo = combustivelItems.some(i => isActive(i.href))
+  const resumoMensalAtivo = resumoMensalItems.some(i => isActive(i.href))
 
   return (
     <>
@@ -168,7 +174,7 @@ export function Sidebar() {
           )}
 
           {/* Financeiro */}
-          {relatorioItems.length > 0 && (
+          {(relatorioItems.length > 0 || resumoMensalItems.length > 0) && (
             <>
               {isOpen && <p className="text-xs text-white/40 uppercase font-semibold px-2 pt-4 pb-1">Financeiro</p>}
               {relatorioItems.map(({ label, href, icon: Icon }) => (
@@ -177,6 +183,33 @@ export function Sidebar() {
                   {isOpen && <span className="truncate">{label}</span>}
                 </Link>
               ))}
+
+              {resumoMensalItems.length > 0 && (
+                <>
+                  <button
+                    onClick={() => setResumoMensalAberto(o => !o)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${resumoMensalAtivo ? 'bg-secondary/30' : 'hover:bg-secondary/20'} text-light`}
+                  >
+                    <DollarSign className="w-5 h-5 flex-shrink-0" />
+                    {isOpen && (
+                      <>
+                        <span className="flex-1 text-left truncate">Resumo Mensal</span>
+                        {(resumoMensalAberto || resumoMensalAtivo) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </>
+                    )}
+                  </button>
+                  {(resumoMensalAberto || resumoMensalAtivo) && isOpen && (
+                    <div className="ml-4 border-l border-white/20 pl-3 space-y-1">
+                      {resumoMensalItems.map(({ label, href, icon: Icon }) => (
+                        <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${isActive(href) ? 'bg-secondary text-primary font-semibold' : 'text-light hover:bg-secondary/20'}`}>
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
 
