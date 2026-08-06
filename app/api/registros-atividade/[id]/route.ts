@@ -56,6 +56,16 @@ export async function PUT(
 
     const body = await request.json()
 
+    const NEEDS_BOMBAS = ['drench', 'pulverização', 'pulverizacao', 'herbicida']
+    const tipoAtividadeFinal = body.tipoAtividade ?? registro.tipoAtividade
+    const totalBombasFinal = body.totalBombas ?? registro.totalBombas
+    if (NEEDS_BOMBAS.includes((tipoAtividadeFinal || '').toLowerCase()) && (!totalBombasFinal || Number(totalBombasFinal) <= 0)) {
+      return NextResponse.json(
+        { error: 'Informe a quantidade de bombas usadas nessa aplicação' },
+        { status: 400 }
+      )
+    }
+
     // Só revalida o horímetro se ele estiver de fato mudando nessa
     // edição — sem isso, editar qualquer outro campo (tipo de
     // atividade, observação etc.) de um registro antigo falharia toda

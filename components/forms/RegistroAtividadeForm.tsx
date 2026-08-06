@@ -166,6 +166,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
       if (!form.isFalta && (!form.data || !form.horaEntrada || !form.talhaoId || !form.safraId)) {
         setError('Preencha todos os campos obrigatórios'); setLoading(false); return
       }
+      if (needsBombas && (!form.totalBombas || parseFloat(form.totalBombas) <= 0)) {
+        setError('Informe a quantidade de bombas usadas nessa aplicação'); setLoading(false); return
+      }
       if (isGestor && !form.funcionarioId) {
         setError('Selecione o funcionário'); setLoading(false); return
       }

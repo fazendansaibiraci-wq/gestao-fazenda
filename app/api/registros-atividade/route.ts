@@ -78,6 +78,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    const NEEDS_BOMBAS = ['drench', 'pulverização', 'pulverizacao', 'herbicida']
+    if (NEEDS_BOMBAS.includes((body.tipoAtividade || '').toLowerCase()) && (!body.totalBombas || Number(body.totalBombas) <= 0)) {
+      return NextResponse.json(
+        { error: 'Informe a quantidade de bombas usadas nessa aplicação' },
+        { status: 400 }
+      )
+    }
+
     if (!body.data || !body.horaEntrada || !body.safraId || (!body.isFalta && !body.talhaoId)) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
     }
