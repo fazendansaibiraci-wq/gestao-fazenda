@@ -65,6 +65,35 @@ export default function CalendarioResumoMensalPage() {
   // direto em cima de new Date(dia.data)) pra evitar problemas de fuso.
   const chaveDia = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
 
+  // Agrupa os registros de um funcionário por dia, somando horasTrabalhadas
+  // entre múltiplos turnos do mesmo dia (em vez de o último turno
+  // sobrescrever o anterior). isFalta/isFolga usam OR (basta um turno ser
+  // falta/folga pro dia inteiro contar como tal), e horasDevidas/horasExtras
+  // usam o maior valor entre os turnos — como só o "último registro do dia"
+  // (conforme a API) carrega o valor agregado correto desses dois campos,
+  // os demais turnos do mesmo dia vêm com 0 neles, então Math.max já pega
+  // o valor certo sem precisar saber qual registro é o "último" de verdade.
+  const agruparRegistrosPorDia = (registros: RegistroDiario[]) => {
+    const mapa = new Map<string, RegistroDiario>()
+    registros.forEach((reg) => {
+      const chave = chaveDia(new Date(reg.data))
+      const existente = mapa.get(chave)
+      if (!existente) {
+        mapa.set(chave, { ...reg })
+      } else {
+        mapa.set(chave, {
+          ...existente,
+          horasTrabalhadas: existente.horasTrabalhadas + reg.horasTrabalhadas,
+          horasExtras: Math.max(existente.horasExtras, reg.horasExtras),
+          horasDevidas: Math.max(existente.horasDevidas, reg.horasDevidas),
+          isFalta: existente.isFalta || reg.isFalta,
+          isFolga: existente.isFolga || reg.isFolga,
+        })
+      }
+    })
+    return mapa
+  }
+
   const diasNoMes = new Date(ano, mes, 0).getDate()
   const primeiroDiaSemana = new Date(ano, mes - 1, 1).getDay()
   const celulasVazias = Array.from({ length: primeiroDiaSemana })
@@ -134,10 +163,7 @@ export default function CalendarioResumoMensalPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {resumo.map((r) => {
-            const registrosPorDia = new Map<string, RegistroDiario>()
-            r.registrosDiarios.forEach((reg) => {
-              registrosPorDia.set(chaveDia(new Date(reg.data)), reg)
-            })
+            const registrosPorDia = agruparRegistrosPorDia(r.registrosDiarios)
             return (
               <div
                 key={r.funcionario.id}
@@ -179,10 +205,7 @@ export default function CalendarioResumoMensalPage() {
       {funcionarioExpandidoId && (() => {
         const r = resumo.find(x => x.funcionario.id === funcionarioExpandidoId)
         if (!r) return null
-        const registrosPorDia = new Map<string, RegistroDiario>()
-        r.registrosDiarios.forEach((reg) => {
-          registrosPorDia.set(chaveDia(new Date(reg.data)), reg)
-        })
+        const registrosPorDia = agruparRegistrosPorDia(r.registrosDiarios)
         return (
           <div
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
