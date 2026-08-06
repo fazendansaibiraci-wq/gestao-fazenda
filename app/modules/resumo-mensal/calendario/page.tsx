@@ -17,6 +17,7 @@ export default function CalendarioResumoMensalPage() {
   const [loading, setLoading] = useState(true)
   const [mes, setMes] = useState(new Date().getMonth() + 1)
   const [ano, setAno] = useState(new Date().getFullYear())
+  const [funcionarioExpandidoId, setFuncionarioExpandidoId] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
@@ -138,7 +139,11 @@ export default function CalendarioResumoMensalPage() {
               registrosPorDia.set(chaveDia(new Date(reg.data)), reg)
             })
             return (
-              <div key={r.funcionario.id} className="card">
+              <div
+                key={r.funcionario.id}
+                onClick={() => setFuncionarioExpandidoId(r.funcionario.id)}
+                className="card cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all"
+              >
                 <h3 className="font-semibold text-sm text-primary mb-2 truncate" title={r.funcionario.name}>
                   {r.funcionario.name}
                 </h3>
@@ -170,6 +175,60 @@ export default function CalendarioResumoMensalPage() {
           })}
         </div>
       )}
+
+      {funcionarioExpandidoId && (() => {
+        const r = resumo.find(x => x.funcionario.id === funcionarioExpandidoId)
+        if (!r) return null
+        const registrosPorDia = new Map<string, RegistroDiario>()
+        r.registrosDiarios.forEach((reg) => {
+          registrosPorDia.set(chaveDia(new Date(reg.data)), reg)
+        })
+        return (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setFuncionarioExpandidoId(null)}
+          >
+            <div
+              className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-primary">{r.funcionario.name}</h2>
+                <button
+                  onClick={() => setFuncionarioExpandidoId(null)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {diasSemana.map((d) => (
+                  <div key={d} className="text-center text-xs font-semibold text-gray-500 py-1">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {celulasVazias.map((_, i) => (
+                  <div key={`vazio-${i}`} />
+                ))}
+                {dias.map((dia) => {
+                  const chave = `${ano}-${mes}-${dia}`
+                  const registro = registrosPorDia.get(chave)
+                  const texto = textoDaCelula(registro)
+                  return (
+                    <div
+                      key={dia}
+                      className={`aspect-square rounded-lg border p-1.5 flex flex-col items-center justify-center ${corDaCelula(registro)}`}
+                    >
+                      <span className="text-sm font-medium text-gray-700">{dia}</span>
+                      {texto && <span className="text-[10px] text-gray-600 mt-0.5 text-center leading-tight">{texto}</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
