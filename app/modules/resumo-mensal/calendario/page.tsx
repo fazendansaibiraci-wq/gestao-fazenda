@@ -107,11 +107,11 @@ export default function CalendarioResumoMensalPage() {
     return 'bg-green-100 border-green-400'
   }
 
-  const textoDaCelula = (registro: RegistroDiario | undefined) => {
+  const textoDaCelula = (registro: RegistroDiario | undefined, pagamentoProporcionalDiario?: boolean) => {
     if (!registro) return null
     if (registro.isFalta) return 'Falta'
     if (registro.isFolga) return 'Folga'
-    if (registro.horasDevidas > 0) return `-${fmtHCompacto(registro.horasDevidas)} devendo`
+    if (registro.horasDevidas > 0 && !pagamentoProporcionalDiario) return `-${fmtHCompacto(registro.horasDevidas)} devendo`
     if (registro.horasTrabalhadas > 0) return fmtHCompacto(registro.horasTrabalhadas)
     return null
   }
@@ -188,7 +188,7 @@ export default function CalendarioResumoMensalPage() {
                     return (
                       <div
                         key={dia}
-                        title={textoDaCelula(registro) || undefined}
+                        title={textoDaCelula(registro, r.funcionario.pagamentoProporcionalDiario) || undefined}
                         className={`aspect-square rounded border flex items-center justify-center text-[9px] font-medium text-gray-600 ${corDaCelula(registro)}`}
                       >
                         {dia}
@@ -236,7 +236,7 @@ export default function CalendarioResumoMensalPage() {
                 {dias.map((dia) => {
                   const chave = `${ano}-${mes}-${dia}`
                   const registro = registrosPorDia.get(chave)
-                  const texto = textoDaCelula(registro)
+                  const texto = textoDaCelula(registro, r.funcionario.pagamentoProporcionalDiario)
                   return (
                     <div
                       key={dia}
