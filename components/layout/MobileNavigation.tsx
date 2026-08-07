@@ -19,6 +19,7 @@ import {
   LogOut,
   UserPlus,
   Warehouse,
+  Droplet,
 } from 'lucide-react'
 
 const menuItems = [
@@ -27,6 +28,7 @@ const menuItems = [
   { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Turmas', href: '/modules/turmas', icon: UserPlus, role: 'GESTOR|GERENTE' },
+  { label: 'Aplicação de Insumos', href: '/modules/aplicacao-insumos', icon: Droplet, role: 'GESTOR|GERENTE' },
   { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
   { label: 'Máquinas', href: '/modules/maquinas', icon: Tractor, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Cadastro de Produtos', href: '/modules/produtos', icon: Package, excludeRoles: 'FUNCIONARIO' },

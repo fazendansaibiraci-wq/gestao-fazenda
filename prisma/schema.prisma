@@ -65,6 +65,14 @@ enum StatusRegistroAtividade {
   PENDENTE
 }
 
+enum AtividadeInsumo {
+  HERBICIDA
+  PULVERIZACAO
+  DRENCH
+  ADUBACAO
+  CORRECAO_SOLO
+}
+
 // Models
 model User {
   id       String   @id @default(cuid())
@@ -104,6 +112,7 @@ domingosPorMes        Int?   @default(2)
   receitasCriadas  ReceitaBase[]     @relation("ReceitaBaseCriador")
   ajustesReceita   AjusteReceita[]
   aplicacoesInsumo AplicacaoInsumo[]
+  aplicacaoInsumoItens AplicacaoInsumoItem[]
 
   etapasTerreiro      EtapaTerreiro[]
   etapasSecador       EtapaSecador[]
@@ -201,6 +210,7 @@ model Talhao {
   chegadasTerreiro   ChegadaTerreiro[]
   aplicacoesInsumo   AplicacaoInsumo[]
   historicoAplicacao HistoricoAplicacao[]
+  aplicacaoInsumoItens AplicacaoInsumoItem[]
   saidasProduto      SaidaProduto[]
   abastecimentos     AbastecimentoTrator[]
 
@@ -262,6 +272,7 @@ model Produto {
   saidas            SaidaProduto[]
   ajustesEstoque     AjusteEstoque[]
   entradas           EntradaProduto[]
+  aplicacaoInsumoItens AplicacaoInsumoItem[]
 
   @@map("produtos")
 }
@@ -412,6 +423,7 @@ model Safra {
   safraExtended      SafraExtended?
   saidasProduto      SaidaProduto[]
   abastecimentos     AbastecimentoTrator[]
+  aplicacaoInsumoItens AplicacaoInsumoItem[]
 
   @@map("safras")
 }
@@ -1150,4 +1162,43 @@ model ConfiguracaoGlobal {
   lembreteTurmasAtivo     Boolean   @default(false)
 
   @@map("configuracao_global")
+}
+
+model AplicacaoInsumoItem {
+  id       String @id @default(cuid())
+  talhao   Talhao @relation(fields: [talhaoId], references: [id])
+  talhaoId String
+
+  areaHaSnapshot Float?
+
+  atividade AtividadeInsumo
+
+  produto   Produto @relation(fields: [produtoId], references: [id])
+  produtoId String
+
+  unidadeSnapshot       String
+  valorUnitarioSnapshot Float
+
+  qtd       Float?
+  numBombas Float?
+  totalQtd  Float
+  valorTotal Float
+
+  data DateTime
+
+  numAplicacao Int @default(1)
+
+  safra   Safra  @relation(fields: [safraId], references: [id])
+  safraId String
+
+  observacao String?
+
+  registradoPor   User   @relation(fields: [registradoPorId], references: [id])
+  registradoPorId String
+
+  dataCriacao DateTime @default(now())
+
+  @@index([talhaoId, safraId])
+  @@index([safraId, atividade])
+  @@map("aplicacao_insumo_itens")
 }

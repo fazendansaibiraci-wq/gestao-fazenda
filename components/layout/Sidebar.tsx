@@ -24,6 +24,7 @@ import {
   ChevronRight,
   FolderOpen,
   Warehouse,
+  Droplet,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -73,6 +74,7 @@ export function Sidebar() {
     { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
     { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Turmas', href: '/modules/turmas', icon: UserPlus, role: 'GESTOR|GERENTE' },
+    { label: 'Aplicação de Insumos', href: '/modules/aplicacao-insumos', icon: Droplet, role: 'GESTOR|GERENTE' },
   ]
     .filter(item => show(item.role, item.excludeRoles))
     .filter(item => !(item.href === '/modules/atividades' && (session?.user as any)?.ocultarRegistroAtividades))
