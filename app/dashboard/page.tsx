@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Leaf, Tractor, Calendar, BarChart3, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   BarChart,
   Bar,
@@ -89,6 +89,16 @@ export default function DashboardPage() {
   })
   const [custoHHHMPorTalhao, setCustoHHHMPorTalhao] = useState<CustoHHHMPorTalhao[]>([])
 
+  // Filtro de mês exclusivo do gráfico de Consumo de Combustível por
+  // Máquina — os outros dois gráficos de /api/dashboard-graficos (horas
+  // por funcionário, litros de diesel por dia) continuam sempre "mês
+  // atual", sem serem afetados por esse filtro.
+  const [mesFiltroConsumo, setMesFiltroConsumo] = useState(() => {
+    const h = new Date()
+    return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`
+  })
+  const primeiraRenderizacaoFiltroConsumo = useRef(true)
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       redirect('/login')
@@ -105,6 +115,18 @@ export default function DashboardPage() {
       loadCustoHHHM()
     }
   }, [status, session])
+
+  // A carga inicial (loadDadosGraficos, sem params) já alimenta os 3
+  // gráficos com o mês atual. Esse efeito só entra em ação depois que o
+  // usuário mexe no filtro — daí busca de novo só o consumo por máquina,
+  // pro mês escolhido, sem tocar nos outros dois gráficos já carregados.
+  useEffect(() => {
+    if (primeiraRenderizacaoFiltroConsumo.current) {
+      primeiraRenderizacaoFiltroConsumo.current = false
+      return
+    }
+    loadConsumoPorMaquinaFiltrado()
+  }, [mesFiltroConsumo])
 
   const loadStats = async () => {
     try {
@@ -154,6 +176,41 @@ export default function DashboardPage() {
       console.error('Erro ao carregar dados dos gráficos:', error)
     }
   }
+
+  // Busca só o consumo por máquina pro mês selecionado no filtro, sem
+  // mexer em horasPorFuncionario/litrosDieselPorDia (merge parcial do
+  // state).
+  const loadConsumoPorMaquinaFiltrado = async () => {
+    try {
+      const [anoStr, mesStr] = mesFiltroConsumo.split('-')
+      const res = await fetch(`/api/dashboard-graficos?ano=${anoStr}&mes=${parseInt(mesStr, 10)}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.data) {
+          setDadosGraficos(prev => ({ ...prev, consumoPorMaquina: data.data.consumoPorMaquina }))
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar consumo de combustível filtrado:', error)
+    }
+  }
+
+  // Últimos 12 meses (incluindo o atual), mais recente primeiro — opções
+  // do <select> do filtro de mês do gráfico de consumo de combustível.
+  const opcoesMesFiltroConsumo = (() => {
+    const nomesMes = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+    ]
+    const hoje = new Date()
+    const opcoes: { valor: string; rotulo: string }[] = []
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
+      const valor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      opcoes.push({ valor, rotulo: `${nomesMes[d.getMonth()]} ${d.getFullYear()}` })
+    }
+    return opcoes
+  })()
 
   const formatarDataYYYYMMDD = (data: Date) => {
     const ano = data.getFullYear()
@@ -353,7 +410,18 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <h3 className="font-semibold text-primary mb-4">Consumo de Combustível por Máquina (L/h) este mês</h3>
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+            <h3 className="font-semibold text-primary">Consumo de Combustível por Máquina (L/h)</h3>
+            <select
+              value={mesFiltroConsumo}
+              onChange={(e) => setMesFiltroConsumo(e.target.value)}
+              className="border rounded-lg px-2 py-1 text-sm"
+            >
+              {opcoesMesFiltroConsumo.map((opcao) => (
+                <option key={opcao.valor} value={opcao.valor}>{opcao.rotulo}</option>
+              ))}
+            </select>
+          </div>
           {dadosGraficos.consumoPorMaquina.length === 0 ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
               Sem dados este mês

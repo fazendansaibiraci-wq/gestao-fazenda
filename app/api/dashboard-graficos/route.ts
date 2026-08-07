@@ -12,9 +12,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const anoParam = searchParams.get('ano')
+    const mesParam = searchParams.get('mes')
+
     const hoje = new Date()
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
-    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59)
+    // ano/mes são opcionais e retrocompatíveis: sem eles, mantém o
+    // comportamento atual (mês corrente, só até hoje). Com eles, permite
+    // consultar um mês diferente do atual (mês inteiro, não só "até hoje").
+    const ano = anoParam ? parseInt(anoParam) : hoje.getFullYear()
+    const mes = mesParam ? parseInt(mesParam) - 1 : hoje.getMonth() // mês 1-12 do param, 0-11 internamente
+    const inicioMes = new Date(ano, mes, 1)
+    const ultimoDiaDoMes = new Date(ano, mes + 1, 0).getDate()
+    const ehMesCorrenteSemParams = !anoParam && !mesParam
+    const fimMes = ehMesCorrenteSemParams
+      ? new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59)
+      : new Date(ano, mes, ultimoDiaDoMes, 23, 59, 59)
 
     // ─── Consumo de Combustível por Máquina (L/h) ─────────────────────────
     const abastecimentosMes = await prisma.abastecimentoTrator.findMany({
