@@ -68,13 +68,20 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   useEffect(() => { loadData() }, [])
 
   useEffect(() => {
-    if (config?.inicioSafra && config?.fimSafra && form.data) {
+    // Fonte da verdade: Safra ATIVA (já carregada em `safras`), não mais
+    // ConfiguracaoGlobal.inicioSafra/fimSafra (campo duplicado, mantido no
+    // schema mas não é mais lido aqui).
+    const safraAtiva = (safras as any[]).find((s) => s.status === 'ATIVA')
+    if (safraAtiva?.dataInicio && form.data) {
       const d = new Date(form.data)
-      setEstaNaSafra(d >= new Date(config.inicioSafra) && d <= new Date(config.fimSafra))
+      setEstaNaSafra(
+        d >= new Date(safraAtiva.dataInicio) &&
+        (!safraAtiva.dataFim || d <= new Date(safraAtiva.dataFim))
+      )
     } else {
       setEstaNaSafra(false)
     }
-  }, [form.data, config])
+  }, [form.data, safras])
 
   const loadData = async () => {
     try {

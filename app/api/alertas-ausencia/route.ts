@@ -139,15 +139,14 @@ export async function GET(request: NextRequest) {
     // Falta automática não tem talhão real (não é uma atividade feita em
     // algum lugar) — talhaoId fica null. Mantém só a safra pra contexto
     // temporal do registro.
-    let safraAtual = null
-    if (config?.inicioSafra && config?.fimSafra) {
-      safraAtual = await prisma.safra.findFirst({
-        where: {
-          dataInicio: { lte: config.fimSafra },
-          OR: [{ dataFim: null }, { dataFim: { gte: config.inicioSafra } }],
-        },
-      })
-    }
+    // Fonte da verdade: Safra ATIVA (model Safra), não mais
+    // ConfiguracaoGlobal.inicioSafra/fimSafra (campo duplicado, mantido no
+    // schema mas não é mais lido aqui). Mantém o mesmo fallback de segurança
+    // (qualquer safra existente) caso não haja nenhuma marcada como ATIVA.
+    let safraAtual = await prisma.safra.findFirst({
+      where: { status: 'ATIVA' },
+      orderBy: { dataInicio: 'desc' },
+    })
     if (!safraAtual) {
       safraAtual = await prisma.safra.findFirst()
     }

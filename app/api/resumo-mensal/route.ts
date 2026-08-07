@@ -23,6 +23,22 @@ export async function GET(request: NextRequest) {
 
     const config = await prisma.configuracaoGlobal.findFirst()
 
+    // Detectar safra: fonte da verdade é a Safra ATIVA (model Safra), não
+    // mais ConfiguracaoGlobal.inicioSafra/fimSafra (campo duplicado, mantido
+    // no schema mas não é mais lido aqui). Calculado uma vez só (não depende
+    // do funcionário), usando o meio do mês como data de referência.
+    const safraAtiva = await prisma.safra.findFirst({
+      where: { status: 'ATIVA' },
+      orderBy: { dataInicio: 'desc' },
+    })
+    let estaNaSafra = false
+    if (safraAtiva?.dataInicio) {
+      const meioDoMes = new Date(ano, mes - 1, 15)
+      estaNaSafra =
+        meioDoMes >= new Date(safraAtiva.dataInicio) &&
+        (!safraAtiva.dataFim || meioDoMes <= new Date(safraAtiva.dataFim))
+    }
+
     const whereUser: any = {
       active: true,
       role: { in: ['FUNCIONARIO', 'AGRONOMO'] },
@@ -74,13 +90,6 @@ export async function GET(request: NextRequest) {
 
     const resumo = funcionarios.map((func) => {
       const registrosFuncionario = registros.filter(r => r.funcionarioId === func.id)
-
-      // Detectar se está na safra
-      let estaNaSafra = false
-      if (config?.inicioSafra && config?.fimSafra) {
-        const meioDoMes = new Date(ano, mes - 1, 15)
-        estaNaSafra = meioDoMes >= new Date(config.inicioSafra) && meioDoMes <= new Date(config.fimSafra)
-      }
 
       const salarioBase = estaNaSafra
         ? (func.salarioSafra || 0)

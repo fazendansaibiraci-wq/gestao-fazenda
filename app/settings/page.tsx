@@ -17,8 +17,6 @@ interface User {
 interface ConfiguracaoGlobal {
   id: string
   cargaHorariaEntressafra: number
-  inicioSafra: string | null
-  fimSafra: string | null
 }
 
 const roleLabels = {
@@ -48,8 +46,6 @@ export default function SettingsPage() {
   const [config, setConfig] = useState<ConfiguracaoGlobal | null>(null)
   const [configForm, setConfigForm] = useState({
     cargaHorariaEntressafra: 8,
-    inicioSafra: '',
-    fimSafra: '',
   })
   const [savingConfig, setSavingConfig] = useState(false)
   const [configSuccess, setConfigSuccess] = useState('')
@@ -97,8 +93,6 @@ export default function SettingsPage() {
         setConfig(data.data)
         setConfigForm({
           cargaHorariaEntressafra: data.data.cargaHorariaEntressafra,
-          inicioSafra: data.data.inicioSafra ? data.data.inicioSafra.split('T')[0] : '',
-          fimSafra: data.data.fimSafra ? data.data.fimSafra.split('T')[0] : '',
         })
       }
     } catch {
@@ -267,32 +261,10 @@ export default function SettingsPage() {
                   step="0.5" min="1" max="24" required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Início da Safra</label>
-                <input
-                  type="date"
-                  value={configForm.inicioSafra}
-                  onChange={(e) => setConfigForm({ ...configForm, inicioSafra: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Fim da Safra</label>
-                <input
-                  type="date"
-                  value={configForm.fimSafra}
-                  onChange={(e) => setConfigForm({ ...configForm, fimSafra: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
-              </div>
             </div>
-            {config?.inicioSafra && config?.fimSafra && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-                <strong>Período safra atual:</strong>{' '}
-                {new Date(config.inicioSafra).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} até{' '}
-                {new Date(config.fimSafra).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-              </div>
-            )}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+              As datas da safra agora são controladas em Cadastros → Safras.
+            </div>
             <button type="submit" disabled={savingConfig} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
               <Save className="w-4 h-4" />
               {savingConfig ? 'Salvando...' : 'Salvar Configurações'}

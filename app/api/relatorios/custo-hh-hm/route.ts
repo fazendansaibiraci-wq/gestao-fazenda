@@ -90,9 +90,18 @@ export async function GET(request: NextRequest) {
       dataReferenciaSafra = new Date((inicio.getTime() + fim.getTime()) / 2)
     }
 
+    // Fonte da verdade: Safra ATIVA (model Safra), não mais
+    // ConfiguracaoGlobal.inicioSafra/fimSafra (campo duplicado, mantido no
+    // schema mas não é mais lido aqui).
+    const safraAtiva = await prisma.safra.findFirst({
+      where: { status: 'ATIVA' },
+      orderBy: { dataInicio: 'desc' },
+    })
     let estaNaSafra = false
-    if (config?.inicioSafra && config?.fimSafra) {
-      estaNaSafra = dataReferenciaSafra >= new Date(config.inicioSafra) && dataReferenciaSafra <= new Date(config.fimSafra)
+    if (safraAtiva?.dataInicio) {
+      estaNaSafra =
+        dataReferenciaSafra >= new Date(safraAtiva.dataInicio) &&
+        (!safraAtiva.dataFim || dataReferenciaSafra <= new Date(safraAtiva.dataFim))
     }
 
     // Valor HH por funcionário — mesma fórmula usada em app/api/resumo-mensal/route.ts.

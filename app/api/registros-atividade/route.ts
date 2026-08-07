@@ -148,11 +148,20 @@ export async function POST(request: NextRequest) {
       prisma.configuracaoGlobal.findFirst(),
     ])
 
-    // Detectar safra
+    // Detectar safra: fonte da verdade é a Safra ATIVA (model Safra), não
+    // mais ConfiguracaoGlobal.inicioSafra/fimSafra (campo duplicado e
+    // historicamente esquecido de preencher — mantido no schema mas não é
+    // mais lido aqui).
+    const safraAtiva = await prisma.safra.findFirst({
+      where: { status: 'ATIVA' },
+      orderBy: { dataInicio: 'desc' },
+    })
     let estaNaSafra = false
-    if (config?.inicioSafra && config?.fimSafra) {
-      const dataRegistro = new Date(body.data)
-      estaNaSafra = dataRegistro >= new Date(config.inicioSafra) && dataRegistro <= new Date(config.fimSafra)
+    if (safraAtiva?.dataInicio) {
+      const dataRegistroSafra = new Date(body.data)
+      estaNaSafra =
+        dataRegistroSafra >= new Date(safraAtiva.dataInicio) &&
+        (!safraAtiva.dataFim || dataRegistroSafra <= new Date(safraAtiva.dataFim))
     }
 
     // Calcular horas brutas

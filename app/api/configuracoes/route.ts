@@ -56,8 +56,12 @@ export async function PUT(request: NextRequest) {
         where: { id: config.id },
         data: {
           cargaHorariaEntressafra: body.cargaHorariaEntressafra ?? config.cargaHorariaEntressafra,
-          inicioSafra: body.inicioSafra ? new Date(body.inicioSafra) : null,
-          fimSafra: body.fimSafra ? new Date(body.fimSafra) : null,
+          // inicioSafra/fimSafra não são mais controlados pela tela de
+          // Configurações (a fonte da verdade passou a ser a Safra ATIVA em
+          // Cadastros → Safras) — só grava se vier explicitamente no body,
+          // pra não zerar o valor existente a cada save.
+          inicioSafra: body.inicioSafra !== undefined ? (body.inicioSafra ? new Date(body.inicioSafra) : null) : config.inicioSafra,
+          fimSafra: body.fimSafra !== undefined ? (body.fimSafra ? new Date(body.fimSafra) : null) : config.fimSafra,
           lembreteTurmasTexto:
             body.lembreteTurmasTexto !== undefined ? body.lembreteTurmasTexto : config.lembreteTurmasTexto,
           lembreteTurmasAtivo:
