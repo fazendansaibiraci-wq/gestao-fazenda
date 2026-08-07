@@ -10,6 +10,9 @@ import {
   Bar,
   LineChart,
   Line,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -60,6 +63,20 @@ interface DadosGraficos {
   horasPorFuncionario: HorasPorFuncionario[]
   litrosDieselPorDia: LitrosDieselPorDia[]
 }
+
+// Paleta para o gráfico de pizza de consumo de combustível por máquina —
+// cicla se houver mais máquinas que cores. Evita o verde do menu lateral
+// (#2d6a4f/#52b788) para não confundir visualmente.
+const CORES_CONSUMO_MAQUINA = [
+  '#ea580c', // laranja
+  '#0369a1', // azul
+  '#ca8a04', // amarelo-mostarda
+  '#7c3aed', // roxo
+  '#0d9488', // verde-azulado
+  '#be123c', // vinho
+  '#4f46e5', // índigo
+  '#c2410c', // laranja-queimado
+]
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -350,13 +367,26 @@ export default function DashboardPage() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={dadosGraficos.consumoPorMaquina}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="maquina" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="consumoMedioLH" fill="#ea580c" radius={[4, 4, 0, 0]} />
-              </BarChart>
+              <PieChart>
+                <Pie
+                  data={dadosGraficos.consumoPorMaquina}
+                  dataKey="consumoMedioLH"
+                  nameKey="maquina"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={(entry: any) => `${entry.maquina}: ${entry.consumoMedioLH.toFixed(1)} L/h`}
+                >
+                  {dadosGraficos.consumoPorMaquina.map((_, index) => (
+                    <Cell
+                      key={`cell-consumo-maquina-${index}`}
+                      fill={CORES_CONSUMO_MAQUINA[index % CORES_CONSUMO_MAQUINA.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => `${value.toFixed(1)} L/h`} />
+                <Legend />
+              </PieChart>
             </ResponsiveContainer>
           )}
         </div>
