@@ -126,6 +126,16 @@ export default function DashboardPage() {
   })
   const primeiraRenderizacaoFiltroCustoHHHM = useRef(true)
 
+  // Filtro de mês exclusivo do gráfico "Horas Trabalhadas por
+  // Funcionário" — independente dos outros dois filtros acima. O
+  // gráfico de litros de diesel por dia continua sempre "mês atual",
+  // sem filtro.
+  const [mesFiltroHorasFuncionario, setMesFiltroHorasFuncionario] = useState(() => {
+    const h = new Date()
+    return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`
+  })
+  const primeiraRenderizacaoFiltroHorasFuncionario = useRef(true)
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       redirect('/login')
@@ -166,6 +176,15 @@ export default function DashboardPage() {
     }
     loadCustoHHHM()
   }, [mesFiltroCustoHHHM])
+
+  // Mesmo padrão dos dois filtros acima.
+  useEffect(() => {
+    if (primeiraRenderizacaoFiltroHorasFuncionario.current) {
+      primeiraRenderizacaoFiltroHorasFuncionario.current = false
+      return
+    }
+    loadHorasPorFuncionarioFiltrado()
+  }, [mesFiltroHorasFuncionario])
 
   const loadStats = async () => {
     try {
@@ -234,10 +253,30 @@ export default function DashboardPage() {
     }
   }
 
+  // Busca só as horas por funcionário pro mês selecionado no filtro, sem
+  // mexer em consumoPorMaquina/litrosDieselPorDia (merge parcial do
+  // state).
+  const loadHorasPorFuncionarioFiltrado = async () => {
+    try {
+      const [anoStr, mesStr] = mesFiltroHorasFuncionario.split('-')
+      const res = await fetch(`/api/dashboard-graficos?ano=${anoStr}&mes=${parseInt(mesStr, 10)}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.data) {
+          setDadosGraficos(prev => ({ ...prev, horasPorFuncionario: data.data.horasPorFuncionario }))
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar horas por funcionário filtradas:', error)
+    }
+  }
+
   // Opções do <select> do filtro de mês do gráfico de consumo de combustível.
   const opcoesMesFiltroConsumo = gerarOpcoesUltimosMeses()
   // Opções do <select> do filtro de mês do gráfico de custo HH/HM por talhão.
   const opcoesMesFiltroCustoHHHM = gerarOpcoesUltimosMeses()
+  // Opções do <select> do filtro de mês do gráfico de horas por funcionário.
+  const opcoesMesFiltroHorasFuncionario = gerarOpcoesUltimosMeses()
 
   const formatarDataYYYYMMDD = (data: Date) => {
     const ano = data.getFullYear()
@@ -557,7 +596,18 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <h3 className="font-semibold text-primary mb-4">Horas Trabalhadas por Funcionário este mês</h3>
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+            <h3 className="font-semibold text-primary">Horas Trabalhadas por Funcionário</h3>
+            <select
+              value={mesFiltroHorasFuncionario}
+              onChange={(e) => setMesFiltroHorasFuncionario(e.target.value)}
+              className="border rounded-lg px-2 py-1 text-sm"
+            >
+              {opcoesMesFiltroHorasFuncionario.map((opcao) => (
+                <option key={opcao.valor} value={opcao.valor}>{opcao.rotulo}</option>
+              ))}
+            </select>
+          </div>
           {dadosGraficos.horasPorFuncionario.length === 0 ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
               Sem dados este mês
