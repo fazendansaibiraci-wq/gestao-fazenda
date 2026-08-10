@@ -467,6 +467,28 @@ export default function DashboardPage() {
               )
             }
 
+            // Label do valor de cada segmento (dentro da barra) — só
+            // desenha se o segmento tiver largura suficiente pra caber o
+            // texto sem colidir com o vizinho ou sobrepor o nome do
+            // talhão no eixo Y. Quando não cabe, o valor exato continua
+            // disponível no Tooltip e o total já aparece fora da barra.
+            const renderLabelSegmento = (props: any, valor: number) => {
+              const { x, y, width, height } = props
+              if (width < 28) return null
+              return (
+                <text
+                  x={x + width - 4}
+                  y={y + height / 2}
+                  fill="#fff"
+                  fontSize={11}
+                  textAnchor="end"
+                  dominantBaseline="middle"
+                >
+                  {valor.toFixed(1)}
+                </text>
+              )
+            }
+
             return (
               <ResponsiveContainer width="100%" height={alturaGraficoHHHM}>
                 <BarChart
@@ -476,14 +498,14 @@ export default function DashboardPage() {
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="nomeTalhao" type="category" width={150} tick={{ fontSize: 11 }} />
+                  <YAxis dataKey="nomeTalhao" type="category" width={170} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(1)}h`} />
                   <Legend />
-                  <Bar dataKey="horasHH" name="Hora Homem" stackId="horas" fill="#2d6a4f">
-                    <LabelList dataKey="horasHH" position="insideRight" fill="#fff" formatter={(value: number) => value.toFixed(1)} style={{ fontSize: 11 }} />
+                  <Bar dataKey="horasHH" name="Hora Homem" stackId="horas" fill="#2563eb">
+                    <LabelList dataKey="horasHH" content={(props: any) => renderLabelSegmento(props, dadosHHHM[props.index]?.horasHH ?? 0)} />
                   </Bar>
                   <Bar dataKey="horasHM" name="Hora Máquina" stackId="horas" fill="#f59e0b" radius={[0, 4, 4, 0]}>
-                    <LabelList dataKey="horasHM" position="insideRight" fill="#fff" formatter={(value: number) => value.toFixed(1)} style={{ fontSize: 11 }} />
+                    <LabelList dataKey="horasHM" content={(props: any) => renderLabelSegmento(props, dadosHHHM[props.index]?.horasHM ?? 0)} />
                     <LabelList dataKey="horasHM" content={renderLabelTotal} />
                   </Bar>
                 </BarChart>
