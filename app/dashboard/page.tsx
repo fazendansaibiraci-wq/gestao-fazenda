@@ -434,30 +434,57 @@ export default function DashboardPage() {
               Sem dados este mês
             </div>
           ) : (() => {
-            const dadosHHHM = custoHHHMPorTalhao.map((t) => ({
-              nomeTalhao: t.nomeTalhao,
-              horasHH: t.horasHH ?? 0,
-              horasHM: t.horasHM ?? 0,
-            }))
+            // Ordenado do maior pro menor total (horasHH + horasHM), barra
+            // única empilhada por talhão em vez de duas barras lado a lado.
+            const dadosHHHM = custoHHHMPorTalhao
+              .map((t) => ({
+                nomeTalhao: t.nomeTalhao,
+                horasHH: t.horasHH ?? 0,
+                horasHM: t.horasHM ?? 0,
+                total: (t.horasHH ?? 0) + (t.horasHM ?? 0),
+              }))
+              .sort((a, b) => b.total - a.total)
             const alturaGraficoHHHM = Math.max(250, dadosHHHM.length * 50)
+
+            // Label de total fora da pilha (à direita), buscado do próprio
+            // dadosHHHM pelo índice da barra — o LabelList do recharts só
+            // enxerga o valor do dataKey do Bar em que está, então o total
+            // (soma dos dois segmentos) precisa vir de fora via content.
+            const renderLabelTotal = (props: any) => {
+              const { x, y, width, height, index } = props
+              const total = dadosHHHM[index]?.total ?? 0
+              return (
+                <text
+                  x={x + width + 8}
+                  y={y + height / 2}
+                  fill="#374151"
+                  fontSize={11}
+                  textAnchor="start"
+                  dominantBaseline="middle"
+                >
+                  {total.toFixed(1)}
+                </text>
+              )
+            }
 
             return (
               <ResponsiveContainer width="100%" height={alturaGraficoHHHM}>
                 <BarChart
                   data={dadosHHHM}
                   layout="vertical"
-                  margin={{ left: 100, right: 24, top: 8, bottom: 8 }}
+                  margin={{ left: 100, right: 56, top: 8, bottom: 8 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis type="number" tick={{ fontSize: 12 }} />
                   <YAxis dataKey="nomeTalhao" type="category" width={150} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(1)}h`} />
                   <Legend />
-                  <Bar dataKey="horasHH" name="Hora Homem" fill="#2d6a4f" radius={[0, 4, 4, 0]}>
-                    <LabelList dataKey="horasHH" position="right" formatter={(value: number) => value.toFixed(1)} style={{ fontSize: 11 }} />
+                  <Bar dataKey="horasHH" name="Hora Homem" stackId="horas" fill="#2d6a4f">
+                    <LabelList dataKey="horasHH" position="insideRight" fill="#fff" formatter={(value: number) => value.toFixed(1)} style={{ fontSize: 11 }} />
                   </Bar>
-                  <Bar dataKey="horasHM" name="Hora Máquina" fill="#f59e0b" radius={[0, 4, 4, 0]}>
-                    <LabelList dataKey="horasHM" position="right" formatter={(value: number) => value.toFixed(1)} style={{ fontSize: 11 }} />
+                  <Bar dataKey="horasHM" name="Hora Máquina" stackId="horas" fill="#f59e0b" radius={[0, 4, 4, 0]}>
+                    <LabelList dataKey="horasHM" position="insideRight" fill="#fff" formatter={(value: number) => value.toFixed(1)} style={{ fontSize: 11 }} />
+                    <LabelList dataKey="horasHM" content={renderLabelTotal} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
