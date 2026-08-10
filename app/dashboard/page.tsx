@@ -18,6 +18,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  LabelList,
   ResponsiveContainer,
 } from 'recharts'
 
@@ -71,6 +72,24 @@ interface DadosGraficos {
 const corConsumoMaquina = (index: number, total: number) =>
   `hsl(${Math.round((360 / total) * index)}, 65%, 50%)`
 
+// Últimos 12 meses (incluindo o atual), mais recente primeiro — opções
+// reutilizadas pelos seletores de mês do dashboard (consumo de
+// combustível e comparativo HH/HM por talhão).
+const gerarOpcoesUltimosMeses = () => {
+  const nomesMes = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  ]
+  const hoje = new Date()
+  const opcoes: { valor: string; rotulo: string }[] = []
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
+    const valor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    opcoes.push({ valor, rotulo: `${nomesMes[d.getMonth()]} ${d.getFullYear()}` })
+  }
+  return opcoes
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const [stats, setStats] = useState<DashboardStats>({
@@ -98,6 +117,14 @@ export default function DashboardPage() {
     return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`
   })
   const primeiraRenderizacaoFiltroConsumo = useRef(true)
+
+  // Filtro de mês exclusivo do gráfico "Comparativo Hora Homem e Hora
+  // Máquina por Talhão" — independente do filtro de combustível acima.
+  const [mesFiltroCustoHHHM, setMesFiltroCustoHHHM] = useState(() => {
+    const h = new Date()
+    return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`
+  })
+  const primeiraRenderizacaoFiltroCustoHHHM = useRef(true)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -127,6 +154,18 @@ export default function DashboardPage() {
     }
     loadConsumoPorMaquinaFiltrado()
   }, [mesFiltroConsumo])
+
+  // Mesmo padrão do filtro de combustível acima: a carga inicial
+  // (loadCustoHHHM, disparada no useEffect de status/session) já cobre o
+  // mês atual. Esse efeito só entra em ação depois que o usuário mexe
+  // nesse filtro específico.
+  useEffect(() => {
+    if (primeiraRenderizacaoFiltroCustoHHHM.current) {
+      primeiraRenderizacaoFiltroCustoHHHM.current = false
+      return
+    }
+    loadCustoHHHM()
+  }, [mesFiltroCustoHHHM])
 
   const loadStats = async () => {
     try {
@@ -195,22 +234,10 @@ export default function DashboardPage() {
     }
   }
 
-  // Últimos 12 meses (incluindo o atual), mais recente primeiro — opções
-  // do <select> do filtro de mês do gráfico de consumo de combustível.
-  const opcoesMesFiltroConsumo = (() => {
-    const nomesMes = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-    ]
-    const hoje = new Date()
-    const opcoes: { valor: string; rotulo: string }[] = []
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
-      const valor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      opcoes.push({ valor, rotulo: `${nomesMes[d.getMonth()]} ${d.getFullYear()}` })
-    }
-    return opcoes
-  })()
+  // Opções do <select> do filtro de mês do gráfico de consumo de combustível.
+  const opcoesMesFiltroConsumo = gerarOpcoesUltimosMeses()
+  // Opções do <select> do filtro de mês do gráfico de custo HH/HM por talhão.
+  const opcoesMesFiltroCustoHHHM = gerarOpcoesUltimosMeses()
 
   const formatarDataYYYYMMDD = (data: Date) => {
     const ano = data.getFullYear()
@@ -221,10 +248,19 @@ export default function DashboardPage() {
 
   const loadCustoHHHM = async () => {
     try {
+      const [anoStr, mesStr] = mesFiltroCustoHHHM.split('-')
+      const ano = parseInt(anoStr, 10)
+      const mes = parseInt(mesStr, 10) - 1 // 0-11
       const hoje = new Date()
-      const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+      const ehMesAtual = ano === hoje.getFullYear() && mes === hoje.getMonth()
+
+      const inicioMes = new Date(ano, mes, 1)
+      // Mês atual: até hoje, como sempre foi. Mês diferente: mês inteiro
+      // (último dia do mês selecionado).
+      const fimPeriodo = ehMesAtual ? hoje : new Date(ano, mes + 1, 0)
+
       const dataInicio = formatarDataYYYYMMDD(inicioMes)
-      const dataFim = formatarDataYYYYMMDD(hoje)
+      const dataFim = formatarDataYYYYMMDD(fimPeriodo)
       const res = await fetch(`/api/relatorios/custo-hh-hm?dataInicio=${dataInicio}&dataFim=${dataFim}`)
       if (res.ok) {
         const data = await res.json()
@@ -381,7 +417,18 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card">
-          <h3 className="font-semibold text-primary mb-4">Comparativo Hora Homem e Hora Máquina por Talhão este mês</h3>
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+            <h3 className="font-semibold text-primary">Comparativo Hora Homem e Hora Máquina por Talhão</h3>
+            <select
+              value={mesFiltroCustoHHHM}
+              onChange={(e) => setMesFiltroCustoHHHM(e.target.value)}
+              className="border rounded-lg px-2 py-1 text-sm"
+            >
+              {opcoesMesFiltroCustoHHHM.map((opcao) => (
+                <option key={opcao.valor} value={opcao.valor}>{opcao.rotulo}</option>
+              ))}
+            </select>
+          </div>
           {semDadosCustoHHHM ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
               Sem dados este mês
@@ -392,17 +439,26 @@ export default function DashboardPage() {
               horasHH: t.horasHH ?? 0,
               horasHM: t.horasHM ?? 0,
             }))
+            const alturaGraficoHHHM = Math.max(250, dadosHHHM.length * 50)
 
             return (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={dadosHHHM}>
+              <ResponsiveContainer width="100%" height={alturaGraficoHHHM}>
+                <BarChart
+                  data={dadosHHHM}
+                  layout="vertical"
+                  margin={{ left: 100, right: 24, top: 8, bottom: 8 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="nomeTalhao" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <XAxis type="number" tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="nomeTalhao" type="category" width={150} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(1)}h`} />
                   <Legend />
-                  <Bar dataKey="horasHH" name="Hora Homem" fill="#2d6a4f" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="horasHM" name="Hora Máquina" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="horasHH" name="Hora Homem" fill="#2d6a4f" radius={[0, 4, 4, 0]}>
+                    <LabelList dataKey="horasHH" position="right" formatter={(value: number) => value.toFixed(1)} style={{ fontSize: 11 }} />
+                  </Bar>
+                  <Bar dataKey="horasHM" name="Hora Máquina" fill="#f59e0b" radius={[0, 4, 4, 0]}>
+                    <LabelList dataKey="horasHM" position="right" formatter={(value: number) => value.toFixed(1)} style={{ fontSize: 11 }} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )
