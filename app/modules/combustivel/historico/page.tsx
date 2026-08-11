@@ -3,7 +3,21 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { Trash2, Filter } from 'lucide-react'
+import { Trash2, Filter, Pencil } from 'lucide-react'
+
+type FormEdicao = {
+  data: string
+  horimetroAnterior: string
+  horimetroAtual: string
+  litrosAbastecidos: string
+}
+
+type CascataInfo = {
+  proximoId: string
+  proximoData: string
+  horimetroAnteriorAntigo: number | null
+  horimetroAnteriorNovo: number
+}
 
 export default function HistoricoAbastecimentosPage() {
   const { data: session, status } = useSession()
@@ -16,6 +30,12 @@ export default function HistoricoAbastecimentosPage() {
   const [filtroDataInicio, setFiltroDataInicio] = useState('')
   const [filtroDataFim, setFiltroDataFim] = useState('')
   const [filtroMaquina, setFiltroMaquina] = useState('')
+
+  const [editando, setEditando] = useState<any | null>(null)
+  const [form, setForm] = useState<FormEdicao>({ data: '', horimetroAnterior: '', horimetroAtual: '', litrosAbastecidos: '' })
+  const [erroEdicao, setErroEdicao] = useState('')
+  const [cascata, setCascata] = useState<CascataInfo | null>(null)
+  const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
@@ -68,6 +88,102 @@ export default function HistoricoAbastecimentosPage() {
       load()
     } catch (err) {
       alert('Erro ao excluir')
+    }
+  }
+
+  const dataParaInput = (d: string | Date) => {
+    // Formata em horário local (não UTC) no formato aceito por
+    // datetime-local, preservando a hora original do registro —
+    // evita truncar pra 00:00:00 em dias com múltiplos lançamentos
+    // da mesma máquina.
+    const dt = new Date(d)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const ano = dt.getFullYear()
+    const mes = pad(dt.getMonth() + 1)
+    const dia = pad(dt.getDate())
+    const hora = pad(dt.getHours())
+    const minuto = pad(dt.getMinutes())
+    return `${ano}-${mes}-${dia}T${hora}:${minuto}`
+  }
+
+  const handleAbrirEdicao = (a: any) => {
+    setEditando(a)
+    setForm({
+      data: dataParaInput(a.data),
+      horimetroAnterior: String(a.horimetroanterior ?? ''),
+      horimetroAtual: String(a.horimetroAtual ?? ''),
+      litrosAbastecidos: String(a.litrosAbastecidos ?? ''),
+    })
+    setErroEdicao('')
+    setCascata(null)
+  }
+
+  const fecharModalEdicao = () => {
+    setEditando(null)
+    setForm({ data: '', horimetroAnterior: '', horimetroAtual: '', litrosAbastecidos: '' })
+    setErroEdicao('')
+    setCascata(null)
+    setSalvando(false)
+  }
+
+  const validarFormEdicao = (): string | null => {
+    const anterior = Number(form.horimetroAnterior)
+    const atual = Number(form.horimetroAtual)
+    const litros = Number(form.litrosAbastecidos)
+    if (!form.data) return 'Informe a data'
+    if (Number.isNaN(anterior) || Number.isNaN(atual)) return 'Horímetros inválidos'
+    if (atual <= anterior) return 'Horímetro atual deve ser maior que o horímetro anterior'
+    if (Number.isNaN(litros) || litros <= 0) return 'Litros deve ser maior que zero'
+    return null
+  }
+
+  const enviarEdicao = async (confirmarCascata: boolean) => {
+    if (!editando) return
+    const erro = validarFormEdicao()
+    if (erro) {
+      setErroEdicao(erro)
+      return
+    }
+    setSalvando(true)
+    setErroEdicao('')
+    try {
+      const res = await fetch(`/api/abastecimentos/${editando.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: form.data,
+          horimetroAnterior: Number(form.horimetroAnterior),
+          horimetroAtual: Number(form.horimetroAtual),
+          litrosAbastecidos: Number(form.litrosAbastecidos),
+          confirmarCascata,
+        }),
+      })
+      const json = await res.json()
+
+      if (!res.ok) {
+        setErroEdicao(json.error || 'Erro ao salvar')
+        setSalvando(false)
+        return
+      }
+
+      if (json.needsConfirmation) {
+        setCascata(json.cascade)
+        setSalvando(false)
+        return
+      }
+
+      // Sucesso — atualiza os registros afetados na tela sem recarregar tudo
+      setAbastecimentos((prev: any[]) =>
+        prev.map((item) => {
+          if (item.id === json.data.editado.id) return json.data.editado
+          if (json.data.proximo && item.id === json.data.proximo.id) return json.data.proximo
+          return item
+        })
+      )
+      fecharModalEdicao()
+    } catch (err) {
+      setErroEdicao('Erro ao salvar')
+      setSalvando(false)
     }
   }
 
@@ -156,9 +272,14 @@ export default function HistoricoAbastecimentosPage() {
                 <td className="px-4 py-2">R$ {a.custoAbastecimento?.toFixed(2)}</td>
                 {isGestor && (
                   <td className="px-4 py-2">
-                    <button onClick={() => handleDeleteAbastecimento(a.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition-colors" title="Excluir">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleAbrirEdicao(a)} className="p-1.5 hover:bg-blue-50 rounded text-blue-500 hover:text-blue-700 transition-colors" title="Editar">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDeleteAbastecimento(a.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition-colors" title="Excluir">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 )}
               </tr>
@@ -193,6 +314,104 @@ export default function HistoricoAbastecimentosPage() {
           </div>
         )}
       </div>
+
+      {editando && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-800">Editar Abastecimento</h2>
+              <button onClick={fecharModalEdicao} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              {erroEdicao && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{erroEdicao}</div>
+              )}
+
+              {!cascata && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data e Hora</label>
+                    <input
+                      type="datetime-local"
+                      value={form.data}
+                      onChange={(e) => setForm((prev) => ({ ...prev, data: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Horímetro Anterior</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={form.horimetroAnterior}
+                      onChange={(e) => setForm((prev) => ({ ...prev, horimetroAnterior: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Horímetro Atual</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={form.horimetroAtual}
+                      onChange={(e) => setForm((prev) => ({ ...prev, horimetroAtual: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Litros</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={form.litrosAbastecidos}
+                      onChange={(e) => setForm((prev) => ({ ...prev, litrosAbastecidos: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">Consumo L/h e Custo são recalculados automaticamente ao salvar.</p>
+                </>
+              )}
+
+              {cascata && (
+                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm space-y-2">
+                  <p>
+                    Isso também vai atualizar o horímetro anterior do lançamento de{' '}
+                    <strong>{new Date(cascata.proximoData).toLocaleDateString('pt-BR')}</strong> de{' '}
+                    <strong>{cascata.horimetroAnteriorAntigo?.toFixed(1) ?? '-'}h</strong> para{' '}
+                    <strong>{cascata.horimetroAnteriorNovo.toFixed(1)}h</strong>. Confirma?
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                onClick={fecharModalEdicao}
+                disabled={salvando}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              {!cascata ? (
+                <button
+                  onClick={() => enviarEdicao(false)}
+                  disabled={salvando}
+                  className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  {salvando ? 'Salvando...' : 'Salvar'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => enviarEdicao(true)}
+                  disabled={salvando}
+                  className="px-4 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {salvando ? 'Confirmando...' : 'Confirmar'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
