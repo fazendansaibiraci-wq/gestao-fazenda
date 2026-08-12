@@ -10,6 +10,9 @@ export async function GET(request: NextRequest) {
 
     const produtos = await prisma.produto.findMany({
       orderBy: { nomeComercial: 'asc' },
+      include: {
+        estoqueLocais: { include: { local: { select: { id: true, nome: true } } } },
+      },
     })
 
     return NextResponse.json({ success: true, data: produtos })

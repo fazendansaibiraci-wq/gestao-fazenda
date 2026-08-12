@@ -17,13 +17,27 @@ export async function DELETE(
     if (!saida) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
 
     // Excluir a saída credita a quantidade de volta pro estoque (desfazer).
-    await prisma.$transaction([
+    // Saídas antigas (antes do controle por local) têm localId nulo — nesse
+    // caso só revertemos o total do produto, sem mexer em EstoqueLocal,
+    // porque não temos como saber de qual local a saída teria debitado.
+    const operacoes: any[] = [
       prisma.produto.update({
         where: { id: saida.produtoId },
         data: { quantidadeEstoque: { increment: saida.quantidade } },
       }),
-      prisma.saidaProduto.delete({ where: { id: params.id } }),
-    ])
+    ]
+    if (saida.localId) {
+      operacoes.push(
+        prisma.estoqueLocal.upsert({
+          where: { produtoId_localId: { produtoId: saida.produtoId, localId: saida.localId } },
+          create: { produtoId: saida.produtoId, localId: saida.localId, quantidade: saida.quantidade },
+          update: { quantidade: { increment: saida.quantidade } },
+        })
+      )
+    }
+    operacoes.push(prisma.saidaProduto.delete({ where: { id: params.id } }))
+
+    await prisma.$transaction(operacoes)
 
     return NextResponse.json({ success: true })
   } catch (error) {

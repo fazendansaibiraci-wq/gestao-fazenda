@@ -37,12 +37,18 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
   const [confirmando, setConfirmando] = useState(false)
   const [resultado, setResultado] = useState<{ criados: number; atualizados: number } | null>(null)
   const [produtos, setProdutos] = useState<{ id: string; nomeComercial: string }[]>([])
+  const [locais, setLocais] = useState<{ id: string; nome: string }[]>([])
+  const [localId, setLocalId] = useState('')
 
   useEffect(() => {
     if (aberto) {
       fetch('/api/produtos')
         .then((r) => r.json())
         .then((d) => setProdutos((d.data || []).map((p: any) => ({ id: p.id, nomeComercial: p.nomeComercial }))))
+        .catch(() => {})
+      fetch('/api/locais')
+        .then((r) => r.json())
+        .then((d) => setLocais((d.data || []).filter((l: any) => l.status)))
         .catch(() => {})
     }
   }, [aberto])
@@ -95,6 +101,10 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
 
   const handleConfirmar = async () => {
     if (!nota) return
+    if (!localId) {
+      setErro('Selecione o local dessa entrada')
+      return
+    }
 
     setConfirmando(true)
     setErro('')
@@ -104,7 +114,7 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
       const res = await fetch('/api/produtos/importar-nfe/confirmar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...nota, itens: itensIncluidos }),
+        body: JSON.stringify({ ...nota, itens: itensIncluidos, localId }),
       })
       const data = await res.json()
 
@@ -130,6 +140,7 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
     setNota(null)
     setErro('')
     setResultado(null)
+    setLocalId('')
   }
 
   if (!isGestor) {
@@ -184,6 +195,21 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
             <p><strong>Fornecedor:</strong> {nota.fornecedor}</p>
             <p><strong>Nota:</strong> {nota.numeroNota} — Série {nota.serieNota}</p>
             <p><strong>Emissão:</strong> {new Date(nota.dataEmissao).toLocaleDateString('pt-BR')}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Local desta entrada *</label>
+            <select
+              value={localId}
+              onChange={(e) => setLocalId(e.target.value)}
+              className="border rounded-lg px-3 py-2 text-sm w-full max-w-xs"
+            >
+              <option value="">Selecionar local</option>
+              {locais.map((l) => (
+                <option key={l.id} value={l.id}>{l.nome}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Mesmo local pra todos os itens dessa nota.</p>
           </div>
 
           <div className="overflow-x-auto max-h-96 overflow-y-auto border rounded-lg">
@@ -254,7 +280,7 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
             <button onClick={fechar} className="px-4 py-2 rounded-lg border">Cancelar</button>
             <button
               onClick={handleConfirmar}
-              disabled={confirmando}
+              disabled={confirmando || !localId}
               className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-50"
             >
               {confirmando ? 'Gravando...' : `Confirmar entrada (${itens.filter(i => i.incluir !== false).length} produtos)`}

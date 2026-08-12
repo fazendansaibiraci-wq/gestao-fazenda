@@ -12,8 +12,10 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
   const [carregandoHistorico, setCarregandoHistorico] = useState(true)
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [locais, setLocais] = useState<any[]>([])
   const [form, setForm] = useState({
     produtoId: '',
+    localId: '',
     quantidadeNova: '',
     data: new Date().toISOString().slice(0, 10),
     observacao: '',
@@ -21,6 +23,10 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
 
   useEffect(() => {
     carregarHistorico()
+    fetch('/api/locais')
+      .then((r) => r.json())
+      .then((d) => setLocais((d.data || []).filter((l: any) => l.status)))
+      .catch(() => {})
   }, [])
 
   const carregarHistorico = async () => {
@@ -37,9 +43,12 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
   }
 
   const produtoSelecionado = produtos.find((p) => p.id === form.produtoId)
+  const saldoNoLocalSelecionado = form.localId
+    ? produtoSelecionado?.estoqueLocais?.find((e: any) => e.localId === form.localId)?.quantidade ?? 0
+    : null
   const diferencaPreview =
-    produtoSelecionado && form.quantidadeNova !== ''
-      ? parseFloat(form.quantidadeNova) - (produtoSelecionado.quantidadeEstoque || 0)
+    produtoSelecionado && form.localId && form.quantidadeNova !== ''
+      ? parseFloat(form.quantidadeNova) - (saldoNoLocalSelecionado || 0)
       : null
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,6 +61,7 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           produtoId: form.produtoId,
+          localId: form.localId,
           quantidadeNova: parseFloat(form.quantidadeNova),
           data: form.data,
           observacao: form.observacao,
@@ -62,7 +72,7 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
         setErro(data.error || 'Erro ao registrar ajuste')
         return
       }
-      setForm({ produtoId: '', quantidadeNova: '', data: new Date().toISOString().slice(0, 10), observacao: '' })
+      setForm({ produtoId: '', localId: '', quantidadeNova: '', data: new Date().toISOString().slice(0, 10), observacao: '' })
       await carregarHistorico()
       onAtualizado()
     } catch (err) {
@@ -103,15 +113,30 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
               <option value="">Selecionar produto</option>
               {produtos.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nomeComercial} (sistema mostra {(p.quantidadeEstoque || 0).toLocaleString('pt-BR')} {p.unidadeMedida})
+                  {p.nomeComercial} (total do sistema: {(p.quantidadeEstoque || 0).toLocaleString('pt-BR')} {p.unidadeMedida})
                 </option>
+              ))}
+            </select>
+            <select
+              value={form.localId}
+              onChange={(e) => setForm({ ...form, localId: e.target.value })}
+              className="border rounded-lg px-3 py-2"
+              required
+            >
+              <option value="">Selecionar local</option>
+              {locais.map((l) => (
+                <option key={l.id} value={l.id}>{l.nome}</option>
               ))}
             </select>
             <input
               type="number"
               step="0.01"
               min="0"
-              placeholder={`Quantidade contada${produtoSelecionado ? ` (${produtoSelecionado.unidadeMedida})` : ''}`}
+              placeholder={
+                produtoSelecionado && form.localId
+                  ? `Quantidade contada (${produtoSelecionado.unidadeMedida}) — sistema mostra ${saldoNoLocalSelecionado?.toLocaleString('pt-BR') ?? 0} nesse local`
+                  : 'Quantidade contada'
+              }
               value={form.quantidadeNova}
               onChange={(e) => setForm({ ...form, quantidadeNova: e.target.value })}
               className="border rounded-lg px-3 py-2"
@@ -158,6 +183,7 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
                 <tr className="border-b text-gray-500">
                   <th className="text-left py-2 px-2">Data</th>
                   <th className="text-left py-2 px-2">Produto</th>
+                  <th className="text-left py-2 px-2">Local</th>
                   <th className="text-left py-2 px-2">Antes</th>
                   <th className="text-left py-2 px-2">Depois</th>
                   <th className="text-left py-2 px-2">Diferença</th>
@@ -170,6 +196,7 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
                   <tr key={a.id} className="border-b hover:bg-gray-50">
                     <td className="py-2 px-2">{new Date(a.data).toLocaleDateString('pt-BR')}</td>
                     <td className="py-2 px-2 font-medium">{a.produto?.nomeComercial}</td>
+                    <td className="py-2 px-2">{a.local?.nome || '—'}</td>
                     <td className="py-2 px-2">{a.quantidadeAnterior.toLocaleString('pt-BR')} {a.produto?.unidadeMedida}</td>
                     <td className="py-2 px-2">{a.quantidadeNova.toLocaleString('pt-BR')} {a.produto?.unidadeMedida}</td>
                     <td className={`py-2 px-2 ${a.diferenca > 0 ? 'text-green-600' : a.diferenca < 0 ? 'text-red-600' : 'text-gray-500'}`}>

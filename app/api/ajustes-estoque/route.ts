@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         produto: { select: { nomeComercial: true, unidadeMedida: true } },
+        local: { select: { nome: true } },
         registradoPor: { select: { name: true } },
       },
       orderBy: { data: 'desc' },
@@ -39,9 +40,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    if (!body.produtoId || body.quantidadeNova == null || !body.data || !body.observacao?.trim()) {
+    if (!body.produtoId || body.quantidadeNova == null || !body.data || !body.observacao?.trim() || !body.localId) {
       return NextResponse.json(
-        { error: 'Produto, quantidade contada, data e motivo são obrigatórios' },
+        { error: 'Produto, local, quantidade contada, data e motivo são obrigatórios' },
         { status: 400 }
       )
     }
@@ -55,13 +56,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 })
     }
 
-    const quantidadeAnterior = produto.quantidadeEstoque
+    const local = await prisma.local.findUnique({ where: { id: body.localId } })
+    if (!local) {
+      return NextResponse.json({ error: 'Local não encontrado' }, { status: 404 })
+    }
+
+    // Agora o ajuste é sobre o saldo DO LOCAL, não mais do produto
+    // como um todo — "anterior"/"nova"/"diferença" se referem ao que
+    // já estava (ou não) em EstoqueLocal pra esse par produto+local.
+    const estoqueLocalAtual = await prisma.estoqueLocal.findUnique({
+      where: { produtoId_localId: { produtoId: body.produtoId, localId: body.localId } },
+    })
+    const quantidadeAnterior = estoqueLocalAtual?.quantidade ?? 0
     const diferenca = body.quantidadeNova - quantidadeAnterior
 
-    const [ajuste] = await prisma.$transaction([
-      prisma.ajusteEstoque.create({
+    const ajuste = await prisma.$transaction(async (tx) => {
+      const registro = await tx.ajusteEstoque.create({
         data: {
           produtoId: body.produtoId,
+          localId: body.localId,
           quantidadeAnterior,
           quantidadeNova: body.quantidadeNova,
           diferenca,
@@ -69,12 +82,26 @@ export async function POST(request: NextRequest) {
           observacao: body.observacao.trim(),
           registradoPorId: session.user.id as string,
         },
-      }),
-      prisma.produto.update({
+      })
+
+      await tx.estoqueLocal.upsert({
+        where: { produtoId_localId: { produtoId: body.produtoId, localId: body.localId } },
+        create: { produtoId: body.produtoId, localId: body.localId, quantidade: body.quantidadeNova },
+        update: { quantidade: body.quantidadeNova },
+      })
+
+      // Recalcula Produto.quantidadeEstoque como a soma de TODOS os
+      // locais desse produto — evita que o total fique dessincronizado
+      // da soma dos locais quando só um deles é ajustado.
+      const todosLocais = await tx.estoqueLocal.findMany({ where: { produtoId: body.produtoId } })
+      const novoTotal = todosLocais.reduce((acc, e) => acc + e.quantidade, 0)
+      await tx.produto.update({
         where: { id: body.produtoId },
-        data: { quantidadeEstoque: body.quantidadeNova },
-      }),
-    ])
+        data: { quantidadeEstoque: novoTotal },
+      })
+
+      return registro
+    })
 
     return NextResponse.json({ success: true, data: ajuste })
   } catch (error) {

@@ -11,10 +11,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { fornecedor, numeroNota, serieNota, dataEmissao, chaveAcesso, itens } = body
+    const { fornecedor, numeroNota, serieNota, dataEmissao, chaveAcesso, itens, localId } = body
 
     if (!Array.isArray(itens) || itens.length === 0) {
       return NextResponse.json({ error: 'Nenhum item para importar' }, { status: 400 })
+    }
+
+    if (!localId) {
+      return NextResponse.json({ error: 'Local é obrigatório' }, { status: 400 })
+    }
+
+    const local = await prisma.local.findUnique({ where: { id: localId } })
+    if (!local) {
+      return NextResponse.json({ error: 'Local não encontrado' }, { status: 404 })
     }
 
     let criados = 0
@@ -50,6 +59,15 @@ export async function POST(request: NextRequest) {
           produtoId = novoProduto.id
           criados++
         }
+
+        // Mesmo local pra todos os itens dessa nota — uma NF-e tem um
+        // único destinatário/local de entrega, diferente da saída
+        // manual onde cada lançamento é independente.
+        await tx.estoqueLocal.upsert({
+          where: { produtoId_localId: { produtoId: produtoId as string, localId } },
+          create: { produtoId: produtoId as string, localId, quantidade: item.quantidade },
+          update: { quantidade: { increment: item.quantidade } },
+        })
 
         await tx.entradaProduto.create({
           data: {

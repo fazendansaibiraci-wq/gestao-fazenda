@@ -29,7 +29,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'Litros deve ser maior que zero' }, { status: 400 })
     }
 
-    const atual = await prisma.abastecimentoTrator.findUnique({ where: { id: params.id } })
+    const atual = await prisma.abastecimentoTrator.findUnique({
+      where: { id: params.id },
+      include: { saidaProduto: true },
+    })
     if (!atual) {
       return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
     }
@@ -135,6 +138,35 @@ export async function PATCH(
     const consumoLporH = horasTrabalhadad > 0 ? novosLitros / horasTrabalhadad : 0
     const custoAbastecimento = novosLitros * atual.valorPorLitro
 
+    // Correção de bug: editar os litros de um abastecimento precisa
+    // refletir no estoque de diesel (Produto.quantidadeEstoque, a
+    // SaidaProduto vinculada e o EstoqueLocal do local dessa saída) —
+    // antes desta correção, só o registro de AbastecimentoTrator era
+    // atualizado, deixando o estoque dessincronizado da saída real.
+    const litrosAntigos = atual.litrosAbastecidos
+    const deltaLitros = novosLitros - litrosAntigos
+
+    if (atual.saidaProduto && deltaLitros > 0) {
+      const saldoLocalAtual = atual.saidaProduto.localId
+        ? (
+            await prisma.estoqueLocal.findUnique({
+              where: {
+                produtoId_localId: { produtoId: atual.saidaProduto.produtoId, localId: atual.saidaProduto.localId },
+              },
+            })
+          )?.quantidade ?? 0
+        : (await prisma.produto.findUnique({ where: { id: atual.saidaProduto.produtoId } }))?.quantidadeEstoque ?? 0
+
+      if (deltaLitros > saldoLocalAtual) {
+        return NextResponse.json(
+          {
+            error: `Estoque de diesel insuficiente pra cobrir o aumento de litros: essa edição pede ${deltaLitros.toFixed(1)}L a mais do que o abastecimento original, mas só há ${saldoLocalAtual.toFixed(1)}L disponíveis. Registre uma entrada de diesel antes de aumentar os litros desse abastecimento.`,
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     const resultado = await prisma.$transaction(async (tx) => {
       const editado = await tx.abastecimentoTrator.update({
         where: { id: params.id },
@@ -149,6 +181,26 @@ export async function PATCH(
         },
         include: { maquina: true, talhao: true, safra: true },
       })
+
+      if (atual.saidaProduto && deltaLitros !== 0) {
+        await tx.saidaProduto.update({
+          where: { id: atual.saidaProduto.id },
+          data: { quantidade: novosLitros },
+        })
+        await tx.produto.update({
+          where: { id: atual.saidaProduto.produtoId },
+          data: { quantidadeEstoque: { decrement: deltaLitros } },
+        })
+        if (atual.saidaProduto.localId) {
+          await tx.estoqueLocal.upsert({
+            where: {
+              produtoId_localId: { produtoId: atual.saidaProduto.produtoId, localId: atual.saidaProduto.localId },
+            },
+            create: { produtoId: atual.saidaProduto.produtoId, localId: atual.saidaProduto.localId, quantidade: -deltaLitros },
+            update: { quantidade: { decrement: deltaLitros } },
+          })
+        }
+      }
 
       let proximoAtualizado = null
       if (proximo && horimetroAtualMudou) {
@@ -206,12 +258,30 @@ export async function DELETE(
     await prisma.$transaction(async (tx) => {
       // Se tinha uma Saída de Produto vinculada (diesel debitado), credita
       // de volta pro estoque e remove a saída — pra não deixar entrada
-      // "solta" no histórico nem estoque incorreto.
+      // "solta" no histórico nem estoque incorreto. Se essa saída tiver
+      // localId (abastecimentos novos sempre têm, sempre FAZ), credita
+      // de volta também no EstoqueLocal correspondente.
       if (abastecimento.saidaProduto) {
         await tx.produto.update({
           where: { id: abastecimento.saidaProduto.produtoId },
           data: { quantidadeEstoque: { increment: abastecimento.saidaProduto.quantidade } },
         })
+        if (abastecimento.saidaProduto.localId) {
+          await tx.estoqueLocal.upsert({
+            where: {
+              produtoId_localId: {
+                produtoId: abastecimento.saidaProduto.produtoId,
+                localId: abastecimento.saidaProduto.localId,
+              },
+            },
+            create: {
+              produtoId: abastecimento.saidaProduto.produtoId,
+              localId: abastecimento.saidaProduto.localId,
+              quantidade: abastecimento.saidaProduto.quantidade,
+            },
+            update: { quantidade: { increment: abastecimento.saidaProduto.quantidade } },
+          })
+        }
         await tx.abastecimentoTrator.delete({ where: { id: params.id } })
         await tx.saidaProduto.delete({ where: { id: abastecimento.saidaProduto.id } })
       } else {

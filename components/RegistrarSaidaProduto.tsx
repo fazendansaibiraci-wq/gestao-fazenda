@@ -11,8 +11,10 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
   const [carregandoHistorico, setCarregandoHistorico] = useState(true)
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [locais, setLocais] = useState<any[]>([])
   const [form, setForm] = useState({
     produtoId: '',
+    localId: '',
     quantidade: '',
     data: new Date().toISOString().slice(0, 10),
     talhaoId: '',
@@ -24,6 +26,7 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
     carregarHistorico()
     fetch('/api/talhoes').then((r) => r.json()).then((d) => setTalhoes(d.data || []))
     fetch('/api/safras').then((r) => r.json()).then((d) => setSafras(d.data || []))
+    fetch('/api/locais').then((r) => r.json()).then((d) => setLocais((d.data || []).filter((l: any) => l.status)))
   }, [])
 
   const carregarHistorico = async () => {
@@ -51,6 +54,7 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           produtoId: form.produtoId,
+          localId: form.localId,
           quantidade: parseFloat(form.quantidade),
           data: form.data,
           talhaoId: form.talhaoId || null,
@@ -63,7 +67,7 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
         setErro(data.error || 'Erro ao registrar saída')
         return
       }
-      setForm({ produtoId: '', quantidade: '', data: new Date().toISOString().slice(0, 10), talhaoId: '', safraId: '', observacao: '' })
+      setForm({ produtoId: '', localId: '', quantidade: '', data: new Date().toISOString().slice(0, 10), talhaoId: '', safraId: '', observacao: '' })
       await carregarHistorico()
       onAtualizado()
     } catch (err) {
@@ -113,8 +117,19 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
               <option value="">Selecionar produto</option>
               {produtos.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nomeComercial} ({(p.quantidadeEstoque || 0).toLocaleString('pt-BR')} {p.unidadeMedida} disponível)
+                  {p.nomeComercial} ({(p.quantidadeEstoque || 0).toLocaleString('pt-BR')} {p.unidadeMedida} disponível no total)
                 </option>
+              ))}
+            </select>
+            <select
+              value={form.localId}
+              onChange={(e) => setForm({ ...form, localId: e.target.value })}
+              className="border rounded-lg px-3 py-2"
+              required
+            >
+              <option value="">Selecionar local</option>
+              {locais.map((l) => (
+                <option key={l.id} value={l.id}>{l.nome}</option>
               ))}
             </select>
             <input
@@ -181,6 +196,7 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
                 <tr className="border-b text-gray-500">
                   <th className="text-left py-2 px-2">Data</th>
                   <th className="text-left py-2 px-2">Produto</th>
+                  <th className="text-left py-2 px-2">Local</th>
                   <th className="text-left py-2 px-2">Quantidade</th>
                   <th className="text-left py-2 px-2">Talhão</th>
                   <th className="text-left py-2 px-2">Safra</th>
@@ -193,6 +209,7 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
                   <tr key={s.id} className="border-b hover:bg-gray-50">
                     <td className="py-2 px-2">{new Date(s.data).toLocaleDateString('pt-BR')}</td>
                     <td className="py-2 px-2 font-medium">{s.produto?.nomeComercial}</td>
+                    <td className="py-2 px-2">{s.local?.nome || '—'}</td>
                     <td className="py-2 px-2">{s.quantidade.toLocaleString('pt-BR')} {s.produto?.unidadeMedida}</td>
                     <td className="py-2 px-2">{s.talhao?.nome || '—'}</td>
                     <td className="py-2 px-2">{s.safra?.nome || '—'}</td>

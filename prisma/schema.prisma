@@ -284,6 +284,8 @@ model Local {
   status    Boolean  @default(true)
   createdAt DateTime @default(now())
   estoques  EstoqueLocal[]
+  saidas         SaidaProduto[]
+  ajustesEstoque AjusteEstoque[]
 
   @@map("locais")
 }
@@ -315,6 +317,8 @@ model SaidaProduto {
   observacao      String?
   registradoPor   User     @relation(fields: [registradoPorId], references: [id])
   registradoPorId String
+  local           Local?   @relation(fields: [localId], references: [id])
+  localId         String?
 
   dataCriacao DateTime @default(now())
 
@@ -336,6 +340,8 @@ model AjusteEstoque {
   observacao         String
   registradoPor      User     @relation(fields: [registradoPorId], references: [id])
   registradoPorId    String
+  local              Local?   @relation(fields: [localId], references: [id])
+  localId            String?
 
   dataCriacao DateTime @default(now())
 

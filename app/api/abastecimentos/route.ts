@@ -128,10 +128,27 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    if (produtoDiesel.quantidadeEstoque < body.litrosAbastecidos) {
+
+    // Abastecimento de máquina sempre debita do local "FAZ" — é o tanque
+    // físico da fazenda, não faz sentido pedir isso na tela pra cada
+    // lançamento.
+    const localFaz = await prisma.local.findUnique({ where: { nome: 'FAZ' } })
+    if (!localFaz) {
+      return NextResponse.json(
+        { error: 'Local FAZ não cadastrado. Cadastre o local "FAZ" antes de registrar abastecimentos.' },
+        { status: 400 }
+      )
+    }
+
+    const estoqueDieselFaz = await prisma.estoqueLocal.findUnique({
+      where: { produtoId_localId: { produtoId: produtoDiesel.id, localId: localFaz.id } },
+    })
+    const saldoDieselFaz = estoqueDieselFaz?.quantidade ?? 0
+
+    if (saldoDieselFaz < body.litrosAbastecidos) {
       return NextResponse.json(
         {
-          error: `Estoque de diesel insuficiente: ${produtoDiesel.quantidadeEstoque}L disponíveis, ${body.litrosAbastecidos}L necessários pra esse abastecimento. Registre uma entrada de diesel no Estoque antes de continuar.`,
+          error: `Estoque de diesel insuficiente em ${localFaz.nome}: ${saldoDieselFaz}L disponíveis, ${body.litrosAbastecidos}L necessários pra esse abastecimento. Registre uma entrada de diesel no Estoque antes de continuar.`,
         },
         { status: 400 }
       )
@@ -148,11 +165,17 @@ export async function POST(request: NextRequest) {
           safraId: body.safraId || null,
           observacao: `Abastecimento da máquina ${maquinaInfo?.nome || body.maquinaId}${body.tipoAtividade ? ` (${body.tipoAtividade})` : ''}`,
           registradoPorId: session.user.id as string,
+          localId: localFaz.id,
         },
       })
       await tx.produto.update({
         where: { id: produtoDiesel.id },
         data: { quantidadeEstoque: { decrement: body.litrosAbastecidos } },
+      })
+      await tx.estoqueLocal.upsert({
+        where: { produtoId_localId: { produtoId: produtoDiesel.id, localId: localFaz.id } },
+        create: { produtoId: produtoDiesel.id, localId: localFaz.id, quantidade: 0 },
+        update: { quantidade: { decrement: body.litrosAbastecidos } },
       })
       return tx.abastecimentoTrator.create({
         data: {

@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
         produto: { select: { nomeComercial: true, unidadeMedida: true } },
         talhao: { select: { nome: true } },
         safra: { select: { nome: true } },
+        local: { select: { nome: true } },
         registradoPor: { select: { name: true } },
       },
       orderBy: { data: 'desc' },
@@ -50,8 +51,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    if (!body.produtoId || !body.quantidade || !body.data) {
-      return NextResponse.json({ error: 'Produto, quantidade e data são obrigatórios' }, { status: 400 })
+    if (!body.produtoId || !body.quantidade || !body.data || !body.localId) {
+      return NextResponse.json({ error: 'Produto, quantidade, data e local são obrigatórios' }, { status: 400 })
     }
 
     if (body.quantidade <= 0) {
@@ -63,10 +64,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 })
     }
 
-    if (produto.quantidadeEstoque < body.quantidade) {
+    const local = await prisma.local.findUnique({ where: { id: body.localId } })
+    if (!local) {
+      return NextResponse.json({ error: 'Local não encontrado' }, { status: 404 })
+    }
+
+    // Saldo é validado por local, não mais pelo total do produto — um
+    // produto pode ter saldo no total mas nada no local escolhido.
+    const estoqueLocal = await prisma.estoqueLocal.findUnique({
+      where: { produtoId_localId: { produtoId: body.produtoId, localId: body.localId } },
+    })
+    const saldoLocal = estoqueLocal?.quantidade ?? 0
+
+    if (saldoLocal < body.quantidade) {
       return NextResponse.json(
         {
-          error: `Estoque insuficiente: ${produto.quantidadeEstoque} ${produto.unidadeMedida} disponíveis, ${body.quantidade} ${produto.unidadeMedida} solicitados.`,
+          error: `Estoque insuficiente em ${local.nome}: ${saldoLocal} ${produto.unidadeMedida} disponíveis, ${body.quantidade} ${produto.unidadeMedida} solicitados.`,
         },
         { status: 400 }
       )
@@ -82,11 +95,17 @@ export async function POST(request: NextRequest) {
           safraId: body.safraId || null,
           observacao: body.observacao || null,
           registradoPorId: session.user.id as string,
+          localId: body.localId,
         },
       }),
       prisma.produto.update({
         where: { id: body.produtoId },
         data: { quantidadeEstoque: { decrement: body.quantidade } },
+      }),
+      prisma.estoqueLocal.upsert({
+        where: { produtoId_localId: { produtoId: body.produtoId, localId: body.localId } },
+        create: { produtoId: body.produtoId, localId: body.localId, quantidade: 0 },
+        update: { quantidade: { decrement: body.quantidade } },
       }),
     ])
 
