@@ -453,7 +453,7 @@ export default function TurmasPage() {
                                         <p className="text-3xl font-bold text-primary mt-2">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                 </div>
                                 <div className="card">
-                                        <p className="text-gray-600 text-sm">Total de Pessoas do Periodo Filtrado</p>
+                                        <p className="text-gray-600 text-sm">Total de Diárias do Periodo Filtrado</p>
                                         <p className="text-3xl font-bold text-primary mt-2">{totalPessoas % 1 === 0 ? totalPessoas : totalPessoas.toFixed(1)}</p>
                                 </div>
                         </div>
