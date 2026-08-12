@@ -273,9 +273,35 @@ model Produto {
   ajustesEstoque     AjusteEstoque[]
   entradas           EntradaProduto[]
   aplicacaoInsumoItens AplicacaoInsumoItem[]
+  estoqueLocais EstoqueLocal[]
 
   @@map("produtos")
 }
+
+model Local {
+  id        String   @id @default(cuid())
+  nome      String   @unique
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  estoques  EstoqueLocal[]
+
+  @@map("locais")
+}
+
+model EstoqueLocal {
+  id         String   @id @default(cuid())
+  produto    Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId  String
+  local      Local    @relation(fields: [localId], references: [id])
+  localId    String
+  quantidade Float    @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([produtoId, localId])
+  @@index([produtoId])
+  @@map("estoque_locais")
+}
+
 model SaidaProduto {
   id              String   @id @default(cuid())
   produto         Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)

@@ -20,6 +20,7 @@ import {
   UserPlus,
   Warehouse,
   Droplet,
+  MapPin,
 } from 'lucide-react'
 
 const menuItems = [
@@ -38,6 +39,7 @@ const menuItems = [
   { label: 'Turmas (Cadastro)', href: '/modules/turmas-cadastro', icon: Users, role: 'GESTOR|GERENTE' },
   { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR|GERENTE' },
   { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Locais', href: '/modules/locais', icon: MapPin, excludeRoles: 'FUNCIONARIO' },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Meus Relatórios', href: '/modules/meus-relatorios', icon: BarChart3, role: 'FUNCIONARIO' },
   { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO' },
