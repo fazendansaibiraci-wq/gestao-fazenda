@@ -276,11 +276,17 @@ export default function AtividadesPage() {
     return resultado
   }, [atividades, filtroFuncionario, filtroTalhao, filtroTipoAtividade, filtroMaquina])
 
-  // Soma as horas líquidas (horasCalculadas, já com desconto de almoço
-  // aplicado no servidor) de tudo que está sendo exibido com os
-  // filtros atuais. Faltas não têm horário e não entram na soma.
+  // Soma o Tempo Bruto (diferença crua horaSaida - horaEntrada, sem
+  // desconto de almoço) de tudo que está sendo exibido com os filtros
+  // atuais — mesma calcularHorasBrutas já usada na linha de detalhes
+  // expandidos de cada registro. Faltas e registros sem horaSaida
+  // (atividade em andamento) não têm horário e não entram na soma.
   const totalHorasFiltradas = useMemo(
-    () => atividadesFiltradas.reduce((acc, a) => acc + (a.isFalta ? 0 : (a.horasCalculadas ?? 0)), 0),
+    () =>
+      atividadesFiltradas.reduce(
+        (acc, a) => acc + (!a.isFalta && a.horaSaida ? calcularHorasBrutas(a.horaEntrada, a.horaSaida) : 0),
+        0
+      ),
     [atividadesFiltradas]
   )
 
