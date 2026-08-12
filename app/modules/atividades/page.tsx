@@ -276,6 +276,14 @@ export default function AtividadesPage() {
     return resultado
   }, [atividades, filtroFuncionario, filtroTalhao, filtroTipoAtividade, filtroMaquina])
 
+  // Soma as horas líquidas (horasCalculadas, já com desconto de almoço
+  // aplicado no servidor) de tudo que está sendo exibido com os
+  // filtros atuais. Faltas não têm horário e não entram na soma.
+  const totalHorasFiltradas = useMemo(
+    () => atividadesFiltradas.reduce((acc, a) => acc + (a.isFalta ? 0 : (a.horasCalculadas ?? 0)), 0),
+    [atividadesFiltradas]
+  )
+
   const meuAlertaAusencia = useMemo(
     () => alertasAusencia.find((a) => a.funcionarioId === userId) || null,
     [alertasAusencia, userId]
@@ -666,6 +674,14 @@ export default function AtividadesPage() {
               ))
             )}
           </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-300 font-semibold bg-gray-50">
+              <td colSpan={3} className="px-4 py-3 text-gray-700">
+                Total: {formatarHoras(totalHorasFiltradas)}
+              </td>
+              <td colSpan={isGestor ? 5 : 4}></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
       </div>
