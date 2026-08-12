@@ -1186,7 +1186,7 @@ model AplicacaoInsumoItem {
 
   data DateTime
 
-  numAplicacao Int @default(1)
+  numAplicacao String @default("1")
 
   safra   Safra  @relation(fields: [safraId], references: [id])
   safraId String

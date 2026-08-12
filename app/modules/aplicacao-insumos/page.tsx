@@ -23,7 +23,7 @@ interface Item {
   totalQtd: number
   valorTotal: number
   data: string
-  numAplicacao: number
+  numAplicacao: string
   registradoPor: { id: string; name: string }
 }
 
@@ -205,7 +205,7 @@ export default function AplicacaoInsumosPage() {
             numBombas: parseFloat(t.numBombas),
             totalQtd,
             data: t.data,
-            numAplicacao: parseInt(numAplicacao) || 1,
+            numAplicacao: String(numAplicacao || '1').trim(),
           })
         }
       }
@@ -221,7 +221,7 @@ export default function AplicacaoInsumosPage() {
         numBombas: null,
         totalQtd: parseFloat(l.quantidade),
         data: l.data,
-        numAplicacao: parseInt(numAplicacao) || 1,
+        numAplicacao: String(numAplicacao || '1').trim(),
       }))
     }
 
@@ -283,7 +283,7 @@ export default function AplicacaoInsumosPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Nº da Aplicação</label>
-              <input type="number" min="1" value={numAplicacao} onChange={e => setNumAplicacao(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <input type="text" value={numAplicacao} onChange={e => setNumAplicacao(e.target.value)} placeholder="Ex: 1, 2ª, reforço..." className="w-full border rounded-lg px-3 py-2 text-sm" />
             </div>
           </div>
 

@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
             totalQtd,
             valorTotal: totalQtd * produto.valorUnitario,
             data: new Date(item.data),
-            numAplicacao: item.numAplicacao ? parseInt(item.numAplicacao) : 1,
+            numAplicacao: item.numAplicacao ? String(item.numAplicacao).trim() : '1',
             safraId: item.safraId,
             observacao: item.observacao || null,
             registradoPorId: session.user?.id as string,
