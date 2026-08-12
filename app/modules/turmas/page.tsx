@@ -251,6 +251,11 @@ export default function TurmasPage() {
   }
 
   const custoTotal = diarias.reduce((acc, d) => acc + (d.valorTotal || 0), 0)
+  // Arredonda pra 1 casa antes de checar se é inteiro, pra evitar
+  // artefato de ponto flutuante (ex: 8.5 + 8.5 podendo virar
+  // 17.000000000000002) na soma de valores fracionados.
+  const totalPessoasRaw = diarias.reduce((acc, d) => acc + (d.quantidadePessoas || 0), 0)
+  const totalPessoas = Math.round(totalPessoasRaw * 10) / 10
 
   if (status === 'loading' || loading) {
         return <div className="flex items-center justify-center h-64"><div className="spinner"></div></div>
@@ -442,9 +447,15 @@ export default function TurmasPage() {
                                 </table>
                         </div>
 
-                        <div className="card">
-                                <p className="text-gray-600 text-sm">Custo Total do Periodo Filtrado</p>
-                                <p className="text-3xl font-bold text-primary mt-2">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="card">
+                                        <p className="text-gray-600 text-sm">Custo Total do Periodo Filtrado</p>
+                                        <p className="text-3xl font-bold text-primary mt-2">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                </div>
+                                <div className="card">
+                                        <p className="text-gray-600 text-sm">Total de Pessoas do Periodo Filtrado</p>
+                                        <p className="text-3xl font-bold text-primary mt-2">{totalPessoas % 1 === 0 ? totalPessoas : totalPessoas.toFixed(1)}</p>
+                                </div>
                         </div>
                   </div>
                 )
