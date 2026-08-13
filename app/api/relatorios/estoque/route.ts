@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
           talhao: { select: { nome: true } },
           safra: { select: { nome: true } },
           registradoPor: { select: { name: true } },
+          local: { select: { nome: true } },
         },
       }),
       prisma.ajusteEstoque.findMany({
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
         include: {
           produto: { select: { nomeComercial: true, unidadeMedida: true } },
           registradoPor: { select: { name: true } },
+          local: { select: { nome: true } },
         },
       }),
       prisma.produto.findMany({
@@ -64,6 +66,7 @@ export async function GET(request: NextRequest) {
         safra: null as string | null,
         registradoPor: e.fornecedor || null,
         observacao: e.nf ? `NF ${e.nf}` : null,
+        local: '—',
       })),
       ...entradasNovas.map((e) => ({
         data: e.data,
@@ -75,6 +78,7 @@ export async function GET(request: NextRequest) {
         safra: null as string | null,
         registradoPor: e.fornecedor || null,
         observacao: e.numeroNota ? `NF ${e.numeroNota}` : null,
+        local: '—',
       })),
       ...saidas.map((s) => ({
         data: s.data,
@@ -86,6 +90,7 @@ export async function GET(request: NextRequest) {
         safra: s.safra?.nome || null,
         registradoPor: s.registradoPor?.name || null,
         observacao: s.observacao || null,
+        local: s.local?.nome || '—',
       })),
       ...ajustes.map((a) => ({
         data: a.data,
@@ -97,6 +102,7 @@ export async function GET(request: NextRequest) {
         safra: null as string | null,
         registradoPor: a.registradoPor?.name || null,
         observacao: a.observacao || null,
+        local: a.local?.nome || '—',
       })),
     ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
 

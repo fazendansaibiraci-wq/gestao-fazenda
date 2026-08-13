@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { redirect } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Search, AlertTriangle, FileSpreadsheet, FileText } from 'lucide-react'
+import { Search, AlertTriangle, FileSpreadsheet, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { RegistrarSaidaProduto } from '@/components/RegistrarSaidaProduto'
 import { AjustarEstoque } from '@/components/AjustarEstoque'
 import { ImportarNFeEstoque } from '@/components/ImportarNFeEstoque'
@@ -15,6 +15,7 @@ export default function EstoquePage() {
   const [busca, setBusca] = useState('')
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [exportando, setExportando] = useState(false)
+  const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
@@ -53,6 +54,18 @@ export default function EstoquePage() {
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
+    })
+  }
+
+  const toggleExpandir = (id: string) => {
+    setExpandidos((prev) => {
+      const novo = new Set(prev)
+      if (novo.has(id)) {
+        novo.delete(id)
+      } else {
+        novo.add(id)
+      }
+      return novo
     })
   }
 
@@ -250,6 +263,7 @@ export default function EstoquePage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
+              <th className="px-4 py-3 text-left w-10"></th>
               <th className="px-4 py-3 text-left w-10">
                 <input
                   type="checkbox"
@@ -268,13 +282,25 @@ export default function EstoquePage() {
           <tbody>
             {produtosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">Nenhum produto encontrado</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">Nenhum produto encontrado</td>
               </tr>
             ) : (
               produtosFiltrados
                 .sort((a, b) => a.nomeComercial.localeCompare(b.nomeComercial))
-                .map((p) => (
-                  <tr key={p.id} className={`border-b hover:bg-gray-50 ${estoqueAbaixoMinimo(p) ? 'bg-amber-50' : ''}`}>
+                .map((p) => {
+                  const locaisComSaldo = (p.estoqueLocais || []).filter((e: any) => e.quantidade > 0)
+                  return (
+                  <Fragment key={p.id}>
+                  <tr className={`border-b hover:bg-gray-50 ${estoqueAbaixoMinimo(p) ? 'bg-amber-50' : ''}`}>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => toggleExpandir(p.id)}
+                        className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors"
+                        title={expandidos.has(p.id) ? 'Recolher detalhes' : 'Ver saldo por local'}
+                      >
+                        {expandidos.has(p.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </td>
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
@@ -298,7 +324,29 @@ export default function EstoquePage() {
                       R$ {((p.quantidadeEstoque || 0) * (p.valorUnitario || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
-                ))
+                  {expandidos.has(p.id) && (
+                    <tr className="border-b bg-gray-50">
+                      <td colSpan={7} className="px-4 py-4">
+                        {locaisComSaldo.length === 0 ? (
+                          <p className="text-xs text-gray-500">Sem estoque em nenhum local</p>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-gray-600">
+                            {locaisComSaldo.map((e: any) => (
+                              <div key={e.localId}>
+                                <span className="block text-gray-400">{e.local?.nome}</span>
+                                <span className="font-medium text-gray-700">
+                                  {e.quantidade.toLocaleString('pt-BR')} {p.unidadeMedida}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
+                  )
+                })
             )}
           </tbody>
         </table>

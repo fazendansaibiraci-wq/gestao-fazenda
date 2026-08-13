@@ -29,7 +29,7 @@ export default function RelatoriosPage() {
   const [custoHHHM, setCustoHHHM] = useState<{ talhaoId: string; nomeTalhao: string; custoHHPorHa: number | null; custoHMPorHa: number | null; horasTurma?: number; custoTurmasPorHa?: number | null }[]>([])
   const [estoqueRelatorio, setEstoqueRelatorio] = useState<{
     resumoPorProduto: { nome: string; categoria: string; unidade: string; quantidadeEstoque: number; valorUnitario: number; valorEmEstoque: number }[]
-    movimentacoes: { data: string; tipo: 'entrada' | 'saida' | 'ajuste'; produto: string; unidade: string; quantidade: number; talhao: string | null; safra: string | null; registradoPor: string | null; observacao: string | null }[]
+    movimentacoes: { data: string; tipo: 'entrada' | 'saida' | 'ajuste'; produto: string; unidade: string; quantidade: number; talhao: string | null; safra: string | null; registradoPor: string | null; observacao: string | null; local: string }[]
   }>({ resumoPorProduto: [], movimentacoes: [] })
 
   const [filtros, setFiltros] = useState({
@@ -349,11 +349,12 @@ export default function RelatoriosPage() {
             },
             {
               nome: 'Movimentações',
-              colunas: ['Data', 'Tipo', 'Produto', 'Quantidade', 'Talhão', 'Registrado por'],
+              colunas: ['Data', 'Tipo', 'Produto', 'Local', 'Quantidade', 'Talhão', 'Registrado por'],
               linhas: estoqueRelatorio.movimentacoes.map(m => [
                 new Date(m.data).toLocaleDateString('pt-BR'),
                 m.tipo === 'entrada' ? 'Entrada' : m.tipo === 'saida' ? 'Saída' : 'Ajuste',
                 m.produto,
+                m.local,
                 `${m.quantidade > 0 && m.tipo === 'ajuste' ? '+' : ''}${m.quantidade.toLocaleString('pt-BR')} ${m.unidade}`,
                 m.talhao || '-',
                 m.registradoPor || '-',
@@ -995,6 +996,7 @@ export default function RelatoriosPage() {
                           <th className="text-left py-2 px-3 text-gray-600">Data</th>
                           <th className="text-left py-2 px-3 text-gray-600">Tipo</th>
                           <th className="text-left py-2 px-3 text-gray-600">Produto</th>
+                          <th className="text-left py-2 px-3 text-gray-600">Local</th>
                           <th className="text-left py-2 px-3 text-gray-600">Quantidade</th>
                           <th className="text-left py-2 px-3 text-gray-600">Talhão</th>
                           <th className="text-left py-2 px-3 text-gray-600">Responsável</th>
@@ -1015,6 +1017,7 @@ export default function RelatoriosPage() {
                               </span>
                             </td>
                             <td className="py-2 px-3 font-medium">{m.produto}</td>
+                            <td className="py-2 px-3">{m.local}</td>
                             <td className="py-2 px-3">{m.quantidade} {m.unidade}</td>
                             <td className="py-2 px-3">{m.talhao || '-'}</td>
                             <td className="py-2 px-3">{m.registradoPor || '-'}</td>
