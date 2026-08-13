@@ -43,7 +43,7 @@ export default function AplicacaoInsumosPage() {
   const { status } = useSession()
   const router = useRouter()
 
-  const [aba, setAba] = useState<'novo' | 'historico'>('novo')
+  const [aba, setAba] = useState<'novo' | 'historico' | 'subtotal'>('novo')
 
   const [talhoes, setTalhoes] = useState<Talhao[]>([])
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -260,6 +260,7 @@ export default function AplicacaoInsumosPage() {
       <div className="flex gap-2 mb-6 border-b">
         <button onClick={() => setAba('novo')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'novo' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Novo Lançamento</button>
         <button onClick={() => setAba('historico')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'historico' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Histórico</button>
+        <button onClick={() => setAba('subtotal')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'subtotal' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Subtotal por Talhão</button>
       </div>
 
       {aba === 'novo' ? (
@@ -492,8 +493,10 @@ export default function AplicacaoInsumosPage() {
             <button type="submit" disabled={salvando} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm">{salvando ? 'Salvando...' : 'Salvar lançamentos'}</button>
           </div>
         </form>
-      ) : (
+      ) : aba === 'historico' ? (
         <Historico talhoes={talhoes} produtos={produtos} safras={safras} />
+      ) : (
+        <SubtotalTalhao talhoes={talhoes} safras={safras} />
       )}
 
       {/* Mini Modal Novo Produto */}
@@ -730,42 +733,115 @@ function Historico({ talhoes, produtos, safras }: { talhoes: Talhao[]; produtos:
               </tbody>
             </table>
           </div>
-
-          <div className="bg-white rounded-xl border p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium mb-2">Subtotal por talhão</p>
-              <ul className="text-sm space-y-1">
-                {subtotaisPorTalhao.map((s, i) => (
-                  <li key={i} className="flex justify-between items-baseline">
-                    <span>{s.nome} ({s.qtdItens})</span>
-                    <span className="text-right">
-                      R$ {s.totalValor.toFixed(2)}
-                      {s.area && s.area > 0 && (
-                        <span className="text-xs text-gray-500 ml-2">
-                          (R$ {(s.totalValor / s.area).toFixed(2)}/ha)
-                        </span>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex flex-col items-end justify-end">
-              <p className="text-xs text-gray-500">Total geral</p>
-              <p className="text-xl font-bold">R$ {totalGeral.toFixed(2)}</p>
-              {totalAreaGeral > 0 && (
-                <>
-                  <p className="text-sm font-semibold text-green-700 mt-1">
-                    R$ {(totalGeral / totalAreaGeral).toFixed(2)}/ha
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {totalAreaGeral.toFixed(2)} ha ao todo
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
         </>
+      )}
+    </div>
+  )
+}
+
+
+function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[] }) {
+  const [itens, setItens] = useState<Item[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filtroSafra, setFiltroSafra] = useState('')
+  const [filtroTalhao, setFiltroTalhao] = useState('')
+  const [filtroAtividade, setFiltroAtividade] = useState('')
+  const [dataInicio, setDataInicio] = useState('')
+  const [dataFim, setDataFim] = useState('')
+
+  useEffect(() => { carregar() }, [filtroSafra, filtroTalhao, filtroAtividade, dataInicio, dataFim])
+
+  async function carregar() {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (filtroSafra) params.set('safraId', filtroSafra)
+      if (filtroTalhao) params.set('talhaoId', filtroTalhao)
+      if (filtroAtividade) params.set('atividade', filtroAtividade)
+      if (dataInicio) params.set('dataInicio', dataInicio)
+      if (dataFim) params.set('dataFim', dataFim)
+      const r = await fetch('/api/aplicacao-insumo?' + params.toString())
+      const d = await r.json()
+      setItens(d.data || [])
+    } catch {
+      setItens([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const subtotaisPorTalhao = useMemo(() => {
+    const map = new Map<string, { nome: string; area: number | null; totalValor: number; qtdItens: number }>()
+    for (const it of itens) {
+      const atual = map.get(it.talhaoId) || { nome: it.talhao?.nome || '-', area: it.talhao?.area ?? null, totalValor: 0, qtdItens: 0 }
+      atual.totalValor += it.valorTotal
+      atual.qtdItens += 1
+      map.set(it.talhaoId, atual)
+    }
+    return Array.from(map.values())
+  }, [itens])
+
+  const totalGeral = itens.reduce((s, i) => s + i.valorTotal, 0)
+  const totalAreaGeral = subtotaisPorTalhao.reduce((s, t) => s + (t.area || 0), 0)
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-xl border p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
+        <select value={filtroSafra} onChange={e => setFiltroSafra(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
+          <option value="">Todas as safras</option>
+          {safras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+        </select>
+        <select value={filtroTalhao} onChange={e => setFiltroTalhao(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
+          <option value="">Todos os talhões</option>
+          {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+        </select>
+        <select value={filtroAtividade} onChange={e => setFiltroAtividade(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
+          <option value="">Todas as atividades</option>
+          {Object.entries(ATIVIDADE_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+        <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="border rounded-lg px-3 py-2 text-sm" />
+        <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="border rounded-lg px-3 py-2 text-sm" />
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8 text-gray-400">Carregando...</div>
+      ) : itens.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">Nenhum lançamento encontrado</div>
+      ) : (
+        <div className="bg-white rounded-xl border p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm font-medium mb-2">Subtotal por talhão</p>
+            <ul className="text-sm space-y-1">
+              {subtotaisPorTalhao.map((s, i) => (
+                <li key={i} className="flex justify-between items-baseline">
+                  <span>{s.nome} ({s.qtdItens})</span>
+                  <span className="text-right">
+                    R$ {s.totalValor.toFixed(2)}
+                    {s.area && s.area > 0 && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        (R$ {(s.totalValor / s.area).toFixed(2)}/ha)
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex flex-col items-end justify-end">
+            <p className="text-xs text-gray-500">Total geral</p>
+            <p className="text-xl font-bold">R$ {totalGeral.toFixed(2)}</p>
+            {totalAreaGeral > 0 && (
+              <>
+                <p className="text-sm font-semibold text-green-700 mt-1">
+                  R$ {(totalGeral / totalAreaGeral).toFixed(2)}/ha
+                </p>
+                <p className="text-xs text-gray-400">
+                  {totalAreaGeral.toFixed(2)} ha ao todo
+                </p>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
