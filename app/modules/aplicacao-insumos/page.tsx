@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
@@ -591,9 +591,9 @@ function Historico({ talhoes, produtos, safras }: { talhoes: Talhao[]; produtos:
   }
 
   const subtotaisPorTalhao = useMemo(() => {
-    const map = new Map<string, { nome: string; totalValor: number; qtdItens: number }>()
+    const map = new Map<string, { nome: string; area: number | null; totalValor: number; qtdItens: number }>()
     for (const it of itens) {
-      const atual = map.get(it.talhaoId) || { nome: it.talhao?.nome || '-', totalValor: 0, qtdItens: 0 }
+      const atual = map.get(it.talhaoId) || { nome: it.talhao?.nome || '-', area: it.talhao?.area ?? null, totalValor: 0, qtdItens: 0 }
       atual.totalValor += it.valorTotal
       atual.qtdItens += 1
       map.set(it.talhaoId, atual)
@@ -735,7 +735,17 @@ function Historico({ talhoes, produtos, safras }: { talhoes: Talhao[]; produtos:
               <p className="text-sm font-medium mb-2">Subtotal por talhão</p>
               <ul className="text-sm space-y-1">
                 {subtotaisPorTalhao.map((s, i) => (
-                  <li key={i} className="flex justify-between"><span>{s.nome} ({s.qtdItens})</span><span>R$ {s.totalValor.toFixed(2)}</span></li>
+                  <li key={i} className="flex justify-between items-baseline">
+                    <span>{s.nome} ({s.qtdItens})</span>
+                    <span className="text-right">
+                      R$ {s.totalValor.toFixed(2)}
+                      {s.area && s.area > 0 && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          (R$ {(s.totalValor / s.area).toFixed(2)}/ha)
+                        </span>
+                      )}
+                    </span>
+                  </li>
                 ))}
               </ul>
             </div>
