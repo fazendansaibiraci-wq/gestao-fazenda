@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { redirect } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Trash2, Search } from 'lucide-react'
-import { ImportarEstoqueIdeagri } from '@/components/ImportarEstoqueIdeagri'
 
 export default function ProdutosPage() {
   const { data: session, status } = useSession()
@@ -84,10 +83,6 @@ export default function ProdutosPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-primary">Produtos e Insumos</h1>
-
-      {isGestor && (
-        <ImportarEstoqueIdeagri onImportado={load} />
-      )}
 
       {/* Formulário — apenas Gestor/Gerente */}
       {isGestor && (

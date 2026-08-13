@@ -7,9 +7,16 @@ import { Search, AlertTriangle, FileSpreadsheet, FileText, ChevronDown, ChevronU
 import { RegistrarSaidaProduto } from '@/components/RegistrarSaidaProduto'
 import { AjustarEstoque } from '@/components/AjustarEstoque'
 import { ImportarNFeEstoque } from '@/components/ImportarNFeEstoque'
+import { ImportarEstoqueIdeagri } from '@/components/ImportarEstoqueIdeagri'
 
 export default function EstoquePage() {
-  const { status } = useSession()
+  const { data: session, status } = useSession()
+  // ImportarEstoqueIdeagri não faz esse controle internamente (ao
+  // contrário de AjustarEstoque/ImportarNFeEstoque) — quem chamava
+  // antes (Cadastro de Produtos) fazia essa checagem na hora de
+  // renderizar, então replicamos aqui pra manter o mesmo acesso
+  // restrito a Gestor/Gerente.
+  const isGestor = ['GESTOR', 'GERENTE'].includes((session?.user as any)?.role || '')
   const [produtos, setProdutos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
@@ -287,6 +294,7 @@ export default function EstoquePage() {
       <RegistrarSaidaProduto produtos={produtos} onAtualizado={load} />
       <AjustarEstoque produtos={produtos} onAtualizado={load} />
       <ImportarNFeEstoque onImportado={load} />
+      {isGestor && <ImportarEstoqueIdeagri onImportado={load} />}
 
       <div className="card">
         <div className="flex flex-col sm:flex-row gap-3">
