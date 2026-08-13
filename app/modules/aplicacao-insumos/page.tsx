@@ -754,9 +754,14 @@ function Historico({ talhoes, produtos, safras }: { talhoes: Talhao[]; produtos:
               <p className="text-xs text-gray-500">Total geral</p>
               <p className="text-xl font-bold">R$ {totalGeral.toFixed(2)}</p>
               {totalAreaGeral > 0 && (
-                <p className="text-sm font-semibold text-green-700 mt-1">
-                  R$ {(totalGeral / totalAreaGeral).toFixed(2)}/ha
-                </p>
+                <>
+                  <p className="text-sm font-semibold text-green-700 mt-1">
+                    R$ {(totalGeral / totalAreaGeral).toFixed(2)}/ha
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {totalAreaGeral.toFixed(2)} ha ao todo
+                  </p>
+                </>
               )}
             </div>
           </div>
