@@ -768,7 +768,8 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
   }, [itens])
 
   const totalGeral = itens.reduce((s, i) => s + i.valorTotal, 0)
-  const totalAreaGeral = subtotaisPorTalhao.reduce((s, t) => s + (t.area || 0), 0)
+  const talhoesParaArea = filtroTalhao ? talhoes.filter(t => t.id === filtroTalhao) : talhoes
+  const totalAreaGeral = talhoesParaArea.reduce((s, t) => s + (t.area || 0), 0)
   const formatBRL = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
