@@ -841,6 +841,16 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="bg-green-50 border-t-2 border-green-200 font-semibold">
+                    <td className="py-2.5 px-4 text-green-900">Total</td>
+                    <td className="py-2.5 px-4 text-right text-green-900">{itens.length}</td>
+                    <td className="py-2.5 px-4 text-right text-green-900">R$ {totalGeral.toFixed(2)}</td>
+                    <td className="py-2.5 px-4 text-right text-green-900">
+                      {totalAreaGeral > 0 ? ("R$ " + (totalGeral / totalAreaGeral).toFixed(2)) : "-"}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
