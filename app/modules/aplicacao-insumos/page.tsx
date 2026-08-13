@@ -602,6 +602,7 @@ function Historico({ talhoes, produtos, safras }: { talhoes: Talhao[]; produtos:
   }, [itens])
 
   const totalGeral = itens.reduce((s, i) => s + i.valorTotal, 0)
+  const totalAreaGeral = subtotaisPorTalhao.reduce((s, t) => s + (t.area || 0), 0)
 
   async function exportarExcel() {
     setExportando(true)
@@ -752,6 +753,11 @@ function Historico({ talhoes, produtos, safras }: { talhoes: Talhao[]; produtos:
             <div className="flex flex-col items-end justify-end">
               <p className="text-xs text-gray-500">Total geral</p>
               <p className="text-xl font-bold">R$ {totalGeral.toFixed(2)}</p>
+              {totalAreaGeral > 0 && (
+                <p className="text-sm font-semibold text-green-700 mt-1">
+                  R$ {(totalGeral / totalAreaGeral).toFixed(2)}/ha
+                </p>
+              )}
             </div>
           </div>
         </>
