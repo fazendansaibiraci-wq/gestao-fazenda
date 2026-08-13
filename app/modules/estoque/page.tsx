@@ -16,10 +16,18 @@ export default function EstoquePage() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [exportando, setExportando] = useState(false)
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
+  const [locais, setLocais] = useState<any[]>([])
+  const [localIdFiltro, setLocalIdFiltro] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
-    if (status === 'authenticated') load()
+    if (status === 'authenticated') {
+      load()
+      fetch('/api/locais')
+        .then((r) => r.json())
+        .then((d) => setLocais((d.data || []).filter((l: any) => l.status)))
+        .catch(() => {})
+    }
   }, [status])
 
   const load = async () => {
@@ -34,17 +42,38 @@ export default function EstoquePage() {
     }
   }
 
-  const produtosFiltrados = produtos.filter((p) =>
-    p.nomeComercial.toLowerCase().includes(busca.toLowerCase()) ||
-    p.categoria.toLowerCase().includes(busca.toLowerCase())
-  )
+  // Quantidade "efetiva" de um produto: o saldo no local filtrado (0 se
+  // não tiver entrada nesse local), ou o total do produto quando
+  // "Todos os locais" estiver selecionado.
+  const getQuantidadeEfetiva = (p: any) => {
+    if (!localIdFiltro) return p.quantidadeEstoque || 0
+    const entrada = (p.estoqueLocais || []).find((e: any) => e.localId === localIdFiltro)
+    return entrada?.quantidade || 0
+  }
+
+  const produtosFiltrados = produtos.filter((p) => {
+    const buscaOk =
+      p.nomeComercial.toLowerCase().includes(busca.toLowerCase()) ||
+      p.categoria.toLowerCase().includes(busca.toLowerCase())
+    if (!buscaOk) return false
+    // Com um local específico selecionado, esconde produto sem saldo
+    // nesse local — senão a lista mostraria zerado pra quase tudo.
+    if (localIdFiltro) return getQuantidadeEfetiva(p) > 0
+    return true
+  })
 
   const valorTotalEstoque = produtosFiltrados.reduce(
-    (acc, p) => acc + (p.quantidadeEstoque || 0) * (p.valorUnitario || 0),
+    (acc, p) => acc + getQuantidadeEfetiva(p) * (p.valorUnitario || 0),
     0
   )
 
-  const estoqueAbaixoMinimo = (p: any) => p.estoqueMinimo > 0 && p.quantidadeEstoque <= p.estoqueMinimo
+  // estoqueMinimo é um valor único do produto (não por local) — o
+  // alerta só faz sentido olhando o total, então fica desligado quando
+  // a visão está filtrada por local específico.
+  const estoqueAbaixoMinimo = (p: any) =>
+    !localIdFiltro && p.estoqueMinimo > 0 && p.quantidadeEstoque <= p.estoqueMinimo
+
+  const localSelecionadoNome = locais.find((l) => l.id === localIdFiltro)?.nome || ''
 
   const todosSelecionados = produtosFiltrados.length > 0 && produtosFiltrados.every((p) => selecionados.has(p.id))
 
@@ -88,15 +117,22 @@ export default function EstoquePage() {
     const colunas = ['Nome', 'Categoria', 'Quantidade', 'Valor Unitário', 'Valor em Estoque']
     const linhas = getProdutosParaExportar()
       .sort((a, b) => a.nomeComercial.localeCompare(b.nomeComercial))
-      .map((p) => [
-        p.nomeComercial,
-        p.categoria,
-        `${(p.quantidadeEstoque || 0).toLocaleString('pt-BR')} ${p.unidadeMedida}`,
-        `R$ ${(p.valorUnitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        `R$ ${((p.quantidadeEstoque || 0) * (p.valorUnitario || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      ])
+      .map((p) => {
+        const quantidade = getQuantidadeEfetiva(p)
+        return [
+          p.nomeComercial,
+          p.categoria,
+          `${quantidade.toLocaleString('pt-BR')} ${p.unidadeMedida}`,
+          `R$ ${(p.valorUnitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          `R$ ${(quantidade * (p.valorUnitario || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        ]
+      })
     return { colunas, linhas }
   }
+
+  // Sufixo pro nome do arquivo exportado, com o local filtrado (se
+  // houver) — ex: "estoque_Bolsa_2026-08-13.xlsx".
+  const sufixoArquivoLocal = localSelecionadoNome ? `_${localSelecionadoNome.replace(/\s+/g, '-')}` : ''
 
   // ─── Exportar Excel ───────────────────────────────────────────────────────
 
@@ -147,7 +183,7 @@ export default function EstoquePage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `estoque_${new Date().toISOString().split('T')[0]}.xlsx`
+      a.download = `estoque${sufixoArquivoLocal}_${new Date().toISOString().split('T')[0]}.xlsx`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -173,7 +209,7 @@ export default function EstoquePage() {
       // Título
       doc.setFontSize(16)
       doc.setTextColor(45, 106, 79)
-      doc.text('Gestão Fazenda — Estoque', 14, 16)
+      doc.text(`Gestão Fazenda — Estoque${localSelecionadoNome ? ` — ${localSelecionadoNome}` : ''}`, 14, 16)
 
       doc.setFontSize(11)
       doc.setTextColor(100)
@@ -195,7 +231,7 @@ export default function EstoquePage() {
         margin: { left: 14, right: 14 },
       })
 
-      doc.save(`estoque_${new Date().toISOString().split('T')[0]}.pdf`)
+      doc.save(`estoque${sufixoArquivoLocal}_${new Date().toISOString().split('T')[0]}.pdf`)
     } catch (err) {
       console.error(err)
       alert('Erro ao exportar PDF')
@@ -223,15 +259,27 @@ export default function EstoquePage() {
       <ImportarNFeEstoque onImportado={load} />
 
       <div className="card">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Pesquisar produto por nome ou categoria..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-full border rounded-lg pl-10 pr-4 py-2"
-          />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Pesquisar produto por nome ou categoria..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="w-full border rounded-lg pl-10 pr-4 py-2"
+            />
+          </div>
+          <select
+            value={localIdFiltro}
+            onChange={(e) => setLocalIdFiltro(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm sm:w-56"
+          >
+            <option value="">Todos os locais</option>
+            {locais.map((l) => (
+              <option key={l.id} value={l.id}>{l.nome}</option>
+            ))}
+          </select>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
           <p className="text-sm text-gray-500">
@@ -289,6 +337,7 @@ export default function EstoquePage() {
                 .sort((a, b) => a.nomeComercial.localeCompare(b.nomeComercial))
                 .map((p) => {
                   const locaisComSaldo = (p.estoqueLocais || []).filter((e: any) => e.quantidade > 0)
+                  const quantidadeEfetiva = getQuantidadeEfetiva(p)
                   return (
                   <Fragment key={p.id}>
                   <tr className={`border-b hover:bg-gray-50 ${estoqueAbaixoMinimo(p) ? 'bg-amber-50' : ''}`}>
@@ -318,10 +367,10 @@ export default function EstoquePage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{p.categoria}</td>
-                    <td className="px-4 py-3">{(p.quantidadeEstoque || 0).toLocaleString('pt-BR')} {p.unidadeMedida}</td>
+                    <td className="px-4 py-3">{quantidadeEfetiva.toLocaleString('pt-BR')} {p.unidadeMedida}</td>
                     <td className="px-4 py-3">R$ {(p.valorUnitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td className="px-4 py-3">
-                      R$ {((p.quantidadeEstoque || 0) * (p.valorUnitario || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {(quantidadeEfetiva * (p.valorUnitario || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
                   {expandidos.has(p.id) && (
