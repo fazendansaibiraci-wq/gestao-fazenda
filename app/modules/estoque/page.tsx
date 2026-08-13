@@ -130,8 +130,31 @@ export default function EstoquePage() {
     return { colunas, linhas }
   }
 
+  // Formato matriz (Produto × Local), usado na exportação só quando
+  // "Todos os locais" está selecionado — mesmo modelo que o usuário já
+  // usa numa planilha própria: uma coluna por local cadastrado, mais
+  // Qtd Total. Qtd Total soma p.estoqueLocais em vez de usar
+  // p.quantidadeEstoque direto, pra nunca depender de o total do
+  // produto estar sincronizado com os locais.
+  const getDadosExportacaoMatriz = () => {
+    const colunas = ['Produto', 'Unid.', ...locais.map((l) => l.nome), 'Qtd Total']
+    const linhas = getProdutosParaExportar()
+      .sort((a, b) => a.nomeComercial.localeCompare(b.nomeComercial))
+      .map((p) => {
+        const estoquePorLocal = p.estoqueLocais || []
+        const qtdTotal = estoquePorLocal.reduce((acc: number, e: any) => acc + (e.quantidade || 0), 0)
+        const colunasLocais = locais.map((l) => {
+          const entrada = estoquePorLocal.find((e: any) => e.localId === l.id)
+          return entrada && entrada.quantidade > 0 ? entrada.quantidade.toLocaleString('pt-BR') : '-'
+        })
+        return [p.nomeComercial, p.unidadeMedida, ...colunasLocais, qtdTotal.toLocaleString('pt-BR')]
+      })
+    return { colunas, linhas }
+  }
+
   // Sufixo pro nome do arquivo exportado, com o local filtrado (se
-  // houver) — ex: "estoque_Bolsa_2026-08-13.xlsx".
+  // houver) — ex: "estoque_Bolsa_2026-08-13.xlsx". Vazio com "Todos os
+  // locais" selecionado, como já era antes.
   const sufixoArquivoLocal = localSelecionadoNome ? `_${localSelecionadoNome.replace(/\s+/g, '-')}` : ''
 
   // ─── Exportar Excel ───────────────────────────────────────────────────────
@@ -144,7 +167,10 @@ export default function EstoquePage() {
       wb.creator = 'Gestão Fazenda'
       wb.created = new Date()
 
-      const { colunas, linhas } = getDadosExportacao()
+      // Formato matriz (uma coluna por local) só quando "Todos os locais"
+      // está selecionado; com local específico filtrado, mantém o
+      // formato Nome/Categoria/Quantidade/Valor de sempre.
+      const { colunas, linhas } = localIdFiltro ? getDadosExportacao() : getDadosExportacaoMatriz()
       const ws = wb.addWorksheet('Estoque')
 
       // Cabeçalho
@@ -203,7 +229,8 @@ export default function EstoquePage() {
       const { default: autoTable } = await import('jspdf-autotable')
 
       const doc = new jsPDF({ orientation: 'landscape' })
-      const { colunas, linhas } = getDadosExportacao()
+      const emFormatoMatriz = !localIdFiltro
+      const { colunas, linhas } = emFormatoMatriz ? getDadosExportacaoMatriz() : getDadosExportacao()
       const dataHoje = new Date().toLocaleDateString('pt-BR')
 
       // Título
@@ -215,6 +242,9 @@ export default function EstoquePage() {
       doc.setTextColor(100)
       doc.text(`Gerado em: ${dataHoje}`, 14, 23)
 
+      // O formato matriz pode ter bem mais colunas (Produto + Unid. +
+      // um local cada + Qtd Total) — fonte e padding menores pra
+      // continuar legível em paisagem.
       autoTable(doc, {
         head: [colunas],
         body: linhas,
@@ -223,11 +253,11 @@ export default function EstoquePage() {
           fillColor: [45, 106, 79],
           textColor: 255,
           fontStyle: 'bold',
-          fontSize: 9,
+          fontSize: emFormatoMatriz ? 7 : 9,
         },
-        bodyStyles: { fontSize: 8 },
+        bodyStyles: { fontSize: emFormatoMatriz ? 7 : 8 },
         alternateRowStyles: { fillColor: [240, 247, 244] },
-        styles: { cellPadding: 3 },
+        styles: { cellPadding: emFormatoMatriz ? 2 : 3 },
         margin: { left: 14, right: 14 },
       })
 
