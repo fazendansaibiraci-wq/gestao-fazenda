@@ -42,6 +42,7 @@ export interface ProdutoConsolidadoCSV {
   unidade: string
   valorUnitarioMedio: number
   locais: string[]
+  locaisComQuantidade: { local: string; quantidade: number }[]
 }
 
 export interface ResultadoParseCSV {
@@ -80,7 +81,10 @@ export function parseInventarioIdeagriCSV(csvTexto: string): ResultadoParseCSV {
       categoria: categoria?.trim() || '',
       nome: nome.trim(),
       local: local.trim(),
-      quantidade: parseNumeroBR(quantidadeStr),
+      // Quantidade nunca fica negativa — 2 linhas do relatório real
+      // vieram negativas (ajuste/baixa mal lançada no Ideagri) e isso
+      // não pode virar déficit de estoque no sistema.
+      quantidade: Math.max(0, parseNumeroBR(quantidadeStr)),
       estoqueMinimo: parseNumeroBR(estoqueMinimoStr),
       unidade: unidade?.trim() || '',
       valorTotal: parseNumeroBR(valorTotalStr),
@@ -100,6 +104,13 @@ export function parseInventarioIdeagriCSV(csvTexto: string): ResultadoParseCSV {
     const valorTotalSoma = linhasDoProduto.reduce((acc, l) => acc + l.valorTotal, 0)
     const valorUnitarioMedio = quantidadeTotal !== 0 ? valorTotalSoma / quantidadeTotal : 0
 
+    // Quantidade por local, somando se o mesmo produto+local aparecer
+    // em mais de uma linha do CSV.
+    const quantidadePorLocal = new Map<string, number>()
+    for (const l of linhasDoProduto) {
+      quantidadePorLocal.set(l.local, (quantidadePorLocal.get(l.local) || 0) + l.quantidade)
+    }
+
     return {
       nome: linhasDoProduto[0].nome,
       categoriaSugerida: mapearCategoria(linhasDoProduto[0].categoria),
@@ -107,7 +118,8 @@ export function parseInventarioIdeagriCSV(csvTexto: string): ResultadoParseCSV {
       estoqueMinimoTotal,
       unidade: linhasDoProduto[0].unidade,
       valorUnitarioMedio,
-      locais: Array.from(new Set(linhasDoProduto.map((l) => l.local))),
+      locais: Array.from(quantidadePorLocal.keys()),
+      locaisComQuantidade: Array.from(quantidadePorLocal.entries()).map(([local, quantidade]) => ({ local, quantidade })),
     }
   })
 

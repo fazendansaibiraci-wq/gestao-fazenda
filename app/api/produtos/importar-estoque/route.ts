@@ -39,8 +39,25 @@ export async function POST(request: NextRequest) {
       mapaExistentes.set(p.nomeComercial.trim().toUpperCase(), p)
     }
 
+    const locaisCadastrados = await prisma.local.findMany({ select: { id: true, nome: true } })
+    const mapaLocais = new Map<string, string>()
+    for (const l of locaisCadastrados) {
+      mapaLocais.set(l.nome.trim().toUpperCase(), l.id)
+    }
+
+    // Proteção: se algum nome de local do CSV não bater com nenhum
+    // Local cadastrado, avisamos no response em vez de falhar
+    // silenciosamente — não deveria acontecer, os 7 locais do
+    // relatório real já foram conferidos contra o cadastro.
+    const locaisNaoReconhecidosSet = new Set<string>()
+
     const preview = produtos.map((p) => {
       const existente = mapaExistentes.get(p.nome.trim().toUpperCase())
+      const locaisComQuantidade = p.locaisComQuantidade.map((lq) => {
+        const localId = mapaLocais.get(lq.local.trim().toUpperCase()) || null
+        if (!localId) locaisNaoReconhecidosSet.add(lq.local)
+        return { local: lq.local, localId, quantidade: lq.quantidade }
+      })
       return {
         nome: p.nome,
         categoriaSugerida: p.categoriaSugerida,
@@ -49,6 +66,7 @@ export async function POST(request: NextRequest) {
         unidade: p.unidade,
         valorUnitarioMedio: p.valorUnitarioMedio,
         locais: p.locais,
+        locaisComQuantidade,
         existe: !!existente,
         produtoId: existente?.id || null,
       }
@@ -59,6 +77,7 @@ export async function POST(request: NextRequest) {
       data: {
         produtos: preview,
         linhasNaoReconhecidas: linhasComProblema,
+        locaisNaoReconhecidos: Array.from(locaisNaoReconhecidosSet),
         totalNovos: preview.filter((p) => !p.existe).length,
         totalAtualizacoes: preview.filter((p) => p.existe).length,
       },
