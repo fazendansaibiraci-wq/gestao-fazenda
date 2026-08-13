@@ -808,44 +808,53 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
       ) : itens.length === 0 ? (
         <div className="text-center py-12 text-gray-400">Nenhum lançamento encontrado</div>
       ) : (
-        <div className="bg-white rounded-xl border p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="overflow-x-auto">
-            <p className="text-sm font-medium mb-2">Subtotal por talhão</p>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-gray-500 border-b">
-                  <th className="py-1 pr-2 font-medium">Talhão</th>
-                  <th className="py-1 pr-2 font-medium text-right">Qtd. Lançamentos</th>
-                  <th className="py-1 pr-2 font-medium text-right">Valor Total</th>
-                  <th className="py-1 font-medium text-right">R$/ha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subtotaisPorTalhao.map((s, i) => (
-                  <tr key={i} className="border-b last:border-0">
-                    <td className="py-1.5 pr-2">{s.nome}</td>
-                    <td className="py-1.5 pr-2 text-right text-gray-500">{s.qtdItens}</td>
-                    <td className="py-1.5 pr-2 text-right">R$ {s.totalValor.toFixed(2)}</td>
-                    <td className="py-1.5 text-right text-gray-500">
-                      {s.area && s.area > 0 ? `R$ ${(s.totalValor / s.area).toFixed(2)}` : '-'}
-                    </td>
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700">
+              <p className="text-sm font-semibold text-white">Subtotal por talhão</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+                    <th className="py-2 px-4 font-semibold">Talhão</th>
+                    <th className="py-2 px-4 font-semibold text-right">Qtd. Lançamentos</th>
+                    <th className="py-2 px-4 font-semibold text-right">Valor Total</th>
+                    <th className="py-2 px-4 font-semibold text-right">R$/ha</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {subtotaisPorTalhao.map((s, i) => (
+                    <tr key={i} className={"border-b border-gray-100 last:border-0 hover:bg-green-50 transition-colors " + (i % 2 === 1 ? "bg-gray-50" : "")}>
+                      <td className="py-2.5 px-4 font-medium text-gray-800">{s.nome}</td>
+                      <td className="py-2.5 px-4 text-right text-gray-500">{s.qtdItens}</td>
+                      <td className="py-2.5 px-4 text-right font-medium text-gray-800">R$ {s.totalValor.toFixed(2)}</td>
+                      <td className="py-2.5 px-4 text-right">
+                        {s.area && s.area > 0 ? (
+                          <span className="inline-block bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
+                            R$ {(s.totalValor / s.area).toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="flex flex-col items-end justify-end">
-            <p className="text-xs text-gray-500">Total geral</p>
-            <p className="text-xl font-bold">R$ {totalGeral.toFixed(2)}</p>
+
+          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm text-white">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-green-100">Total geral</p>
+              <p className="text-2xl font-bold">R$ {totalGeral.toFixed(2)}</p>
+            </div>
             {totalAreaGeral > 0 && (
-              <>
-                <p className="text-sm font-semibold text-green-700 mt-1">
-                  R$ {(totalGeral / totalAreaGeral).toFixed(2)}/ha
-                </p>
-                <p className="text-xs text-gray-400">
-                  {totalAreaGeral.toFixed(2)} ha ao todo
-                </p>
-              </>
+              <div className="text-left sm:text-right">
+                <p className="text-lg font-semibold">R$ {(totalGeral / totalAreaGeral).toFixed(2)}/ha</p>
+                <p className="text-xs text-green-100">{totalAreaGeral.toFixed(2)} ha ao todo</p>
+              </div>
             )}
           </div>
         </div>
