@@ -593,20 +593,6 @@ function Historico({ talhoes, produtos, safras }: { talhoes: Talhao[]; produtos:
     setItens(p => p.filter(i => i.id !== id))
   }
 
-  const subtotaisPorTalhao = useMemo(() => {
-    const map = new Map<string, { nome: string; area: number | null; totalValor: number; qtdItens: number }>()
-    for (const it of itens) {
-      const atual = map.get(it.talhaoId) || { nome: it.talhao?.nome || '-', area: it.talhao?.area ?? null, totalValor: 0, qtdItens: 0 }
-      atual.totalValor += it.valorTotal
-      atual.qtdItens += 1
-      map.set(it.talhaoId, atual)
-    }
-    return Array.from(map.values())
-  }, [itens])
-
-  const totalGeral = itens.reduce((s, i) => s + i.valorTotal, 0)
-  const totalAreaGeral = subtotaisPorTalhao.reduce((s, t) => s + (t.area || 0), 0)
-
   async function exportarExcel() {
     setExportando(true)
     try {
@@ -783,6 +769,7 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
 
   const totalGeral = itens.reduce((s, i) => s + i.valorTotal, 0)
   const totalAreaGeral = subtotaisPorTalhao.reduce((s, t) => s + (t.area || 0), 0)
+  const formatBRL = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
     <div className="space-y-4">
@@ -828,11 +815,11 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
                     <tr key={i} className={"border-b border-gray-100 last:border-0 hover:bg-green-50 transition-colors " + (i % 2 === 1 ? "bg-gray-50" : "")}>
                       <td className="py-2.5 px-4 font-medium text-gray-800">{s.nome}</td>
                       <td className="py-2.5 px-4 text-right text-gray-500">{s.qtdItens}</td>
-                      <td className="py-2.5 px-4 text-right font-medium text-gray-800">R$ {s.totalValor.toFixed(2)}</td>
+                      <td className="py-2.5 px-4 text-right font-medium text-gray-800">R$ {formatBRL(s.totalValor)}</td>
                       <td className="py-2.5 px-4 text-right">
                         {s.area && s.area > 0 ? (
                           <span className="inline-block bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">
-                            R$ {(s.totalValor / s.area).toFixed(2)}
+                            R$ {formatBRL(s.totalValor / s.area)}
                           </span>
                         ) : (
                           <span className="text-gray-300">-</span>
@@ -845,9 +832,9 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
                   <tr className="bg-green-50 border-t-2 border-green-200 font-semibold">
                     <td className="py-2.5 px-4 text-green-900">Total</td>
                     <td className="py-2.5 px-4 text-right text-green-900">{itens.length}</td>
-                    <td className="py-2.5 px-4 text-right text-green-900">R$ {totalGeral.toFixed(2)}</td>
+                    <td className="py-2.5 px-4 text-right text-green-900">R$ {formatBRL(totalGeral)}</td>
                     <td className="py-2.5 px-4 text-right text-green-900">
-                      {totalAreaGeral > 0 ? ("R$ " + (totalGeral / totalAreaGeral).toFixed(2)) : "-"}
+                      {totalAreaGeral > 0 ? ("R$ " + formatBRL(totalGeral / totalAreaGeral)) : "-"}
                     </td>
                   </tr>
                 </tfoot>
@@ -858,12 +845,12 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
           <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm text-white">
             <div>
               <p className="text-xs uppercase tracking-wide text-green-100">Total geral</p>
-              <p className="text-2xl font-bold">R$ {totalGeral.toFixed(2)}</p>
+              <p className="text-2xl font-bold">R$ {formatBRL(totalGeral)}</p>
             </div>
             {totalAreaGeral > 0 && (
               <div className="text-left sm:text-right">
-                <p className="text-lg font-semibold">R$ {(totalGeral / totalAreaGeral).toFixed(2)}/ha</p>
-                <p className="text-xs text-green-100">{totalAreaGeral.toFixed(2)} ha ao todo</p>
+                <p className="text-lg font-semibold">R$ {formatBRL(totalGeral / totalAreaGeral)}/ha</p>
+                <p className="text-xs text-green-100">{formatBRL(totalAreaGeral)} ha ao todo</p>
               </div>
             )}
           </div>
