@@ -809,23 +809,30 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
         <div className="text-center py-12 text-gray-400">Nenhum lançamento encontrado</div>
       ) : (
         <div className="bg-white rounded-xl border p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+          <div className="overflow-x-auto">
             <p className="text-sm font-medium mb-2">Subtotal por talhão</p>
-            <ul className="text-sm space-y-1">
-              {subtotaisPorTalhao.map((s, i) => (
-                <li key={i} className="flex justify-between items-baseline">
-                  <span>{s.nome} ({s.qtdItens})</span>
-                  <span className="text-right">
-                    R$ {s.totalValor.toFixed(2)}
-                    {s.area && s.area > 0 && (
-                      <span className="text-xs text-gray-500 ml-2">
-                        (R$ {(s.totalValor / s.area).toFixed(2)}/ha)
-                      </span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-500 border-b">
+                  <th className="py-1 pr-2 font-medium">Talhão</th>
+                  <th className="py-1 pr-2 font-medium text-right">Qtd. Lançamentos</th>
+                  <th className="py-1 pr-2 font-medium text-right">Valor Total</th>
+                  <th className="py-1 font-medium text-right">R$/ha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subtotaisPorTalhao.map((s, i) => (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className="py-1.5 pr-2">{s.nome}</td>
+                    <td className="py-1.5 pr-2 text-right text-gray-500">{s.qtdItens}</td>
+                    <td className="py-1.5 pr-2 text-right">R$ {s.totalValor.toFixed(2)}</td>
+                    <td className="py-1.5 text-right text-gray-500">
+                      {s.area && s.area > 0 ? `R$ ${(s.totalValor / s.area).toFixed(2)}` : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
           <div className="flex flex-col items-end justify-end">
             <p className="text-xs text-gray-500">Total geral</p>
