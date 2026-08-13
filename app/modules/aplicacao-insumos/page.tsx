@@ -36,6 +36,14 @@ const ATIVIDADE_LABELS: Record<Atividade, string> = {
 }
 const ATIVIDADES_BOMBA: Atividade[] = ['HERBICIDA', 'PULVERIZACAO', 'DRENCH']
 const ATIVIDADES_DIRETO: Atividade[] = ['ADUBACAO', 'CORRECAO_SOLO']
+const ATIVIDADE_CORES: Record<Atividade, string> = {
+  HERBICIDA: 'bg-amber-100 text-amber-800',
+  PULVERIZACAO: 'bg-blue-100 text-blue-800',
+  DRENCH: 'bg-cyan-100 text-cyan-800',
+  ADUBACAO: 'bg-green-100 text-green-800',
+  CORRECAO_SOLO: 'bg-stone-200 text-stone-700',
+}
+const formatBRL = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const hoje = () => new Date().toISOString().split('T')[0]
 
@@ -688,38 +696,48 @@ function Historico({ talhoes, produtos, safras }: { talhoes: Talhao[]; produtos:
       ) : itens.length === 0 ? (
         <div className="text-center py-12 text-gray-400">Nenhum lançamento encontrado</div>
       ) : (
-        <>
-          <div className="bg-white rounded-xl border overflow-x-auto">
+        <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
+            <p className="text-sm font-semibold text-white">Lançamentos</p>
+            <p className="text-xs text-green-100">{itens.length} registro{itens.length === 1 ? '' : 's'}</p>
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-500 border-b bg-gray-50">
-                  <th className="py-2 px-3">Data</th>
-                  <th className="py-2 px-3">Safra</th>
-                  <th className="py-2 px-3">Talhão</th>
-                  <th className="py-2 px-3">Atividade</th>
-                  <th className="py-2 px-3">Produto</th>
-                  <th className="py-2 px-3">Total</th>
-                  <th className="py-2 px-3">Valor Total</th>
-                  <th className="py-2 px-3"></th>
+                <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+                  <th className="py-2 px-4 font-semibold">Data</th>
+                  <th className="py-2 px-4 font-semibold">Safra</th>
+                  <th className="py-2 px-4 font-semibold">Talhão</th>
+                  <th className="py-2 px-4 font-semibold">Atividade</th>
+                  <th className="py-2 px-4 font-semibold">Produto</th>
+                  <th className="py-2 px-4 font-semibold text-right">Total</th>
+                  <th className="py-2 px-4 font-semibold text-right">Valor Total</th>
+                  <th className="py-2 px-4 font-semibold"></th>
                 </tr>
               </thead>
               <tbody>
-                {itens.map(it => (
-                  <tr key={it.id} className="border-b last:border-0">
-                    <td className="py-2 px-3">{new Date(it.data).toLocaleDateString('pt-BR')}</td>
-                    <td className="py-2 px-3">{it.safra?.nome}</td>
-                    <td className="py-2 px-3">{it.talhao?.nome}</td>
-                    <td className="py-2 px-3">{ATIVIDADE_LABELS[it.atividade]}</td>
-                    <td className="py-2 px-3">{it.produto?.nomeComercial}</td>
-                    <td className="py-2 px-3">{it.totalQtd.toFixed(2)} {it.produto?.unidadeMedida}</td>
-                    <td className="py-2 px-3">R$ {it.valorTotal.toFixed(2)}</td>
-                    <td className="py-2 px-3"><button onClick={() => excluir(it.id)} className="text-red-500 text-xs">Excluir</button></td>
+                {itens.map((it, i) => (
+                  <tr key={it.id} className={"border-b border-gray-100 last:border-0 hover:bg-green-50 transition-colors " + (i % 2 === 1 ? "bg-gray-50" : "")}>
+                    <td className="py-2.5 px-4 text-gray-600">{new Date(it.data).toLocaleDateString('pt-BR')}</td>
+                    <td className="py-2.5 px-4 text-gray-600">{it.safra?.nome}</td>
+                    <td className="py-2.5 px-4 font-medium text-gray-800">{it.talhao?.nome}</td>
+                    <td className="py-2.5 px-4">
+                      <span className={"inline-block text-xs font-semibold px-2 py-1 rounded-full " + ATIVIDADE_CORES[it.atividade]}>
+                        {ATIVIDADE_LABELS[it.atividade]}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 text-gray-700">{it.produto?.nomeComercial}</td>
+                    <td className="py-2.5 px-4 text-right text-gray-600">{formatBRL(it.totalQtd)} {it.produto?.unidadeMedida}</td>
+                    <td className="py-2.5 px-4 text-right font-semibold text-green-800">R$ {formatBRL(it.valorTotal)}</td>
+                    <td className="py-2.5 px-4 text-right">
+                      <button onClick={() => excluir(it.id)} className="text-xs text-red-600 border border-red-200 rounded-full px-2.5 py-1 hover:bg-red-50 transition-colors">Excluir</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
     </div>
   )
@@ -770,7 +788,6 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
   const totalGeral = itens.reduce((s, i) => s + i.valorTotal, 0)
   const talhoesParaArea = filtroTalhao ? talhoes.filter(t => t.id === filtroTalhao) : talhoes
   const totalAreaGeral = talhoesParaArea.reduce((s, t) => s + (t.area || 0), 0)
-  const formatBRL = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
     <div className="space-y-4">
