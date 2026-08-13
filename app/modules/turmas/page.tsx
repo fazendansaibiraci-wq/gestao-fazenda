@@ -189,6 +189,21 @@ export default function TurmasPage() {
           })
         }
       })
+      // Linha de totais do período filtrado — mesmos números dos
+      // cards abaixo da tabela em tela (Custo Total e Total de
+      // Diárias), alinhados nas colunas Pessoas e Valor Total.
+      const totalPessoasFormatado = totalPessoas % 1 === 0 ? totalPessoas : totalPessoas.toFixed(1)
+      const totalRow = ws.addRow([
+        '', '', '', '', '',
+        `Total de Diárias: ${totalPessoasFormatado}`,
+        '',
+        `Custo Total: R$ ${custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      ])
+      totalRow.eachCell((cell) => {
+        cell.font = { bold: true }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }
+        cell.border = { top: { style: 'thin', color: { argb: 'FF9CA3AF' } } }
+      })
       ws.columns.forEach((col) => {
         let max = 12
         col.eachCell?.({ includeEmpty: false }, (cell) => {
@@ -226,9 +241,24 @@ export default function TurmasPage() {
       doc.setFontSize(11)
       doc.setTextColor(100)
       doc.text(`Diárias de turmas de diaristas   |   Gerado em: ${dataHoje}`, 14, 23)
+      // Linha de totais do período filtrado (rodapé da tabela) — mesmos
+      // números dos cards abaixo da tabela em tela.
+      const totalPessoasFormatado = totalPessoas % 1 === 0 ? totalPessoas : totalPessoas.toFixed(1)
       autoTable(doc, {
         head: [colunasExportacao],
         body: linhasExportacao(),
+        foot: [[
+          '', '', '', '', '',
+          `Total de Diárias: ${totalPessoasFormatado}`,
+          '',
+          `Custo Total: R$ ${custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        ]],
+        footStyles: {
+          fillColor: [229, 231, 235],
+          textColor: [17, 24, 39],
+          fontStyle: 'bold',
+          fontSize: 9,
+        },
         startY: 28,
         headStyles: {
           fillColor: [45, 106, 79],
