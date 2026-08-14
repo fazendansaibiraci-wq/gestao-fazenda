@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3, Package, ChevronDown } from 'lucide-react'
 import {
@@ -15,6 +15,97 @@ import {
 } from 'recharts'
 import { calcularTotaisHoras } from '@/lib/calculoTotaisFuncionario'
 import { calcularCombustivelPorMaquina } from '@/lib/calculoCombustivelPorMaquina'
+
+// Filtro de coluna estilo Excel: um ícone de funil no cabeçalho abre uma
+// lista de valores únicos daquela coluna, com checkbox por valor e busca.
+// selecionados === null significa "sem filtro" (mostra tudo).
+function FiltroColunaExcel({
+  opcoes,
+  selecionados,
+  onChange,
+}: {
+  opcoes: string[]
+  selecionados: Set<string> | null
+  onChange: (novo: Set<string> | null) => void
+}) {
+  const [aberto, setAberto] = useState(false)
+  const [busca, setBusca] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickFora(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false)
+    }
+    document.addEventListener('mousedown', handleClickFora)
+    return () => document.removeEventListener('mousedown', handleClickFora)
+  }, [])
+
+  const ativo = selecionados !== null
+  const opcoesFiltradas = opcoes.filter(o => o.toLowerCase().includes(busca.toLowerCase()))
+  const todasSelecionadas = selecionados === null || opcoes.every(o => selecionados.has(o))
+
+  const alternar = (valor: string) => {
+    const atual = selecionados === null ? new Set(opcoes) : new Set(selecionados)
+    if (atual.has(valor)) atual.delete(valor)
+    else atual.add(valor)
+    if (atual.size === opcoes.length) onChange(null)
+    else onChange(atual)
+  }
+
+  const alternarTodos = () => {
+    if (todasSelecionadas) onChange(new Set())
+    else onChange(null)
+  }
+
+  return (
+    <span className="relative inline-block align-middle" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setAberto(a => !a)}
+        className={'ml-1 p-0.5 rounded hover:bg-white/20 align-middle ' + (ativo ? 'text-yellow-300' : 'text-white/70')}
+        title="Filtrar"
+      >
+        <Filter className="w-3 h-3" />
+      </button>
+      {aberto && (
+        <div className="absolute z-20 top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg text-gray-800 font-normal normal-case">
+          <div className="p-2 border-b">
+            <input
+              type="text"
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder="Buscar..."
+              className="w-full border rounded px-2 py-1 text-xs"
+            />
+          </div>
+          <div className="max-h-52 overflow-y-auto p-2 space-y-1">
+            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+              <input type="checkbox" checked={todasSelecionadas} onChange={alternarTodos} />
+              Selecionar tudo
+            </label>
+            <div className="border-t my-1"></div>
+            {opcoesFiltradas.map(o => (
+              <label key={o} className="flex items-center gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selecionados === null || selecionados.has(o)}
+                  onChange={() => alternar(o)}
+                />
+                <span className="truncate">{o}</span>
+              </label>
+            ))}
+            {opcoesFiltradas.length === 0 && <p className="text-xs text-gray-400 px-1">Nenhum valor encontrado</p>}
+          </div>
+          {ativo && (
+            <div className="p-2 border-t">
+              <button type="button" onClick={() => onChange(null)} className="text-xs text-blue-600 hover:underline">Limpar filtro</button>
+            </div>
+          )}
+        </div>
+      )}
+    </span>
+  )
+}
 
 export default function RelatoriosPage() {
   const { data: session } = useSession()
@@ -42,6 +133,10 @@ export default function RelatoriosPage() {
 
   const [filtroDataInicioComb, setFiltroDataInicioComb] = useState('')
   const [filtroDataFimComb, setFiltroDataFimComb] = useState('')
+
+  // Filtros de coluna estilo Excel, exclusivos da tabela "Histórico de
+  // Atividades". null significa "sem filtro" (mostra tudo) naquela coluna.
+  const [filtrosColunaHistorico, setFiltrosColunaHistorico] = useState<Record<string, Set<string> | null>>({})
 
   useEffect(() => {
     loadDados()
@@ -149,6 +244,46 @@ export default function RelatoriosPage() {
   const getTalhaoNome = (id: string) => talhoes.find(t => t.id === id)?.nome || id
   const getSafraNome = (id: string) => safras.find(s => s.id === id)?.nome || id
   const getTipoLabel = (tipo: string) => tiposAtividade.find(t => t.nome === tipo)?.nome || tipo
+
+  // Colunas filtráveis da tabela "Histórico de Atividades" e como extrair
+  // o valor de texto de cada uma, a partir de um registro.
+  const COLUNAS_HISTORICO = ['data', 'talhao', 'safra', 'atividade', 'responsavel', 'maquina', 'horaMaquina', 'bombas', 'horasHomem', 'implemento'] as const
+
+  const valorColunaHistorico = (r: any, coluna: typeof COLUNAS_HISTORICO[number]): string => {
+    switch (coluna) {
+      case 'data': return new Date(r.data).toLocaleDateString('pt-BR')
+      case 'talhao': return r.talhao?.nome || '-'
+      case 'safra': return r.safra?.nome || '-'
+      case 'atividade': return getTipoLabel(r.tipoAtividade)
+      case 'responsavel': return r.funcionario?.name || '-'
+      case 'maquina': return r.maquina?.nome || '-'
+      case 'horaMaquina': return r.horasMaquina ? `${r.horasMaquina.toFixed(1)}h` : '-'
+      case 'bombas': return String(r.totalBombas || '-')
+      case 'horasHomem': return r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-'
+      case 'implemento': return r.implementoUtilizado || '-'
+      default: return '-'
+    }
+  }
+
+  // Opções (valores únicos, ordenados) disponíveis em cada coluna, calculadas
+  // a partir de registrosFiltrados (ou seja, já respeitando os filtros do
+  // painel "Filtros" no topo — safra, talhão, atividade, data).
+  const opcoesColunaHistorico = (coluna: typeof COLUNAS_HISTORICO[number]): string[] => {
+    const valores = new Set(registrosFiltrados.map(r => valorColunaHistorico(r, coluna)))
+    return Array.from(valores).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }))
+  }
+
+  // registrosFiltrados (painel do topo) + filtros de coluna estilo Excel.
+  const registrosHistoricoTabela = useMemo(() => {
+    return registrosFiltrados.filter(r =>
+      COLUNAS_HISTORICO.every(coluna => {
+        const selecionados = filtrosColunaHistorico[coluna]
+        if (!selecionados) return true
+        return selecionados.has(valorColunaHistorico(r, coluna))
+      })
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registrosFiltrados, filtrosColunaHistorico])
 
   // ─── Comparativo de combustível por máquina ──────────────────────────────
 
@@ -608,26 +743,61 @@ export default function RelatoriosPage() {
             <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
               <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Histórico de Atividades</h3>
-                <p className="text-xs text-green-100">{registrosFiltrados.length} registro{registrosFiltrados.length === 1 ? '' : 's'}</p>
+                <p className="text-xs text-green-100">{registrosHistoricoTabela.length} de {registrosFiltrados.length} registro{registrosFiltrados.length === 1 ? '' : 's'}</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
-                      <th className="py-3 px-4 font-semibold">Data</th>
-                      <th className="py-3 px-4 font-semibold">Talhão</th>
-                      <th className="py-3 px-4 font-semibold">Safra</th>
-                      <th className="py-3 px-4 font-semibold">Atividade</th>
-                      <th className="py-3 px-4 font-semibold">Responsável</th>
-                      <th className="py-3 px-4 font-semibold">Máquina</th>
-                      <th className="py-3 px-4 font-semibold text-right">Hora Máquina</th>
-                      <th className="py-3 px-4 font-semibold text-right">Bombas</th>
-                      <th className="py-3 px-4 font-semibold text-right">Horas Homem</th>
-                      <th className="py-3 px-4 font-semibold">Implemento</th>
+                      <th className="py-3 px-4 font-semibold">
+                        Data
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('data')} selecionados={filtrosColunaHistorico.data ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, data: v }))} />
+                      </th>
+                      <th className="py-3 px-4 font-semibold">
+                        Talhão
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('talhao')} selecionados={filtrosColunaHistorico.talhao ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, talhao: v }))} />
+                      </th>
+                      <th className="py-3 px-4 font-semibold">
+                        Safra
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('safra')} selecionados={filtrosColunaHistorico.safra ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, safra: v }))} />
+                      </th>
+                      <th className="py-3 px-4 font-semibold">
+                        Atividade
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('atividade')} selecionados={filtrosColunaHistorico.atividade ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, atividade: v }))} />
+                      </th>
+                      <th className="py-3 px-4 font-semibold">
+                        Responsável
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('responsavel')} selecionados={filtrosColunaHistorico.responsavel ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, responsavel: v }))} />
+                      </th>
+                      <th className="py-3 px-4 font-semibold">
+                        Máquina
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('maquina')} selecionados={filtrosColunaHistorico.maquina ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, maquina: v }))} />
+                      </th>
+                      <th className="py-3 px-4 font-semibold text-right">
+                        Hora Máquina
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('horaMaquina')} selecionados={filtrosColunaHistorico.horaMaquina ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, horaMaquina: v }))} />
+                      </th>
+                      <th className="py-3 px-4 font-semibold text-right">
+                        Bombas
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('bombas')} selecionados={filtrosColunaHistorico.bombas ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, bombas: v }))} />
+                      </th>
+                      <th className="py-3 px-4 font-semibold text-right">
+                        Horas Homem
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('horasHomem')} selecionados={filtrosColunaHistorico.horasHomem ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, horasHomem: v }))} />
+                      </th>
+                      <th className="py-3 px-4 font-semibold">
+                        Implemento
+                        <FiltroColunaExcel opcoes={opcoesColunaHistorico('implemento')} selecionados={filtrosColunaHistorico.implemento ?? null} onChange={v => setFiltrosColunaHistorico(p => ({ ...p, implemento: v }))} />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {registrosFiltrados.map((r, i) => (
+                    {registrosHistoricoTabela.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="py-8 px-4 text-center text-gray-400">Nenhum registro com os filtros de coluna selecionados</td>
+                      </tr>
+                    ) : (
+                      registrosHistoricoTabela.map((r, i) => (
                       <tr key={r.id} className={'border-b border-gray-100 last:border-0 transition-colors hover:bg-green-50 ' + (i % 2 === 1 ? 'bg-gray-50' : '')}>
                         <td className="py-2.5 px-4 text-gray-600">{new Date(r.data).toLocaleDateString('pt-BR')}</td>
                         <td className="py-2.5 px-4 font-medium text-gray-800">{r.talhao?.nome || '-'}</td>
@@ -642,7 +812,8 @@ export default function RelatoriosPage() {
                         <td className="py-2.5 px-4 text-right font-semibold text-green-800">{r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-'}</td>
                         <td className="py-2.5 px-4 text-gray-600">{r.implementoUtilizado || '-'}</td>
                       </tr>
-                    ))}
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
