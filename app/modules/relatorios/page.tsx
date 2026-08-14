@@ -92,7 +92,7 @@ function FiltroColunaExcel({
                   onChange={() => alternar(o)}
                   className="shrink-0"
                 />
-                <span className="truncate">{o}</span>
+                <span className="truncate flex-1 min-w-0">{o}</span>
               </label>
             ))}
             {opcoesFiltradas.length === 0 && <p className="text-xs text-gray-400 px-1">Nenhum valor encontrado</p>}
