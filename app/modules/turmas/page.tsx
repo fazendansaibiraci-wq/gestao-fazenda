@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -421,15 +421,20 @@ export default function TurmasPage() {
                                 </div>
                         </div>
 
-                        <div className="card overflow-x-auto">
+                        <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
+                                <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
+                                        <p className="text-sm font-semibold text-white">Diárias</p>
+                                        <p className="text-xs text-green-100">{diarias.length} registro{diarias.length === 1 ? '' : 's'}</p>
+                                </div>
+                                <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                           <thead>
-                                                      <tr className="border-b bg-gray-50">
-                                                                    <th className="px-4 py-3 text-left font-semibold">Data</th>
-                                                                    <th className="px-4 py-3 text-left font-semibold">Turma</th>
-                                                                    <th className="px-4 py-3 text-left font-semibold">Talhao</th>
-                                                                    <th className="px-4 py-3 text-left font-semibold">Safra</th>
-                                                                    <th className="px-4 py-3 text-left font-semibold">Atividade</th>
+                                                      <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+                                                                    <th className="px-4 py-3 font-semibold">Data</th>
+                                                                    <th className="px-4 py-3 font-semibold">Turma</th>
+                                                                    <th className="px-4 py-3 font-semibold">Talhao</th>
+                                                                    <th className="px-4 py-3 font-semibold">Safra</th>
+                                                                    <th className="px-4 py-3 font-semibold">Atividade</th>
                                                                     <th className="px-4 py-3 text-right font-semibold">Pessoas</th>
                                                                     <th className="px-4 py-3 text-right font-semibold">Valor Diaria</th>
                                                                     <th className="px-4 py-3 text-right font-semibold">Valor Total</th>
@@ -445,16 +450,18 @@ export default function TurmasPage() {
                                                   </td>
                                   </tr>
                                 ) : (
-                                  diarias.map((d) => (
-                                                    <tr key={d.id} className="border-b hover:bg-gray-50">
+                                  diarias.map((d, i) => (
+                                                    <tr key={d.id} className={'border-b border-gray-100 last:border-0 transition-colors hover:bg-green-50 ' + (i % 2 === 1 ? 'bg-gray-50' : '')}>
                                                                       <td className="px-4 py-3">{new Date(d.data).toLocaleDateString('pt-BR')}</td>
                                                                       <td className="px-4 py-3 font-medium">{d.turma?.nome}</td>
                                                                       <td className="px-4 py-3">{d.talhao?.nome}</td>
                                                                       <td className="px-4 py-3">{d.safra?.nome}</td>
-                                                                      <td className="px-4 py-3 text-gray-600">{d.tipoAtividade}</td>
+                                                                      <td className="px-4 py-3">
+                                                                                          <span className="inline-block text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700">{d.tipoAtividade}</span>
+                                                                      </td>
                                                                       <td className="px-4 py-3 text-right">{d.quantidadePessoas % 1 === 0 ? d.quantidadePessoas : d.quantidadePessoas.toFixed(1)}</td>
                                                                       <td className="px-4 py-3 text-right">R$ {Number(d.valorDiaria).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                                                      <td className="px-4 py-3 text-right font-semibold">R$ {Number(d.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                                                      <td className="px-4 py-3 text-right font-semibold text-green-800">R$ {Number(d.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                                                       <td className="px-4 py-3 text-center">
                                                                                           {d.observacao && (
                                                                                               <span title={d.observacao}>
@@ -475,12 +482,13 @@ export default function TurmasPage() {
                                 )}
                                           </tbody>
                                 </table>
+                                </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="card">
-                                        <p className="text-gray-600 text-sm">Custo Total do Periodo Filtrado</p>
-                                        <p className="text-3xl font-bold text-primary mt-2">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-5 shadow-sm text-white">
+                                        <p className="text-xs uppercase tracking-wide text-green-100">Custo Total do Periodo Filtrado</p>
+                                        <p className="text-3xl font-bold mt-2">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                 </div>
                                 <div className="card">
                                         <p className="text-gray-600 text-sm">Total de Diárias do Periodo Filtrado</p>
