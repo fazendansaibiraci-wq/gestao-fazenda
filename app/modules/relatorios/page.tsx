@@ -62,7 +62,7 @@ function FiltroColunaExcel({
       <button
         type="button"
         onClick={() => setAberto(a => !a)}
-        className={'ml-1 p-0.5 rounded hover:bg-white/20 align-middle ' + (ativo ? 'text-yellow-300' : 'text-white/70')}
+        className={'ml-1 p-0.5 rounded hover:bg-green-200/60 align-middle ' + (ativo ? 'text-amber-600' : 'text-green-700/70')}
         title="Filtrar"
       >
         <Filter className="w-3 h-3" />
