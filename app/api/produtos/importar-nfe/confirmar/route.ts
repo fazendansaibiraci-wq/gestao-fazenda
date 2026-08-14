@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { comRetry } from '@/lib/comRetry'
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     let criados = 0
     let atualizados = 0
 
-    await prisma.$transaction(async (tx) => {
+    await comRetry(() => prisma.$transaction(async (tx) => {
       for (const item of itens) {
         if (item.incluir === false) continue
 
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
           },
         })
       }
-    })
+    }))
 
     return NextResponse.json({ success: true, data: { criados, atualizados } })
   } catch (error) {
