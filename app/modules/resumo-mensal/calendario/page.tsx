@@ -1,8 +1,8 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { redirect, useRouter } from 'next/navigation'
 import { Calendar as CalendarIcon } from 'lucide-react'
 import { RegistroDiario } from '@/components/RegistroDiarioCard'
 
@@ -13,6 +13,7 @@ interface ResumoFuncionario {
 
 export default function CalendarioResumoMensalPage() {
   const { data: session, status } = useSession()
+  const router = useRouter()
   const [resumo, setResumo] = useState<ResumoFuncionario[]>([])
   const [loading, setLoading] = useState(true)
   const [mes, setMes] = useState(new Date().getMonth() + 1)
@@ -237,10 +238,14 @@ export default function CalendarioResumoMensalPage() {
                   const chave = `${ano}-${mes}-${dia}`
                   const registro = registrosPorDia.get(chave)
                   const texto = textoDaCelula(registro, r.funcionario.pagamentoProporcionalDiario)
+                  const dataFormatada = ano + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0')
+                  const urlDetalhes = '/modules/atividades?funcionario=' + encodeURIComponent(r.funcionario.name) + '&dataInicio=' + dataFormatada + '&dataFim=' + dataFormatada
                   return (
                     <div
                       key={dia}
-                      className={`aspect-square rounded-lg border p-1.5 flex flex-col items-center justify-center ${corDaCelula(registro)}`}
+                      onClick={registro ? () => router.push(urlDetalhes) : undefined}
+                      title={registro ? 'Ver lançamentos deste dia' : undefined}
+                      className={`aspect-square rounded-lg border p-1.5 flex flex-col items-center justify-center ${corDaCelula(registro)} ${registro ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : ''}`}
                     >
                       <span className="text-sm font-medium text-gray-700">{dia}</span>
                       {texto && <span className="text-[10px] text-gray-600 mt-0.5 text-center leading-tight">{texto}</span>}
