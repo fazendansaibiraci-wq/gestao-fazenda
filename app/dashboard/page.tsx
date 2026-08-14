@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
@@ -109,9 +109,8 @@ export default function DashboardPage() {
   const [custoHHHMPorTalhao, setCustoHHHMPorTalhao] = useState<CustoHHHMPorTalhao[]>([])
 
   // Filtro de mês exclusivo do gráfico de Consumo de Combustível por
-  // Máquina — os outros dois gráficos de /api/dashboard-graficos (horas
-  // por funcionário, litros de diesel por dia) continuam sempre "mês
-  // atual", sem serem afetados por esse filtro.
+  // Máquina — os outros gráficos de /api/dashboard-graficos têm seus
+  // próprios filtros independentes, definidos mais abaixo.
   const [mesFiltroConsumo, setMesFiltroConsumo] = useState(() => {
     const h = new Date()
     return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`
@@ -127,14 +126,20 @@ export default function DashboardPage() {
   const primeiraRenderizacaoFiltroCustoHHHM = useRef(true)
 
   // Filtro de mês exclusivo do gráfico "Horas Trabalhadas por
-  // Funcionário" — independente dos outros dois filtros acima. O
-  // gráfico de litros de diesel por dia continua sempre "mês atual",
-  // sem filtro.
+  // Funcionário" — independente dos outros filtros.
   const [mesFiltroHorasFuncionario, setMesFiltroHorasFuncionario] = useState(() => {
     const h = new Date()
     return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`
   })
   const primeiraRenderizacaoFiltroHorasFuncionario = useRef(true)
+
+  // Filtro de mês exclusivo do gráfico "Litros de Diesel Abastecidos por
+  // Dia" — independente dos outros filtros.
+  const [mesFiltroLitrosDiesel, setMesFiltroLitrosDiesel] = useState(() => {
+    const h = new Date()
+    return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0')
+  })
+  const primeiraRenderizacaoFiltroLitrosDiesel = useRef(true)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -177,7 +182,7 @@ export default function DashboardPage() {
     loadCustoHHHM()
   }, [mesFiltroCustoHHHM])
 
-  // Mesmo padrão dos dois filtros acima.
+  // Mesmo padrão dos filtros acima.
   useEffect(() => {
     if (primeiraRenderizacaoFiltroHorasFuncionario.current) {
       primeiraRenderizacaoFiltroHorasFuncionario.current = false
@@ -185,6 +190,15 @@ export default function DashboardPage() {
     }
     loadHorasPorFuncionarioFiltrado()
   }, [mesFiltroHorasFuncionario])
+
+  // Mesmo padrão dos filtros acima.
+  useEffect(() => {
+    if (primeiraRenderizacaoFiltroLitrosDiesel.current) {
+      primeiraRenderizacaoFiltroLitrosDiesel.current = false
+      return
+    }
+    loadLitrosDieselFiltrado()
+  }, [mesFiltroLitrosDiesel])
 
   const loadStats = async () => {
     try {
@@ -271,12 +285,32 @@ export default function DashboardPage() {
     }
   }
 
+  // Busca só os litros de diesel por dia pro mês selecionado no filtro,
+  // sem mexer em consumoPorMaquina/horasPorFuncionario (merge parcial do
+  // state).
+  const loadLitrosDieselFiltrado = async () => {
+    try {
+      const [anoStr, mesStr] = mesFiltroLitrosDiesel.split('-')
+      const res = await fetch('/api/dashboard-graficos?ano=' + anoStr + '&mes=' + parseInt(mesStr, 10))
+      if (res.ok) {
+        const data = await res.json()
+        if (data.data) {
+          setDadosGraficos(prev => ({ ...prev, litrosDieselPorDia: data.data.litrosDieselPorDia }))
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar litros de diesel filtrados:', error)
+    }
+  }
+
   // Opções do <select> do filtro de mês do gráfico de consumo de combustível.
   const opcoesMesFiltroConsumo = gerarOpcoesUltimosMeses()
   // Opções do <select> do filtro de mês do gráfico de custo HH/HM por talhão.
   const opcoesMesFiltroCustoHHHM = gerarOpcoesUltimosMeses()
   // Opções do <select> do filtro de mês do gráfico de horas por funcionário.
   const opcoesMesFiltroHorasFuncionario = gerarOpcoesUltimosMeses()
+  // Opções do <select> do filtro de mês do gráfico de litros de diesel por dia.
+  const opcoesMesFiltroLitrosDiesel = gerarOpcoesUltimosMeses()
 
   const formatarDataYYYYMMDD = (data: Date) => {
     const ano = data.getFullYear()
@@ -642,7 +676,18 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <h3 className="font-semibold text-primary mb-4">Litros de Diesel Abastecidos por Dia este mês</h3>
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+            <h3 className="font-semibold text-primary">Litros de Diesel Abastecidos por Dia</h3>
+            <select
+              value={mesFiltroLitrosDiesel}
+              onChange={(e) => setMesFiltroLitrosDiesel(e.target.value)}
+              className="border rounded-lg px-2 py-1 text-sm"
+            >
+              {opcoesMesFiltroLitrosDiesel.map((opcao) => (
+                <option key={opcao.valor} value={opcao.valor}>{opcao.rotulo}</option>
+              ))}
+            </select>
+          </div>
           {dadosGraficos.litrosDieselPorDia.length === 0 ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
               Sem dados este mês
