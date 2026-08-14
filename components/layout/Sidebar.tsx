@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Home,
@@ -26,11 +26,13 @@ import {
   Warehouse,
   Droplet,
   MapPin,
+  ArrowLeft,
 } from 'lucide-react'
 import { useState } from 'react'
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(true)
   const [cadastrosAberto, setCadastrosAberto] = useState(false)
   const [combustivelAberto, setCombustivelAberto] = useState(false)
@@ -221,7 +223,11 @@ export function Sidebar() {
 
         </nav>
 
-        <div className="border-t border-secondary p-4">
+        <div className="border-t border-secondary p-4 space-y-1">
+          <button onClick={() => router.back()} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-light hover:bg-secondary/20 transition-colors">
+            <ArrowLeft className="w-5 h-5 flex-shrink-0" />
+            {isOpen && <span>Voltar</span>}
+          </button>
           <button onClick={() => signOut({ callbackUrl: '/login' })} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-light hover:bg-secondary/20 transition-colors">
             <LogOut className="w-5 h-5 flex-shrink-0" />
             {isOpen && <span>Sair</span>}

@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Home,
@@ -21,6 +21,7 @@ import {
   Warehouse,
   Droplet,
   MapPin,
+  ArrowLeft,
 } from 'lucide-react'
 
 const menuItems = [
@@ -48,6 +49,7 @@ const menuItems = [
 
 export function MobileNavigation() {
   const pathname = usePathname()
+  const router = useRouter()
   const { data: session } = useSession()
   const userRole = (session?.user as any)?.role || ''
 
@@ -113,6 +115,14 @@ export function MobileNavigation() {
             {itensMais.length > 0 && (
               <div className="border-t border-gray-100 my-1"></div>
             )}
+
+            <button
+              onClick={() => router.back()}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-gray-600 hover:bg-gray-50"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">Voltar</span>
+            </button>
 
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
