@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -424,17 +424,22 @@ export default function AtividadesPage() {
       </div>
 
       <div className={atualizandoFiltro ? 'opacity-50 transition-opacity' : 'transition-opacity'}>
-      <div className="card overflow-x-auto">
+      <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
+          <p className="text-sm font-semibold text-white">Lançamentos</p>
+          <p className="text-xs text-green-100">{atividadesFiltradas.length} registro{atividadesFiltradas.length === 1 ? '' : 's'}</p>
+        </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-gray-50">
-              <th className="px-4 py-3 text-left font-semibold w-10"></th>
-              <th className="px-4 py-3 text-left font-semibold">Data</th>
-              <th className="px-4 py-3 text-left font-semibold">Horário</th>
-              {isGestor && <th className="px-4 py-3 text-left font-semibold">Funcionário</th>}
-              <th className="px-4 py-3 text-left font-semibold">Talhão / Falta</th>
-              <th className="px-4 py-3 text-left font-semibold">Atividade</th>
-              <th className="px-4 py-3 text-left font-semibold">Status</th>
+            <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+              <th className="px-4 py-3 font-semibold w-10"></th>
+              <th className="px-4 py-3 font-semibold">Data</th>
+              <th className="px-4 py-3 font-semibold">Horário</th>
+              {isGestor && <th className="px-4 py-3 font-semibold">Funcionário</th>}
+              <th className="px-4 py-3 font-semibold">Talhão / Falta</th>
+              <th className="px-4 py-3 font-semibold">Atividade</th>
+              <th className="px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3 text-right font-semibold">Ações</th>
             </tr>
           </thead>
@@ -446,9 +451,9 @@ export default function AtividadesPage() {
                 </td>
               </tr>
             ) : (
-              atividadesFiltradas.map((a) => (
+              atividadesFiltradas.map((a, i) => (
                 <Fragment key={a.id}>
-                <tr className={`border-b hover:bg-gray-50 ${a.isFalta ? 'bg-red-50' : ''}`}>
+                <tr className={'border-b border-gray-100 last:border-0 transition-colors ' + (a.isFalta ? 'bg-red-50 hover:bg-red-100' : (i % 2 === 1 ? 'bg-gray-50 ' : '') + 'hover:bg-green-50')}>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => toggleExpandir(a.id)}
@@ -508,7 +513,13 @@ export default function AtividadesPage() {
                       a.talhao?.nome
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{a.isFalta ? '—' : a.tipoAtividade}</td>
+                  <td className="px-4 py-3">
+                    {a.isFalta ? (
+                      <span className="text-gray-400">—</span>
+                    ) : (
+                      <span className="inline-block text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700">{a.tipoAtividade}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {a.isFalta ? (
                       <span className="text-xs px-2 py-1 rounded-full font-semibold bg-red-100 text-red-800">Falta</span>
@@ -530,7 +541,7 @@ export default function AtividadesPage() {
                   </td>
                 </tr>
                 {expandidos.has(a.id) && (
-                  <tr className={`border-b ${a.isFalta ? 'bg-red-50' : 'bg-gray-50'}`}>
+                  <tr className={'border-b border-gray-100 ' + (a.isFalta ? 'bg-red-50' : 'bg-green-50/40')}>
                     <td colSpan={isGestor ? 8 : 7} className="px-4 py-4">
                       {a.isFalta ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs text-gray-600">
@@ -681,14 +692,15 @@ export default function AtividadesPage() {
             )}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-gray-300 font-semibold bg-gray-50">
-              <td colSpan={3} className="px-4 py-3 text-gray-700">
+            <tr className="border-t-2 border-green-200 font-semibold bg-green-50">
+              <td colSpan={3} className="px-4 py-3 text-green-900">
                 Total: {formatarHoras(totalHorasFiltradas)}
               </td>
               <td colSpan={isGestor ? 5 : 4}></td>
             </tr>
           </tfoot>
         </table>
+        </div>
       </div>
       </div>
 
