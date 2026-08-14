@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { paraDataBrasilia } from '@/lib/dataBrasilia'
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,15 +52,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
     }
 
+    // Interpreta o horário digitado como horário de Brasília - o servidor
+    // roda em UTC, então converter direto com `new Date(body.data)`
+    // deslocaria a hora salva em 3h. Ver lib/dataBrasilia.ts.
+    const dataAbastecimento = paraDataBrasilia(body.data)
+
     // Obter horímetro de referência: o mais recente entre o último
     // abastecimento e o último Ajuste de Horímetro dessa máquina.
     const [abastecimentoAnterior, ajusteAnterior] = await Promise.all([
       prisma.abastecimentoTrator.findFirst({
-        where: { maquinaId: body.maquinaId, data: { lt: new Date(body.data) } },
+        where: { maquinaId: body.maquinaId, data: { lt: dataAbastecimento } },
         orderBy: { data: 'desc' },
       }),
       prisma.ajusteHorimetro.findFirst({
-        where: { maquinaId: body.maquinaId, data: { lt: new Date(body.data) } },
+        where: { maquinaId: body.maquinaId, data: { lt: dataAbastecimento } },
         orderBy: { data: 'desc' },
       }),
     ])
@@ -88,7 +94,7 @@ export async function POST(request: NextRequest) {
     // pega erros de digitação (dígito a mais/faltando) na hora do
     // cadastro, antes de virar um número impossível no histórico.
     if (dataReferencia) {
-      const elapsedMs = new Date(body.data).getTime() - dataReferencia.getTime()
+      const elapsedMs = dataAbastecimento.getTime() - dataReferencia.getTime()
       const elapsedHoras = elapsedMs / (1000 * 60 * 60)
       if (horasTrabalhadad > elapsedHoras) {
         return NextResponse.json(
@@ -160,7 +166,7 @@ export async function POST(request: NextRequest) {
         data: {
           produtoId: produtoDiesel.id,
           quantidade: body.litrosAbastecidos,
-          data: new Date(body.data),
+          data: dataAbastecimento,
           talhaoId: body.talhaoId || null,
           safraId: body.safraId || null,
           observacao: `Abastecimento da máquina ${maquinaInfo?.nome || body.maquinaId}${body.tipoAtividade ? ` (${body.tipoAtividade})` : ''}`,
@@ -179,7 +185,7 @@ export async function POST(request: NextRequest) {
       })
       return tx.abastecimentoTrator.create({
         data: {
-          data: new Date(body.data),
+          data: dataAbastecimento,
           maquinaId: body.maquinaId,
           horimetroAtual: body.horimetroAtual,
           horimetroanterior: horimetroAnterior,

@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { paraDataBrasilia } from '@/lib/dataBrasilia'
 
 export async function PATCH(
   request: NextRequest,
@@ -37,7 +38,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
     }
 
-    const novaData = new Date(data)
+    const novaData = paraDataBrasilia(data)
     const novoAnterior = Number(horimetroAnterior)
     const novoAtual = Number(horimetroAtual)
     const novosLitros = Number(litrosAbastecidos)
