@@ -80,7 +80,7 @@ function FiltroColunaExcel({
           </div>
           <div className="max-h-52 overflow-y-auto p-2 space-y-1">
             <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-              <input type="checkbox" checked={todasSelecionadas} onChange={alternarTodos} />
+              <input type="checkbox" checked={todasSelecionadas} onChange={alternarTodos} className="shrink-0" />
               Selecionar tudo
             </label>
             <div className="border-t my-1"></div>
@@ -90,6 +90,7 @@ function FiltroColunaExcel({
                   type="checkbox"
                   checked={selecionados === null || selecionados.has(o)}
                   onChange={() => alternar(o)}
+                  className="shrink-0"
                 />
                 <span className="truncate">{o}</span>
               </label>
