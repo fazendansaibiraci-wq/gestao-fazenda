@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -605,37 +605,42 @@ export default function RelatoriosPage() {
                   ) : (
                     <>
                       {aba === 'historico' && (
-            <div className="card">
-              <h3 className="text-lg font-semibold text-primary mb-4">Histórico de Atividades</h3>
+            <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
+              <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">Histórico de Atividades</h3>
+                <p className="text-xs text-green-100">{registrosFiltrados.length} registro{registrosFiltrados.length === 1 ? '' : 's'}</p>
+              </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-3 text-gray-600">Data</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Talhão</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Safra</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Atividade</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Responsável</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Máquina</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Hora Máquina</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Bombas</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Horas Homem</th>
-                      <th className="text-left py-2 px-3 text-gray-600">Implemento</th>
+                    <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+                      <th className="py-3 px-4 font-semibold">Data</th>
+                      <th className="py-3 px-4 font-semibold">Talhão</th>
+                      <th className="py-3 px-4 font-semibold">Safra</th>
+                      <th className="py-3 px-4 font-semibold">Atividade</th>
+                      <th className="py-3 px-4 font-semibold">Responsável</th>
+                      <th className="py-3 px-4 font-semibold">Máquina</th>
+                      <th className="py-3 px-4 font-semibold text-right">Hora Máquina</th>
+                      <th className="py-3 px-4 font-semibold text-right">Bombas</th>
+                      <th className="py-3 px-4 font-semibold text-right">Horas Homem</th>
+                      <th className="py-3 px-4 font-semibold">Implemento</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {registrosFiltrados.map(r => (
-                      <tr key={r.id} className="border-b hover:bg-gray-50">
-                        <td className="py-2 px-3">{new Date(r.data).toLocaleDateString('pt-BR')}</td>
-                        <td className="py-2 px-3">{r.talhao?.nome || '-'}</td>
-                        <td className="py-2 px-3">{r.safra?.nome || '-'}</td>
-                        <td className="py-2 px-3">{getTipoLabel(r.tipoAtividade)}</td>
-                        <td className="py-2 px-3">{r.funcionario?.name || '-'}</td>
-                        <td className="py-2 px-3">{r.maquina?.nome || '-'}</td>
-                        <td className="py-2 px-3">{r.horasMaquina ? `${r.horasMaquina.toFixed(1)}h` : '-'}</td>
-                        <td className="py-2 px-3">{r.totalBombas || '-'}</td>
-                        <td className="py-2 px-3">{r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-'}</td>
-                        <td className="py-2 px-3">{r.implementoUtilizado || '-'}</td>
+                    {registrosFiltrados.map((r, i) => (
+                      <tr key={r.id} className={'border-b border-gray-100 last:border-0 transition-colors hover:bg-green-50 ' + (i % 2 === 1 ? 'bg-gray-50' : '')}>
+                        <td className="py-2.5 px-4 text-gray-600">{new Date(r.data).toLocaleDateString('pt-BR')}</td>
+                        <td className="py-2.5 px-4 font-medium text-gray-800">{r.talhao?.nome || '-'}</td>
+                        <td className="py-2.5 px-4 text-gray-600">{r.safra?.nome || '-'}</td>
+                        <td className="py-2.5 px-4">
+                          <span className="inline-block text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700">{getTipoLabel(r.tipoAtividade)}</span>
+                        </td>
+                        <td className="py-2.5 px-4 text-gray-700">{r.funcionario?.name || '-'}</td>
+                        <td className="py-2.5 px-4 text-gray-600">{r.maquina?.nome || '-'}</td>
+                        <td className="py-2.5 px-4 text-right text-gray-600">{r.horasMaquina ? `${r.horasMaquina.toFixed(1)}h` : '-'}</td>
+                        <td className="py-2.5 px-4 text-right text-gray-600">{r.totalBombas || '-'}</td>
+                        <td className="py-2.5 px-4 text-right font-semibold text-green-800">{r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-'}</td>
+                        <td className="py-2.5 px-4 text-gray-600">{r.implementoUtilizado || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
