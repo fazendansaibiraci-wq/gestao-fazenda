@@ -290,6 +290,15 @@ export default function AtividadesPage() {
     [atividadesFiltradas]
   )
 
+  const totalHorasHomem = useMemo(
+    () => atividadesFiltradas.reduce((acc, a) => acc + (a.horasCalculadas || 0), 0),
+    [atividadesFiltradas]
+  )
+  const totalHorasMaquina = useMemo(
+    () => atividadesFiltradas.reduce((acc, a) => acc + (a.horasMaquina || 0), 0),
+    [atividadesFiltradas]
+  )
+
   const meuAlertaAusencia = useMemo(
     () => alertasAusencia.find((a) => a.funcionarioId === userId) || null,
     [alertasAusencia, userId]
@@ -704,9 +713,19 @@ export default function AtividadesPage() {
       </div>
       </div>
 
-      <div className="card">
-        <p className="text-gray-600 text-sm">Total de Registros</p>
-        <p className="text-3xl font-bold text-primary mt-2">{atividadesFiltradas.length}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="card">
+          <p className="text-gray-600 text-sm">Total de Registros</p>
+          <p className="text-3xl font-bold text-primary mt-2">{atividadesFiltradas.length}</p>
+        </div>
+        <div className="card">
+          <p className="text-gray-600 text-sm">Total de Horas Homem</p>
+          <p className="text-3xl font-bold text-primary mt-2">{formatarHoras(totalHorasHomem)}</p>
+        </div>
+        <div className="card">
+          <p className="text-gray-600 text-sm">Total de Horas Máquina</p>
+          <p className="text-3xl font-bold text-primary mt-2">{formatarHoras(totalHorasMaquina)}</p>
+        </div>
       </div>
 
       {atestadoModal && (
