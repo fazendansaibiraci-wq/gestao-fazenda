@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!body.data || !body.horaEntrada || !body.safraId || (!body.isFalta && !body.talhaoId)) {
+    if (!body.data || !body.horaEntrada || !body.safraId || (!body.isFalta && (!body.talhaoId || !body.horaSaida))) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
     }
 

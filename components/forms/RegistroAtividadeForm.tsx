@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -170,7 +170,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     if (!validateHorimetro()) return
     setLoading(true)
     try {
-      if (!form.isFalta && (!form.data || !form.horaEntrada || !form.talhaoId || !form.safraId)) {
+      if (!form.isFalta && (!form.data || !form.horaEntrada || !form.horaSaida || !form.talhaoId || !form.safraId)) {
         setError('Preencha todos os campos obrigatórios'); setLoading(false); return
       }
       if (needsBombas && (!form.totalBombas || parseFloat(form.totalBombas) <= 0)) {
@@ -376,8 +376,8 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   <input type="time" id="horaEntrada" name="horaEntrada" value={form.horaEntrada} onChange={handleChange} required disabled={loading} />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="horaSaida">Hora Saída</label>
-                  <input type="time" id="horaSaida" name="horaSaida" value={form.horaSaida} onChange={handleChange} disabled={loading} />
+                  <label htmlFor="horaSaida">Hora Saída *</label>
+                  <input type="time" id="horaSaida" name="horaSaida" value={form.horaSaida} onChange={handleChange} required disabled={loading} />
                 </div>
               </div>
               {estaNaSafra && (
