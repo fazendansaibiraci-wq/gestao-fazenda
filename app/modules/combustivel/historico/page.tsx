@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -201,6 +201,16 @@ export default function HistoricoAbastecimentosPage() {
     paginaAbastecimentos * ITENS_POR_PAGINA + ITENS_POR_PAGINA
   )
 
+  // Totais sobre TODOS os registros filtrados (nao so a pagina visivel
+  // na tela). Consumo medio e ponderado (litros totais / horas totais),
+  // nao a soma dos consumos individuais - soma de L/h nao teria sentido
+  // como metrica. Horimetro nao entra no total: e uma leitura acumulada
+  // (tipo odometro), somar os valores de cada linha nao faz sentido.
+  const totalLitrosAbastecidos = abastecimentos.reduce((s: number, a: any) => s + (a.litrosAbastecidos || 0), 0)
+  const totalHorasTrabalhadas = abastecimentos.reduce((s: number, a: any) => s + (a.horasTrabalhadad || 0), 0)
+  const totalCustoAbastecimento = abastecimentos.reduce((s: number, a: any) => s + (a.custoAbastecimento || 0), 0)
+  const consumoMedioPonderado = totalHorasTrabalhadas > 0 ? totalLitrosAbastecidos / totalHorasTrabalhadas : null
+
   return (
     <div className="space-y-6">
       <div>
@@ -285,6 +295,17 @@ export default function HistoricoAbastecimentosPage() {
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-300 font-semibold bg-gray-50">
+              <td className="px-4 py-2">Total</td>
+              <td className="px-4 py-2"></td>
+              <td className="px-4 py-2 text-gray-400" title="Horimetro e uma leitura acumulada, nao faz sentido somar os valores">-</td>
+              <td className="px-4 py-2">{totalLitrosAbastecidos.toFixed(2)}L</td>
+              <td className="px-4 py-2">{consumoMedioPonderado !== null ? consumoMedioPonderado.toFixed(2) : '-'}</td>
+              <td className="px-4 py-2">R$ {totalCustoAbastecimento.toFixed(2)}</td>
+              {isGestor && <td className="px-4 py-2"></td>}
+            </tr>
+          </tfoot>
         </table>
         {abastecimentos.length > ITENS_POR_PAGINA && (
           <div className="flex items-center justify-between mt-3 text-sm text-gray-600">
