@@ -507,8 +507,10 @@ export default function DashboardPage() {
               Sem dados este mês
             </div>
           ) : (() => {
-            // Ordenado do maior pro menor total (horasHH + horasHM), barra
-            // única empilhada por talhão em vez de duas barras lado a lado.
+            // Ordenado do maior pro menor total (horasHH + horasHM). Layout em
+            // colunas verticais (talhão no eixo X, embaixo) em vez de barras
+            // horizontais — assim a altura do gráfico não cresce conforme
+            // aumenta a quantidade de talhões, só a largura das colunas encolhe.
             const dadosHHHM = custoHHHMPorTalhao
               .map((t) => ({
                 nomeTalhao: t.nomeTalhao,
@@ -517,69 +519,53 @@ export default function DashboardPage() {
                 total: (t.horasHH ?? 0) + (t.horasHM ?? 0),
               }))
               .sort((a, b) => b.total - a.total)
-            const alturaGraficoHHHM = Math.max(250, dadosHHHM.length * 50)
 
-            // Label de total fora da pilha (à direita), buscado do próprio
-            // dadosHHHM pelo índice da barra — o LabelList do recharts só
-            // enxerga o valor do dataKey do Bar em que está, então o total
-            // (soma dos dois segmentos) precisa vir de fora via content.
+            // Total acima de cada coluna. Usa o topo do segmento de cima
+            // (horasHM), já que empilhado ele representa o topo da pilha
+            // inteira, independente do valor de horasHM ser zero ou não.
             const renderLabelTotal = (props: any) => {
-              const { x, y, width, height, index } = props
+              const { x, y, width, index } = props
               const total = dadosHHHM[index]?.total ?? 0
               return (
                 <text
-                  x={x + width + 8}
-                  y={y + height / 2}
+                  x={x + width / 2}
+                  y={y - 6}
                   fill="#374151"
-                  fontSize={11}
-                  textAnchor="start"
-                  dominantBaseline="middle"
+                  fontSize={10}
+                  textAnchor="middle"
                 >
                   {total.toFixed(1)}
                 </text>
               )
             }
 
-            // Label do valor de cada segmento (dentro da barra) — só
-            // desenha se o segmento tiver largura suficiente pra caber o
-            // texto sem colidir com o vizinho ou sobrepor o nome do
-            // talhão no eixo Y. Quando não cabe, o valor exato continua
-            // disponível no Tooltip e o total já aparece fora da barra.
-            const renderLabelSegmento = (props: any, valor: number) => {
-              const { x, y, width, height } = props
-              if (width < 28) return null
+            // Nome do talhão em diagonal embaixo de cada coluna, pra caber
+            // nomes longos mesmo com colunas estreitas quando há muitos
+            // talhões. O detalhamento exato de Hora Homem/Hora Máquina de
+            // cada coluna fica disponível passando o mouse (Tooltip).
+            const renderTickTalhao = (props: any) => {
+              const { x, y, payload } = props
               return (
-                <text
-                  x={x + width - 4}
-                  y={y + height / 2}
-                  fill="#fff"
-                  fontSize={11}
-                  textAnchor="end"
-                  dominantBaseline="middle"
-                >
-                  {valor.toFixed(1)}
+                <text x={x} y={y} dy={8} textAnchor="end" fill="#6b7280" fontSize={10} transform={`rotate(-45 ${x} ${y})`}>
+                  {payload.value}
                 </text>
               )
             }
 
             return (
-              <ResponsiveContainer width="100%" height={alturaGraficoHHHM}>
+              <ResponsiveContainer width="100%" height={380}>
                 <BarChart
                   data={dadosHHHM}
-                  layout="vertical"
-                  margin={{ left: 100, right: 56, top: 8, bottom: 8 }}
+                  margin={{ left: 10, right: 10, top: 24, bottom: 80 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="nomeTalhao" type="category" width={170} tick={{ fontSize: 11 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                  <XAxis dataKey="nomeTalhao" type="category" interval={0} height={80} tick={renderTickTalhao} />
+                  <YAxis type="number" tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(1)}h`} />
                   <Legend />
-                  <Bar dataKey="horasHH" name="Hora Homem" stackId="horas" fill="#2563eb">
-                    <LabelList dataKey="horasHH" content={(props: any) => renderLabelSegmento(props, dadosHHHM[props.index]?.horasHH ?? 0)} />
-                  </Bar>
-                  <Bar dataKey="horasHM" name="Hora Máquina" stackId="horas" fill="#f59e0b" radius={[0, 4, 4, 0]}>
-                    <LabelList dataKey="horasHM" content={(props: any) => renderLabelSegmento(props, dadosHHHM[props.index]?.horasHM ?? 0)} />
-                    <LabelList dataKey="horasHM" content={renderLabelTotal} />
+                  <Bar dataKey="horasHH" name="Hora Homem" stackId="horas" fill="#2563eb" />
+                  <Bar dataKey="horasHM" name="Hora Máquina" stackId="horas" fill="#f59e0b" radius={[4, 4, 0, 0]}>
+                    <LabelList content={renderLabelTotal} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
