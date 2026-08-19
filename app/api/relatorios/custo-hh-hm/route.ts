@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     const registros = await prisma.registroAtividade.findMany({
       where: {
         isFalta: false,
+        isAjusteHorimetro: false,
         ...(Object.keys(dataFilter).length > 0 ? { data: dataFilter } : {}),
       },
       select: {

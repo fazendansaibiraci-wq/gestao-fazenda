@@ -87,23 +87,28 @@ export async function PUT(
           { status: 400 }
         )
       }
-      const ultimaAtividadeMaquina = await prisma.registroAtividade.findFirst({
-        where: {
-          maquinaId: body.maquinaId,
-          horimetroFinal: { not: null },
-          id: { not: params.id },
-        },
-        orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
-        select: { horimetroFinal: true },
-      })
-      const ultimoHorimetroAtividade = ultimaAtividadeMaquina?.horimetroFinal || 0
-      if (body.horimetroInicial < ultimoHorimetroAtividade) {
-        return NextResponse.json(
-          {
-            error: `Horímetro inicial (${body.horimetroInicial}h) não pode ser menor que o horímetro final do último Registro de Atividade dessa máquina (${ultimoHorimetroAtividade}h). Verifique o valor digitado.`,
+      // Bypassa a trava de retrocesso só pra ajuste de horímetro ("Horas Não
+      // Identificadas") — mesmo raciocínio da rota POST. Ver comentário lá.
+      const isAjusteHorimetroFinal = body.isAjusteHorimetro !== undefined ? body.isAjusteHorimetro : registro.isAjusteHorimetro
+      if (!isAjusteHorimetroFinal) {
+        const ultimaAtividadeMaquina = await prisma.registroAtividade.findFirst({
+          where: {
+            maquinaId: body.maquinaId,
+            horimetroFinal: { not: null },
+            id: { not: params.id },
           },
-          { status: 400 }
-        )
+          orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
+          select: { horimetroFinal: true },
+        })
+        const ultimoHorimetroAtividade = ultimaAtividadeMaquina?.horimetroFinal || 0
+        if (body.horimetroInicial < ultimoHorimetroAtividade) {
+          return NextResponse.json(
+            {
+              error: `Horímetro inicial (${body.horimetroInicial}h) não pode ser menor que o horímetro final do último Registro de Atividade dessa máquina (${ultimoHorimetroAtividade}h). Verifique o valor digitado.`,
+            },
+            { status: 400 }
+          )
+        }
       }
     }
 
@@ -153,7 +158,8 @@ export async function PUT(
         saida += 1440 // turno atravessou a meia-noite
       }
       const horasBrutas = (saida - entrada) / 60
-      if (!body.isFalta) {
+      const isAjusteHorimetroCalc = body.isAjusteHorimetro !== undefined ? body.isAjusteHorimetro : registro.isAjusteHorimetro
+      if (!body.isFalta && !isAjusteHorimetroCalc) {
         if (!estaNaSafra) {
           horasCalculadas = Math.max(0, horasBrutas - 1)
         } else {
@@ -231,6 +237,7 @@ export async function PUT(
         horasMaquina: body.horasMaquina ?? null,
         implementoUtilizado: body.implementoUtilizado ?? null,
         isFalta: seraCompensacaoBancoHoras ? false : (body.isFalta !== undefined ? body.isFalta : undefined),
+        isAjusteHorimetro: body.isAjusteHorimetro !== undefined ? body.isAjusteHorimetro : undefined,
         motivoFalta: body.motivoFalta ?? null,
         periodoFalta: body.periodoFalta ?? null,
         passouDiretoAlmoco: body.passouDiretoAlmoco !== undefined ? body.passouDiretoAlmoco : undefined,

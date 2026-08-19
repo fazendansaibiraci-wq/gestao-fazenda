@@ -86,8 +86,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!body.data || !body.horaEntrada || !body.safraId || (!body.isFalta && (!body.talhaoId || !body.horaSaida))) {
+    if (
+      !body.data ||
+      !body.horaEntrada ||
+      !body.safraId ||
+      (!body.isFalta && !body.isAjusteHorimetro && (!body.talhaoId || !body.horaSaida))
+    ) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
+    }
+
+    // Registro de ajuste de horímetro ("Horas Não Identificadas"): campos
+    // obrigatórios são outros (máquina + horímetros + observação), não os do
+    // formulário normal. Ver PASSO 3/4 da spec da feature.
+    if (body.isAjusteHorimetro) {
+      if (!body.maquinaId || body.horimetroInicial == null || body.horimetroFinal == null || !body.observacao) {
+        return NextResponse.json(
+          { error: 'Para ajuste de horímetro: máquina, horímetro inicial, horímetro final e observação são obrigatórios' },
+          { status: 400 }
+        )
+      }
     }
 
     if (body.maquinaId) {
@@ -112,19 +129,25 @@ export async function POST(request: NextRequest) {
       // Trava física: horímetro nunca pode retroceder em relação ao
       // horímetro final do último Registro de Atividade dessa máquina.
       // Abastecimento NÃO entra nessa conta — é uma leitura separada.
-      const ultimaAtividadeMaquina = await prisma.registroAtividade.findFirst({
-        where: { maquinaId: body.maquinaId, horimetroFinal: { not: null } },
-        orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
-        select: { horimetroFinal: true },
-      })
-      const ultimoHorimetroAtividade = ultimaAtividadeMaquina?.horimetroFinal || 0
-      if (body.horimetroInicial < ultimoHorimetroAtividade) {
-        return NextResponse.json(
-          {
-            error: `Horímetro inicial (${body.horimetroInicial}h) não pode ser menor que o horímetro final do último Registro de Atividade dessa máquina (${ultimoHorimetroAtividade}h). Verifique o valor digitado.`,
-          },
-          { status: 400 }
-        )
+      // Exceção: ajuste de horímetro ("Horas Não Identificadas") existe
+      // justamente pra preencher buracos ANTIGOS, com atividades mais novas
+      // já lançadas por cima — bypassa só essa trava de retrocesso, as
+      // outras (final>inicial, diff<24h) continuam valendo normalmente.
+      if (!body.isAjusteHorimetro) {
+        const ultimaAtividadeMaquina = await prisma.registroAtividade.findFirst({
+          where: { maquinaId: body.maquinaId, horimetroFinal: { not: null } },
+          orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
+          select: { horimetroFinal: true },
+        })
+        const ultimoHorimetroAtividade = ultimaAtividadeMaquina?.horimetroFinal || 0
+        if (body.horimetroInicial < ultimoHorimetroAtividade) {
+          return NextResponse.json(
+            {
+              error: `Horímetro inicial (${body.horimetroInicial}h) não pode ser menor que o horímetro final do último Registro de Atividade dessa máquina (${ultimoHorimetroAtividade}h). Verifique o valor digitado.`,
+            },
+            { status: 400 }
+          )
+        }
       }
     }
 
@@ -181,7 +204,7 @@ export async function POST(request: NextRequest) {
     let horasCalculadas = horasBrutas
     let horaAlmocoComoExtra = false
 
-    if (horasBrutas !== null && !body.isFalta) {
+    if (horasBrutas !== null && !body.isFalta && !body.isAjusteHorimetro) {
       if (!estaNaSafra) {
         horasCalculadas = Math.max(0, horasBrutas - 1)
       } else {
@@ -225,7 +248,7 @@ export async function POST(request: NextRequest) {
     let horasDevidas = 0
     let ehHoraExtra = false
 
-    if (horasCalculadas !== null && !body.isFalta) {
+    if (horasCalculadas !== null && !body.isFalta && !body.isAjusteHorimetro) {
       if (horasCalculadas > cargaHorariaDia) {
         horasExtras = horasCalculadas - cargaHorariaDia
         ehHoraExtra = true
@@ -263,6 +286,7 @@ export async function POST(request: NextRequest) {
         horasMaquina: body.horasMaquina || null,
         implementoUtilizado: body.implementoUtilizado || null,
         isFalta: isCompensacaoBancoHoras ? false : (body.isFalta || false),
+        isAjusteHorimetro: body.isAjusteHorimetro || false,
         motivoFalta: body.motivoFalta || null,
         periodoFalta: body.periodoFalta || null,
         passouDiretoAlmoco: body.passouDiretoAlmoco || false,

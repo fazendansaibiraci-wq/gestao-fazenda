@@ -1,10 +1,11 @@
 ﻿'use client'
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
+import { TIPO_ATIVIDADE_AJUSTE_HORIMETRO, NAO_IDENTIFICADO_EMAIL } from '@/lib/ajusteHorimetro'
 
 interface RegistroAtividadeFormProps {
   id?: string
@@ -13,6 +14,12 @@ interface RegistroAtividadeFormProps {
 
 export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeFormProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Modo especial ativado só via query param (?ajuste=1), vindo do botão
+  // "Lançar ajuste" da tela de reconciliação de Combustível — de propósito
+  // sem checkbox visível no form normal, pra ninguém ativar sem querer.
+  // Só se aplica na criação (nunca em edição de um registro já existente).
+  const isAjusteMode = !id && searchParams.get('ajuste') === '1'
   const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -40,23 +47,24 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   }, [error])
 
   const [form, setForm] = useState({
-    data: initialData?.data?.split('T')[0] || new Date().toISOString().split('T')[0],
-    horaEntrada: initialData?.horaEntrada || '',
+    data: (isAjusteMode && searchParams.get('data')) || initialData?.data?.split('T')[0] || new Date().toISOString().split('T')[0],
+    horaEntrada: isAjusteMode ? '00:00' : (initialData?.horaEntrada || ''),
     horaSaida: initialData?.horaSaida || '',
     talhaoId: initialData?.talhaoId || '',
     safraId: initialData?.safraId || '',
-    tipoAtividade: initialData?.tipoAtividade || '',
+    tipoAtividade: isAjusteMode ? TIPO_ATIVIDADE_AJUSTE_HORIMETRO : (initialData?.tipoAtividade || ''),
     status: 'CONCLUIDO',
     totalBombas: initialData?.totalBombas || '',
     tipoAdubo: initialData?.tipoAdubo || '',
     quantidadeAdubo: initialData?.quantidadeAdubo || '',
     tipoCorretivo: initialData?.tipoCorretivo || '',
     quantidadeCorretivo: initialData?.quantidadeCorretivo || '',
-    maquinaId: initialData?.maquinaId || '',
-    horimetroInicial: initialData?.horimetroInicial || '',
-    horimetroFinal: initialData?.horimetroFinal || '',
+    maquinaId: (isAjusteMode && searchParams.get('maquinaId')) || initialData?.maquinaId || '',
+    horimetroInicial: (isAjusteMode && searchParams.get('horimetroInicial')) || initialData?.horimetroInicial || '',
+    horimetroFinal: (isAjusteMode && searchParams.get('horimetroFinal')) || initialData?.horimetroFinal || '',
     implementoUtilizado: initialData?.implementoUtilizado || '',
     isFalta: initialData?.isFalta || false,
+    isAjusteHorimetro: isAjusteMode || initialData?.isAjusteHorimetro || false,
     motivoFalta: initialData?.motivoFalta || '',
     periodoFalta: initialData?.periodoFalta || 'DIA_INTEIRO',
     passouDiretoAlmoco: initialData?.passouDiretoAlmoco || false,
@@ -64,6 +72,32 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     fotoEvidencia: initialData?.fotoEvidencia || '',
     funcionarioId: initialData?.funcionarioId || '',
   })
+
+  // Funcionário padrão do ajuste: usuário placeholder "Não Identificado" —
+  // só preenche se ainda estiver vazio (não sobrescreve escolha do gestor) e
+  // só depois que /api/funcionarios carregar. Continua editável normalmente.
+  useEffect(() => {
+    if (isAjusteMode && !form.funcionarioId && funcionarios.length > 0) {
+      const naoIdentificado: any = (funcionarios as any[]).find((f: any) => f.email === NAO_IDENTIFICADO_EMAIL)
+      if (naoIdentificado) {
+        setForm(prev => (prev.funcionarioId ? prev : { ...prev, funcionarioId: naoIdentificado.id }))
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [funcionarios, isAjusteMode])
+
+  // Safra padrão do ajuste: safra ATIVA — mesmo espírito do fallback já usado
+  // pro isFalta (form.safraId || safras[0]?.id) no payload, só que aqui
+  // preenchendo com a safra ativa de verdade em vez do primeiro item da lista.
+  useEffect(() => {
+    if (isAjusteMode && !form.safraId && safras.length > 0) {
+      const safraAtiva: any = (safras as any[]).find((s: any) => s.status === 'ATIVA')
+      if (safraAtiva) {
+        setForm(prev => (prev.safraId ? prev : { ...prev, safraId: safraAtiva.id }))
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safras, isAjusteMode])
 
   useEffect(() => { loadData() }, [])
 
@@ -139,7 +173,13 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
       // ter mudado nada. O servidor (PUT) já faz essa validação
       // corretamente excluindo o próprio registro — é ele quem decide de
       // verdade nesse caso.
-      if (!id) {
+      //
+      // Também não roda pro ajuste de Horas Não Identificadas: por
+      // definição esse lançamento fecha um buraco NO PASSADO, depois que
+      // atividades reais mais recentes (com horímetro mais alto) já podem
+      // existir — a trava de "nunca retrocede" não se aplica aqui. A API
+      // (POST) faz o mesmo bypass, só pra isAjusteHorimetro.
+      if (!id && !form.isAjusteHorimetro) {
         const maquinaSelecionada: any = maquinas.find((m: any) => m.id === form.maquinaId)
         const ultimoHorimetroAtividade = maquinaSelecionada?.ultimoHorimetroAtividade ?? 0
         if (parseFloat(form.horimetroInicial) < ultimoHorimetroAtividade) {
@@ -170,8 +210,16 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     if (!validateHorimetro()) return
     setLoading(true)
     try {
-      if (!form.isFalta && (!form.data || !form.horaEntrada || !form.horaSaida || !form.talhaoId || !form.safraId)) {
+      if (!form.isFalta && !form.isAjusteHorimetro && (!form.data || !form.horaEntrada || !form.horaSaida || !form.talhaoId || !form.safraId)) {
         setError('Preencha todos os campos obrigatórios'); setLoading(false); return
+      }
+      if (form.isAjusteHorimetro) {
+        if (!form.maquinaId || !form.horimetroInicial || !form.horimetroFinal) {
+          setError('Selecione a máquina e informe horímetro inicial e final'); setLoading(false); return
+        }
+        if (!form.observacao.trim()) {
+          setError('Informe o motivo do ajuste (observação obrigatória)'); setLoading(false); return
+        }
       }
       if (needsBombas && (!form.totalBombas || parseFloat(form.totalBombas) <= 0)) {
         setError('Informe a quantidade de bombas usadas nessa aplicação'); setLoading(false); return
@@ -195,6 +243,19 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         talhaoId: null,
         safraId: form.safraId || (safras[0] as any)?.id,
         tipoAtividade: 'GERAIS', status: 'CONCLUIDO', horaEntrada: '00:00',
+      } : form.isAjusteHorimetro ? {
+        data: new Date(form.data + 'T12:00:00'),
+        funcionarioId: form.funcionarioId,
+        isAjusteHorimetro: true,
+        tipoAtividade: TIPO_ATIVIDADE_AJUSTE_HORIMETRO,
+        status: 'CONCLUIDO',
+        horaEntrada: '00:00',
+        // Ajuste não tem talhão real — mesmo motivo da falta acima.
+        talhaoId: null,
+        safraId: form.safraId || (safras[0] as any)?.id,
+        maquinaId: form.maquinaId,
+        horimetroInicial, horimetroFinal, horasMaquina,
+        observacao: form.observacao,
       } : {
         ...form, data: new Date(form.data + 'T12:00:00'),
         totalBombas: form.totalBombas ? parseInt(form.totalBombas) : null,
@@ -275,6 +336,51 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         </div>
       </div>
 
+      {form.isAjusteHorimetro && (
+        <div className="card border-l-4 border-blue-400">
+          <h3 className="text-lg font-semibold text-primary mb-1">Ajuste de Registro de Atividade — Horas Não Identificadas</h3>
+          <p className="text-xs text-gray-500 mb-4">
+            Lançamento gerado pela tela de reconciliação de Combustível (Relatórios &gt; Combustível), pra fechar um
+            buraco entre o horímetro dos abastecimentos e as horas de máquina já registradas em atividades. Não
+            confundir com "Ajuste de Horímetro" (Cadastros), que corrige o horímetro atual da máquina diretamente.
+          </p>
+          <div className="space-y-4">
+            <div className="form-group">
+              <label htmlFor="maquinaId">Máquina *</label>
+              <select id="maquinaId" name="maquinaId" value={form.maquinaId} onChange={handleMaquinaChange} required disabled={loading}>
+                <option value="">Selecionar máquina</option>
+                {maquinas.map((m:any) => <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-group">
+                <label htmlFor="horimetroInicial">Horímetro Inicial (h) *</label>
+                <input type="number" id="horimetroInicial" name="horimetroInicial" value={form.horimetroInicial} onChange={handleChange} step="0.1" placeholder="0,0" required disabled={loading} />
+              </div>
+              <div className="form-group">
+                <label htmlFor="horimetroFinal">Horímetro Final (h) *</label>
+                <input type="number" id="horimetroFinal" name="horimetroFinal" value={form.horimetroFinal} onChange={handleChange} step="0.1" placeholder="0,0" required disabled={loading} />
+              </div>
+            </div>
+            {totalHorasMaquina && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800"><strong>Total de horas do ajuste:</strong> {totalHorasMaquina}h</p>
+              </div>
+            )}
+            <div className="form-group">
+              <label htmlFor="observacao">Motivo do ajuste *</label>
+              <textarea id="observacao" name="observacao" value={form.observacao} onChange={handleChange} required disabled={loading} rows={3}
+                placeholder="Ex: horas de trator não lançadas por ninguém entre 09/07 e 21/07" />
+            </div>
+          </div>
+          <div className="flex gap-4 pt-4">
+            <button type="submit" disabled={loading} className="btn btn-primary flex-1">{loading ? 'Salvando...' : id ? 'Atualizar Ajuste' : 'Registrar Ajuste'}</button>
+            <button type="button" onClick={() => router.back()} disabled={loading} className="btn btn-outline flex-1">Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {!form.isAjusteHorimetro && (
       <div className="card border-l-4 border-orange-400">
         <h3 className="text-lg font-semibold text-primary mb-4">Registrar Falta?</h3>
         <div style={{display:'flex', flexDirection:'row', alignItems:'center', gap:'12px', marginBottom:'16px', width:'100%'}}>
@@ -341,8 +447,9 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
           </div>
         )}
       </div>
+      )}
 
-      {!form.isFalta && (
+      {!form.isFalta && !form.isAjusteHorimetro && (
         <>
           <div className="card">
             <h3 className="text-lg font-semibold text-primary mb-4">Informações Básicas</h3>

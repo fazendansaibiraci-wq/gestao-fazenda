@@ -1,8 +1,9 @@
 ﻿﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3, Package, ChevronDown } from 'lucide-react'
+import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3, Package, ChevronDown, Wrench } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -18,6 +19,7 @@ import { calcularCombustivelPorMaquina } from '@/lib/calculoCombustivelPorMaquin
 
 export default function RelatoriosPage() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [aba, setAba] = useState('')
   const [registros, setRegistros] = useState<any[]>([])
   const [talhoes, setTalhoes] = useState<any[]>([])
@@ -42,6 +44,7 @@ export default function RelatoriosPage() {
 
   const [filtroDataInicioComb, setFiltroDataInicioComb] = useState('')
   const [filtroDataFimComb, setFiltroDataFimComb] = useState('')
+  const [maquinaExpandidaCombustivel, setMaquinaExpandidaCombustivel] = useState<string | null>(null)
 
   useEffect(() => {
     loadDados()
@@ -154,6 +157,101 @@ export default function RelatoriosPage() {
 
   const getResumoCombustivelPorMaquina = () => {
     return calcularCombustivelPorMaquina(abastecimentos, registros, filtroDataInicioComb, filtroDataFimComb)
+  }
+
+  // ─── "Horas Não Identificadas": reconciliação de horímetro por máquina ───
+  // Pra cada máquina divergente, quebra o período em intervalos entre
+  // abastecimentos consecutivos e calcula, por intervalo, quanto do avanço
+  // do horímetro (delta_abastecimento) não está coberto por nenhum Registro
+  // de Atividade (soma de horasMaquina) — o "buraco". Reaproveita os mesmos
+  // `abastecimentos`/`registros` já carregados nesta página (sem chamada de
+  // API nova). Só é chamada sob demanda, quando o usuário expande o detalhe
+  // de uma máquina divergente.
+  const getBuracosPorMaquina = (maquinaId: string) => {
+    const abastecimentosMaquina = abastecimentos
+      .filter((a: any) => a.maquinaId === maquinaId)
+      .filter((a: any) => {
+        if (filtroDataInicioComb && new Date(a.data) < new Date(filtroDataInicioComb)) return false
+        if (filtroDataFimComb && new Date(a.data) > new Date(filtroDataFimComb)) return false
+        return true
+      })
+      .sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime())
+
+    const registrosMaquina = registros
+      .filter((r: any) => r.maquinaId === maquinaId)
+      .sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime())
+
+    const intervalos: {
+      dataInicio: string
+      horimetroInicio: number
+      dataFim: string
+      horimetroFim: number
+      deltaAbastecimento: number
+      qtdAtividades: number
+      somaHorasMaquina: number
+      buracoReal: number
+      relevante: boolean
+      horimetroInicialAjuste: number
+      horimetroFinalAjuste: number
+      dataAjuste: string
+    }[] = []
+
+    for (let i = 0; i < abastecimentosMaquina.length - 1; i++) {
+      const a = abastecimentosMaquina[i]
+      const b = abastecimentosMaquina[i + 1]
+      const deltaAbastecimento = (b.horimetroAtual || 0) - (a.horimetroAtual || 0)
+
+      const atividadesNoIntervalo = registrosMaquina.filter((r: any) => {
+        const d = new Date(r.data)
+        return d >= new Date(a.data) && d <= new Date(b.data)
+      })
+
+      const somaHorasMaquina = atividadesNoIntervalo.reduce((acc: number, r: any) => {
+        if (r.horasMaquina != null) return acc + r.horasMaquina
+        if (r.horimetroFinal != null && r.horimetroInicial != null) return acc + (r.horimetroFinal - r.horimetroInicial)
+        return acc
+      }, 0)
+
+      const buracoReal = deltaAbastecimento - somaHorasMaquina
+
+      // Ponto de partida sugerido pro ajuste: horímetro final da última
+      // atividade REAL (não-ajuste) já lançada dentro deste intervalo; se
+      // não houver nenhuma, cai pro horímetro do abastecimento anterior.
+      const ultimaAtividadeReal = atividadesNoIntervalo
+        .filter((r: any) => !r.isAjusteHorimetro && r.horimetroFinal != null)
+        .slice()
+        .sort((x: any, y: any) => new Date(x.data).getTime() - new Date(y.data).getTime())
+        .pop()
+      const horimetroInicialAjuste = ultimaAtividadeReal?.horimetroFinal ?? a.horimetroAtual
+
+      intervalos.push({
+        dataInicio: a.data,
+        horimetroInicio: a.horimetroAtual,
+        dataFim: b.data,
+        horimetroFim: b.horimetroAtual,
+        deltaAbastecimento,
+        qtdAtividades: atividadesNoIntervalo.length,
+        somaHorasMaquina,
+        buracoReal,
+        relevante: Math.abs(buracoReal) > 3,
+        horimetroInicialAjuste,
+        horimetroFinalAjuste: b.horimetroAtual,
+        dataAjuste: b.data,
+      })
+    }
+
+    return intervalos
+  }
+
+  const lancarAjusteHorimetro = (maquinaId: string, horimetroInicial: number, horimetroFinal: number, data: string) => {
+    const params = new URLSearchParams({
+      ajuste: '1',
+      maquinaId,
+      horimetroInicial: String(horimetroInicial),
+      horimetroFinal: String(horimetroFinal),
+      data: new Date(data).toISOString().split('T')[0],
+    })
+    router.push(`/modules/atividades/nova?${params.toString()}`)
   }
 
   // ─── Comparativo Hora Homem x Hora Máquina por Operador ──────────────────
@@ -838,28 +936,108 @@ export default function RelatoriosPage() {
 
                         return (
                           <>
-                            {resumoCombustivel.map(m => (
-                              <tr key={m.maquinaId} className="border-b hover:bg-gray-50">
-                                <td className="py-2 px-3 font-medium">{m.nomeMaquina}</td>
-                                <td className="py-2 px-3">
-                                  {m.totalHoras.toFixed(1)}h
-                                  {m.divergente && (
-                                    <AlertCircle
-                                      className="inline-block w-4 h-4 text-amber-500 ml-1 align-text-bottom"
-                                      title="Divergência entre horímetro e horas registradas nas atividades"
-                                    />
+                            {resumoCombustivel.map(m => {
+                              const expandido = m.divergente && maquinaExpandidaCombustivel === m.maquinaId
+                              const buracos = expandido ? getBuracosPorMaquina(m.maquinaId) : []
+                              return (
+                                <Fragment key={m.maquinaId}>
+                                  <tr
+                                    className={`border-b hover:bg-gray-50 ${m.divergente ? 'cursor-pointer' : ''}`}
+                                    onClick={() => {
+                                      if (!m.divergente) return
+                                      setMaquinaExpandidaCombustivel(expandido ? null : m.maquinaId)
+                                    }}
+                                  >
+                                    <td className="py-2 px-3 font-medium">
+                                      {m.divergente && (
+                                        <ChevronDown
+                                          className={`inline-block w-3.5 h-3.5 text-gray-400 mr-1 align-text-bottom transition-transform ${expandido ? 'rotate-180' : ''}`}
+                                        />
+                                      )}
+                                      {m.nomeMaquina}
+                                    </td>
+                                    <td className="py-2 px-3">
+                                      {m.totalHoras.toFixed(1)}h
+                                      {m.divergente && (
+                                        <AlertCircle
+                                          className="inline-block w-4 h-4 text-amber-500 ml-1 align-text-bottom"
+                                          title="Divergência entre horímetro e horas registradas nas atividades"
+                                        />
+                                      )}
+                                    </td>
+                                    <td className={`py-2 px-3 ${m.totalLitros === maxTotalLitros && maxTotalLitros > 0 ? 'text-blue-600 font-bold' : ''}`}>
+                                      {m.totalLitros.toFixed(1)}L
+                                    </td>
+                                    <td className={`py-2 px-3 ${m.consumoMedioLH === maxConsumoMedio && maxConsumoMedio > 0 ? 'text-red-600 font-bold' : ''}`}>
+                                      {m.consumoMedioLH.toFixed(2)} L/h
+                                    </td>
+                                    <td className="py-2 px-3">{m.horasRegistradasAtividades.toFixed(1)}h</td>
+                                    <td className="py-2 px-3">R$ {m.custoTotal.toFixed(2)}</td>
+                                  </tr>
+                                  {expandido && (
+                                    <tr>
+                                      <td colSpan={6} className="bg-amber-50/60 px-4 py-3 border-b">
+                                        <p className="text-xs font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
+                                          <Wrench className="w-3.5 h-3.5" />
+                                          Reconciliação por intervalo entre abastecimentos — {m.nomeMaquina}
+                                        </p>
+                                        {buracos.length === 0 ? (
+                                          <p className="text-xs text-gray-500">
+                                            Menos de dois abastecimentos no período selecionado — não é possível calcular intervalos.
+                                          </p>
+                                        ) : (
+                                          <div className="overflow-x-auto">
+                                            <table className="w-full text-xs">
+                                              <thead>
+                                                <tr className="text-left text-gray-500 border-b border-amber-200">
+                                                  <th className="py-1.5 pr-3 font-medium">Intervalo</th>
+                                                  <th className="py-1.5 pr-3 font-medium text-right">Δ Abastecimento</th>
+                                                  <th className="py-1.5 pr-3 font-medium text-right">Horas em Atividades</th>
+                                                  <th className="py-1.5 pr-3 font-medium text-right">Buraco</th>
+                                                  <th className="py-1.5 pr-3 font-medium"></th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {buracos.map((iv, idx) => (
+                                                  <tr key={idx} className={`border-b border-amber-100 last:border-0 ${iv.relevante ? 'bg-amber-100/70' : ''}`}>
+                                                    <td className="py-1.5 pr-3 text-gray-700">
+                                                      {new Date(iv.dataInicio).toLocaleDateString('pt-BR')} ({iv.horimetroInicio.toFixed(1)}h)
+                                                      {' → '}
+                                                      {new Date(iv.dataFim).toLocaleDateString('pt-BR')} ({iv.horimetroFim.toFixed(1)}h)
+                                                    </td>
+                                                    <td className="py-1.5 pr-3 text-right text-gray-700">{iv.deltaAbastecimento.toFixed(1)}h</td>
+                                                    <td className="py-1.5 pr-3 text-right text-gray-700">
+                                                      {iv.somaHorasMaquina.toFixed(1)}h
+                                                      <span className="text-gray-400"> ({iv.qtdAtividades})</span>
+                                                    </td>
+                                                    <td className={`py-1.5 pr-3 text-right font-semibold ${iv.relevante ? 'text-amber-700' : 'text-gray-500'}`}>
+                                                      {iv.buracoReal.toFixed(1)}h
+                                                    </td>
+                                                    <td className="py-1.5 pr-3 text-right">
+                                                      {iv.relevante && (
+                                                        <button
+                                                          onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            lancarAjusteHorimetro(m.maquinaId, iv.horimetroInicialAjuste, iv.horimetroFinalAjuste, iv.dataAjuste)
+                                                          }}
+                                                          className="px-2.5 py-1 bg-amber-600 text-white rounded text-xs font-medium hover:bg-amber-700 transition-colors"
+                                                        >
+                                                          Lançar ajuste
+                                                        </button>
+                                                      )}
+                                                    </td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        )}
+                                      </td>
+                                    </tr>
                                   )}
-                                </td>
-                                <td className={`py-2 px-3 ${m.totalLitros === maxTotalLitros && maxTotalLitros > 0 ? 'text-blue-600 font-bold' : ''}`}>
-                                  {m.totalLitros.toFixed(1)}L
-                                </td>
-                                <td className={`py-2 px-3 ${m.consumoMedioLH === maxConsumoMedio && maxConsumoMedio > 0 ? 'text-red-600 font-bold' : ''}`}>
-                                  {m.consumoMedioLH.toFixed(2)} L/h
-                                </td>
-                                <td className="py-2 px-3">{m.horasRegistradasAtividades.toFixed(1)}h</td>
-                                <td className="py-2 px-3">R$ {m.custoTotal.toFixed(2)}</td>
-                              </tr>
-                            ))}
+                                </Fragment>
+                              )
+                            })}
                             <tr className="border-t-2 border-gray-300 font-semibold bg-gray-50">
                               <td className="py-2 px-3">Total Geral</td>
                               <td className="py-2 px-3">{totalGeralHoras.toFixed(1)}h</td>
