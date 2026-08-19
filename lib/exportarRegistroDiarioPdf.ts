@@ -11,7 +11,7 @@
 // app/api/painel/folha-pagamento/exportar/route.ts.
 
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import type { RegistroDiario } from '@/components/RegistroDiarioCard'
 
 const fmtH = (h: number) => {
@@ -77,7 +77,7 @@ export function exportarRegistroDiarioPdf({
   const totalDevidas = linhas.reduce((acc, d) => acc + d.horasDevidas, 0)
   const totalFaltas = linhas.filter((d) => d.isFalta).length
 
-  ;(pdf as any).autoTable({
+  autoTable(pdf, {
     startY: 37,
     head: [['Data', 'Entrada', 'Saída', 'Horas Trab.', 'Carga Contratual', 'Extras', 'Devidas']],
     body: tableData,
