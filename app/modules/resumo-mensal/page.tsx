@@ -5,9 +5,10 @@ import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import {
   DollarSign, Clock, TrendingUp, TrendingDown,
-  Calendar, ChevronDown, ChevronUp
+  Calendar, ChevronDown, ChevronUp, FileDown
 } from 'lucide-react'
 import RegistroDiarioCard, { RegistroDiario } from '@/components/RegistroDiarioCard'
+import { exportarRegistroDiarioPdf } from '@/lib/exportarRegistroDiarioPdf'
 
 interface ResumoFuncionario {
   funcionario: { id: string; name: string; role: string; pagamentoProporcionalDiario?: boolean }
@@ -71,6 +72,15 @@ export default function ResumoMensalPage() {
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ]
+
+  const handleExportarPdf = (r: ResumoFuncionario) => {
+    exportarRegistroDiarioPdf({
+      nomeFuncionario: r.funcionario.name,
+      mesLabel: meses[mes - 1],
+      ano,
+      registrosDiarios: r.registrosDiarios,
+    })
+  }
 
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   const fmtH = (h: number) => {
@@ -228,18 +238,27 @@ export default function ResumoMensalPage() {
                   </div>
                 </div>
 
-                {/* Botão expandir */}
-                <button
-                  onClick={() => toggleExpandir(r.funcionario.id)}
-                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
-                >
-                  <Clock className="w-4 h-4" />
-                  {expandidos.includes(r.funcionario.id) ? 'Ocultar' : 'Ver'} registros diários
-                  {expandidos.includes(r.funcionario.id)
-                    ? <ChevronUp className="w-4 h-4" />
-                    : <ChevronDown className="w-4 h-4" />
-                  }
-                </button>
+                {/* Botão expandir + exportar PDF */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => toggleExpandir(r.funcionario.id)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
+                  >
+                    <Clock className="w-4 h-4" />
+                    {expandidos.includes(r.funcionario.id) ? 'Ocultar' : 'Ver'} registros diários
+                    {expandidos.includes(r.funcionario.id)
+                      ? <ChevronUp className="w-4 h-4" />
+                      : <ChevronDown className="w-4 h-4" />
+                    }
+                  </button>
+                  <button
+                    onClick={() => handleExportarPdf(r)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-500 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
+                    title="Exportar registro diário em PDF"
+                  >
+                    <FileDown className="w-4 h-4" />
+                  </button>
+                </div>
 
                 {/* Registros diários */}
                 {expandidos.includes(r.funcionario.id) && (
@@ -332,13 +351,22 @@ export default function ResumoMensalPage() {
                             <span className="font-bold text-lg text-primary">{fmt(r.totalAcumulado)}</span>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleExpandir(r.funcionario.id) }}
-                              className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-primary transition-colors"
-                              title={expandido ? 'Ocultar registros diários' : 'Ver registros diários'}
-                            >
-                              {expandido ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </button>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleExportarPdf(r) }}
+                                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-primary transition-colors"
+                                title="Exportar registro diário em PDF"
+                              >
+                                <FileDown className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleExpandir(r.funcionario.id) }}
+                                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-primary transition-colors"
+                                title={expandido ? 'Ocultar registros diários' : 'Ver registros diários'}
+                              >
+                                {expandido ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </div>
                           </td>
                         </tr>
 
