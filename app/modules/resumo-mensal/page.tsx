@@ -8,7 +8,7 @@ import {
   Calendar, ChevronDown, ChevronUp, FileDown
 } from 'lucide-react'
 import RegistroDiarioCard, { RegistroDiario } from '@/components/RegistroDiarioCard'
-import { exportarRegistroDiarioPdf } from '@/lib/exportarRegistroDiarioPdf'
+import { exportarRegistroDiarioPdf, exportarTodosRegistrosDiariosPdf } from '@/lib/exportarRegistroDiarioPdf'
 
 interface ResumoFuncionario {
   funcionario: { id: string; name: string; role: string; pagamentoProporcionalDiario?: boolean }
@@ -79,6 +79,19 @@ export default function ResumoMensalPage() {
       mesLabel: meses[mes - 1],
       ano,
       registrosDiarios: r.registrosDiarios,
+    })
+  }
+
+  const handleExportarTodosPdf = () => {
+    // Exporta a lista já filtrada pela busca (se o gestor tiver buscado um
+    // nome, "todos" aqui significa "todos os que estão aparecendo").
+    exportarTodosRegistrosDiariosPdf({
+      mesLabel: meses[mes - 1],
+      ano,
+      funcionarios: resumoFiltrado.map((r) => ({
+        nomeFuncionario: r.funcionario.name,
+        registrosDiarios: r.registrosDiarios,
+      })),
     })
   }
 
@@ -160,9 +173,9 @@ export default function ResumoMensalPage() {
         </div>
       )}
 
-      {/* Busca por funcionário — só para gestor */}
+      {/* Busca por funcionário + exportar todos — só para gestor */}
       {!isFuncionario && (
-        <div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <input
             type="text"
             value={buscaFuncionario}
@@ -170,6 +183,15 @@ export default function ResumoMensalPage() {
             placeholder="Buscar funcionário..."
             className="border rounded-lg px-3 py-2 text-sm w-full sm:w-80"
           />
+          <button
+            onClick={handleExportarTodosPdf}
+            disabled={resumoFiltrado.length === 0}
+            className="flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed sm:ml-auto"
+            title="Exportar PDF de todos os funcionários listados (um por página)"
+          >
+            <FileDown className="w-4 h-4" />
+            Exportar todos ({resumoFiltrado.length})
+          </button>
         </div>
       )}
 

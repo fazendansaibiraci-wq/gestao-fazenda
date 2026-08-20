@@ -28,21 +28,33 @@ const fmtData = (iso: string) => {
   return `${dd}/${mm} ${dias[d.getUTCDay()]}`
 }
 
-interface ExportarRegistroDiarioParams {
+interface FuncionarioRegistroDiario {
   nomeFuncionario: string
-  mesLabel: string // ex: "Agosto"
-  ano: number
   registrosDiarios: RegistroDiario[]
 }
 
-export function exportarRegistroDiarioPdf({
-  nomeFuncionario,
-  mesLabel,
-  ano,
-  registrosDiarios,
-}: ExportarRegistroDiarioParams) {
-  const pdf = new jsPDF()
+interface ExportarRegistroDiarioParams extends FuncionarioRegistroDiario {
+  mesLabel: string // ex: "Agosto"
+  ano: number
+}
 
+interface ExportarTodosRegistroDiarioParams {
+  mesLabel: string
+  ano: number
+  funcionarios: FuncionarioRegistroDiario[]
+}
+
+// Desenha o espelho de UM funcionário na página atual do documento — não
+// cria o jsPDF nem salva o arquivo, só desenha. Reaproveitado tanto pela
+// exportação individual (1 funcionário, 1 página) quanto pela exportação
+// de todos (N funcionários, N páginas no mesmo arquivo).
+function desenharPaginaFuncionario(
+  pdf: jsPDF,
+  nomeFuncionario: string,
+  mesLabel: string,
+  ano: number,
+  registrosDiarios: RegistroDiario[]
+) {
   pdf.setFontSize(14)
   pdf.text('Registro de Atividades — Espelho Mensal', 105, 15, { align: 'center' })
 
@@ -92,7 +104,38 @@ export function exportarRegistroDiarioPdf({
     headStyles: { fillColor: [45, 106, 79] }, // verde da identidade visual do app
     footStyles: { fillColor: [232, 232, 232], textColor: [0, 0, 0], fontStyle: 'bold' },
   })
+}
+
+export function exportarRegistroDiarioPdf({
+  nomeFuncionario,
+  mesLabel,
+  ano,
+  registrosDiarios,
+}: ExportarRegistroDiarioParams) {
+  const pdf = new jsPDF()
+  desenharPaginaFuncionario(pdf, nomeFuncionario, mesLabel, ano, registrosDiarios)
 
   const nomeArquivo = `registro_${nomeFuncionario.replace(/\s+/g, '_').toLowerCase()}_${mesLabel.toLowerCase()}_${ano}.pdf`
+  pdf.save(nomeArquivo)
+}
+
+// Exporta todos os funcionários passados num único PDF, um por página —
+// mesmo layout do individual, só que empilhado. Usado pelo botão "Exportar
+// todos" da visão de gestor no Resumo Mensal.
+export function exportarTodosRegistrosDiariosPdf({
+  mesLabel,
+  ano,
+  funcionarios,
+}: ExportarTodosRegistroDiarioParams) {
+  if (funcionarios.length === 0) return
+
+  const pdf = new jsPDF()
+
+  funcionarios.forEach((f, idx) => {
+    if (idx > 0) pdf.addPage()
+    desenharPaginaFuncionario(pdf, f.nomeFuncionario, mesLabel, ano, f.registrosDiarios)
+  })
+
+  const nomeArquivo = `registro_todos_${mesLabel.toLowerCase()}_${ano}.pdf`
   pdf.save(nomeArquivo)
 }
