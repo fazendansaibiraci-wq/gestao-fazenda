@@ -161,16 +161,16 @@ export default function ResumoMensalPage() {
         <div className="flex flex-col items-start sm:items-end gap-2">
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-gray-500" />
-            <div className="flex border rounded-lg overflow-hidden text-sm">
+            <div className="flex items-center border rounded-lg text-sm">
               <button
                 onClick={() => setModoPeriodo('mes')}
-                className={`px-3 py-2 transition-colors ${modoPeriodo === 'mes' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                className={`px-3 py-2 rounded-l-lg flex-shrink-0 whitespace-nowrap transition-colors ${modoPeriodo === 'mes' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
                 Mês
               </button>
               <button
                 onClick={() => setModoPeriodo('customizado')}
-                className={`px-3 py-2 transition-colors ${modoPeriodo === 'customizado' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                className={`px-3 py-2 rounded-r-lg flex-shrink-0 whitespace-nowrap border-l transition-colors ${modoPeriodo === 'customizado' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
                 Período
               </button>
@@ -202,19 +202,19 @@ export default function ResumoMensalPage() {
                   type="date"
                   value={dataInicioCustom}
                   onChange={(e) => setDataInicioCustom(e.target.value)}
-                  className="border rounded-lg px-3 py-2 text-sm"
+                  className="border rounded-lg px-3 py-2 text-sm w-auto flex-shrink-0"
                 />
-                <span className="text-gray-400 text-sm">até</span>
+                <span className="text-gray-400 text-sm flex-shrink-0">até</span>
                 <input
                   type="date"
                   value={dataFimCustom}
                   onChange={(e) => setDataFimCustom(e.target.value)}
-                  className="border rounded-lg px-3 py-2 text-sm"
+                  className="border rounded-lg px-3 py-2 text-sm w-auto flex-shrink-0"
                 />
                 <button
                   onClick={aplicarPeriodoCustomizado}
                   disabled={!dataInicioCustom || !dataFimCustom || dataInicioCustom > dataFimCustom}
-                  className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                 >
                   Aplicar
                 </button>
