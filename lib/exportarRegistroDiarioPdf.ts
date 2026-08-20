@@ -34,13 +34,16 @@ interface FuncionarioRegistroDiario {
 }
 
 interface ExportarRegistroDiarioParams extends FuncionarioRegistroDiario {
-  mesLabel: string // ex: "Agosto"
-  ano: number
+  // mesLabel: ex "Agosto" (com ano informado) OU já o período completo
+  // formatado, ex "05/08/2026 a 12/08/2026" (quando ano vem undefined —
+  // caso do período customizado, que não tem um "mês/ano" único).
+  mesLabel: string
+  ano?: number
 }
 
 interface ExportarTodosRegistroDiarioParams {
   mesLabel: string
-  ano: number
+  ano?: number
   funcionarios: FuncionarioRegistroDiario[]
 }
 
@@ -52,7 +55,7 @@ function desenharPaginaFuncionario(
   pdf: jsPDF,
   nomeFuncionario: string,
   mesLabel: string,
-  ano: number,
+  ano: number | undefined,
   registrosDiarios: RegistroDiario[]
 ) {
   pdf.setFontSize(14)
@@ -60,7 +63,7 @@ function desenharPaginaFuncionario(
 
   pdf.setFontSize(10)
   pdf.text(`Funcionário: ${nomeFuncionario}`, 14, 25)
-  pdf.text(`Período: ${mesLabel}/${ano}`, 14, 31)
+  pdf.text(`Período: ${ano != null ? `${mesLabel}/${ano}` : mesLabel}`, 14, 31)
 
   const linhas = [...registrosDiarios].sort(
     (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime()
@@ -115,7 +118,8 @@ export function exportarRegistroDiarioPdf({
   const pdf = new jsPDF()
   desenharPaginaFuncionario(pdf, nomeFuncionario, mesLabel, ano, registrosDiarios)
 
-  const nomeArquivo = `registro_${nomeFuncionario.replace(/\s+/g, '_').toLowerCase()}_${mesLabel.toLowerCase()}_${ano}.pdf`
+  const sufixoArquivo = (ano != null ? `${mesLabel}_${ano}` : mesLabel).toLowerCase().replace(/[^a-z0-9]+/g, '_')
+  const nomeArquivo = `registro_${nomeFuncionario.replace(/\s+/g, '_').toLowerCase()}_${sufixoArquivo}.pdf`
   pdf.save(nomeArquivo)
 }
 
@@ -136,6 +140,7 @@ export function exportarTodosRegistrosDiariosPdf({
     desenharPaginaFuncionario(pdf, f.nomeFuncionario, mesLabel, ano, f.registrosDiarios)
   })
 
-  const nomeArquivo = `registro_todos_${mesLabel.toLowerCase()}_${ano}.pdf`
+  const sufixoArquivo = (ano != null ? `${mesLabel}_${ano}` : mesLabel).toLowerCase().replace(/[^a-z0-9]+/g, '_')
+  const nomeArquivo = `registro_todos_${sufixoArquivo}.pdf`
   pdf.save(nomeArquivo)
 }

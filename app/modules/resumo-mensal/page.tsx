@@ -38,18 +38,33 @@ export default function ResumoMensalPage() {
   const [expandidos, setExpandidos] = useState<string[]>([])
   const [buscaFuncionario, setBuscaFuncionario] = useState('')
 
+  // Período customizado (ex: "de ontem até dia 15") — alternativa ao
+  // seletor de mês/ano. Só é aplicado quando o usuário clica em "Aplicar",
+  // pra não disparar buscas com datas incompletas enquanto ele digita.
+  const [modoPeriodo, setModoPeriodo] = useState<'mes' | 'customizado'>('mes')
+  const [dataInicioCustom, setDataInicioCustom] = useState('')
+  const [dataFimCustom, setDataFimCustom] = useState('')
+  const [periodoAplicado, setPeriodoAplicado] = useState<{ inicio: string; fim: string } | null>(null)
+  const periodoCustomizadoAtivo = modoPeriodo === 'customizado' && !!periodoAplicado
+
   const userRole = (session?.user as any)?.role
   const isFuncionario = userRole === 'FUNCIONARIO'
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
-    if (status === 'authenticated') load()
-  }, [status, mes, ano])
+    if (status === 'authenticated') {
+      if (modoPeriodo === 'mes') load()
+      else if (periodoAplicado) load()
+    }
+  }, [status, mes, ano, modoPeriodo, periodoAplicado])
 
   const load = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`/api/resumo-mensal?mes=${mes}&ano=${ano}`)
+      const query = periodoCustomizadoAtivo
+        ? `dataInicio=${periodoAplicado!.inicio}&dataFim=${periodoAplicado!.fim}`
+        : `mes=${mes}&ano=${ano}`
+      const res = await fetch(`/api/resumo-mensal?${query}`)
       const data = await res.json()
       setResumo(data.data?.resumo || [])
       if (isFuncionario && data.data?.resumo?.length > 0) {
@@ -60,6 +75,12 @@ export default function ResumoMensalPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const aplicarPeriodoCustomizado = () => {
+    if (!dataInicioCustom || !dataFimCustom) return
+    if (dataInicioCustom > dataFimCustom) return
+    setPeriodoAplicado({ inicio: dataInicioCustom, fim: dataFimCustom })
   }
 
   const toggleExpandir = (id: string) => {
@@ -73,11 +94,17 @@ export default function ResumoMensalPage() {
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ]
 
+  // Rótulo do período pro cabeçalho do PDF: "Agosto/2026" no modo normal,
+  // ou "05/08/2026 a 12/08/2026" no período customizado.
+  const periodoLabel = periodoCustomizadoAtivo
+    ? `${new Date(periodoAplicado!.inicio + 'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(periodoAplicado!.fim + 'T12:00:00').toLocaleDateString('pt-BR')}`
+    : `${meses[mes - 1]}/${ano}`
+
   const handleExportarPdf = (r: ResumoFuncionario) => {
     exportarRegistroDiarioPdf({
       nomeFuncionario: r.funcionario.name,
-      mesLabel: meses[mes - 1],
-      ano,
+      mesLabel: periodoLabel,
+      ano: periodoCustomizadoAtivo ? undefined as any : ano,
       registrosDiarios: r.registrosDiarios,
     })
   }
@@ -86,8 +113,8 @@ export default function ResumoMensalPage() {
     // Exporta a lista já filtrada pela busca (se o gestor tiver buscado um
     // nome, "todos" aqui significa "todos os que estão aparecendo").
     exportarTodosRegistrosDiariosPdf({
-      mesLabel: meses[mes - 1],
-      ano,
+      mesLabel: periodoLabel,
+      ano: periodoCustomizadoAtivo ? undefined as any : ano,
       funcionarios: resumoFiltrado.map((r) => ({
         nomeFuncionario: r.funcionario.name,
         registrosDiarios: r.registrosDiarios,
@@ -131,33 +158,85 @@ export default function ResumoMensalPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-gray-500" />
-          <select
-            value={mes}
-            onChange={(e) => setMes(parseInt(e.target.value))}
-            className="border rounded-lg px-3 py-2 text-sm"
-          >
-            {meses.map((m, i) => (
-              <option key={i + 1} value={i + 1}>{m}</option>
-            ))}
-          </select>
-          <select
-            value={ano}
-            onChange={(e) => setAno(parseInt(e.target.value))}
-            className="border rounded-lg px-3 py-2 text-sm"
-          >
-            {[2024, 2025, 2026].map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
+        <div className="flex flex-col items-start sm:items-end gap-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-gray-500" />
+            <div className="flex border rounded-lg overflow-hidden text-sm">
+              <button
+                onClick={() => setModoPeriodo('mes')}
+                className={`px-3 py-2 transition-colors ${modoPeriodo === 'mes' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                Mês
+              </button>
+              <button
+                onClick={() => setModoPeriodo('customizado')}
+                className={`px-3 py-2 transition-colors ${modoPeriodo === 'customizado' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                Período
+              </button>
+            </div>
+            {modoPeriodo === 'mes' ? (
+              <>
+                <select
+                  value={mes}
+                  onChange={(e) => setMes(parseInt(e.target.value))}
+                  className="border rounded-lg px-3 py-2 text-sm"
+                >
+                  {meses.map((m, i) => (
+                    <option key={i + 1} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  value={ano}
+                  onChange={(e) => setAno(parseInt(e.target.value))}
+                  className="border rounded-lg px-3 py-2 text-sm"
+                >
+                  {[2024, 2025, 2026].map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <>
+                <input
+                  type="date"
+                  value={dataInicioCustom}
+                  onChange={(e) => setDataInicioCustom(e.target.value)}
+                  className="border rounded-lg px-3 py-2 text-sm"
+                />
+                <span className="text-gray-400 text-sm">até</span>
+                <input
+                  type="date"
+                  value={dataFimCustom}
+                  onChange={(e) => setDataFimCustom(e.target.value)}
+                  className="border rounded-lg px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={aplicarPeriodoCustomizado}
+                  disabled={!dataInicioCustom || !dataFimCustom || dataInicioCustom > dataFimCustom}
+                  className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Aplicar
+                </button>
+              </>
+            )}
+          </div>
+          {periodoCustomizadoAtivo && (
+            <p className="text-xs text-amber-700 flex items-center gap-1">
+              <DollarSign className="w-3.5 h-3.5" />
+              Valores em R$ são uma estimativa aproximada nesse modo — a folha oficial usa o mês inteiro.
+            </p>
+          )}
         </div>
       </div>
 
       {/* Total geral acumulado — só para gestor */}
       {!isFuncionario && (
         <div className="card bg-primary text-white">
-          <p className="text-sm opacity-80">Total acumulado em {meses[mes - 1]}/{ano}</p>
+          <p className="text-sm opacity-80">
+            Total acumulado em {periodoCustomizadoAtivo ? periodoLabel : `${meses[mes - 1]}/${ano}`}
+            {periodoCustomizadoAtivo && <span className="ml-1 opacity-70">(estimado)</span>}
+          </p>
           <p className="text-4xl font-bold mt-1">{fmt(totalAcumuladoGeral)}</p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1 mt-2 text-sm opacity-90">
             <p className="opacity-80">{resumoFiltrado.length} funcionário(s)</p>
@@ -328,7 +407,9 @@ export default function ResumoMensalPage() {
                   <th className="px-4 py-3 text-left font-semibold">Dias trabalhados</th>
                   <th className="px-4 py-3 text-left font-semibold">Horas extras</th>
                   <th className="px-4 py-3 text-left font-semibold">Horas devidas</th>
-                  <th className="px-4 py-3 text-left font-semibold">Total acumulado</th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Total acumulado{periodoCustomizadoAtivo && <span className="font-normal text-gray-400"> (estimado)</span>}
+                  </th>
                   <th className="px-4 py-3 text-right font-semibold">Ação</th>
                 </tr>
               </thead>

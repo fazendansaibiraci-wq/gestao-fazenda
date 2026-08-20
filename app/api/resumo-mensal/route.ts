@@ -17,23 +17,38 @@ export async function GET(request: NextRequest) {
     const mes = parseInt(searchParams.get('mes') || String(new Date().getMonth() + 1))
     const ano = parseInt(searchParams.get('ano') || String(new Date().getFullYear()))
     const funcionarioIdParam = searchParams.get('funcionarioId')
+    // Período customizado (opcional): quando os dois vêm preenchidos, usa
+    // esse intervalo exato em vez do mês/ano inteiro. O valor em R$ nesse
+    // modo é uma ESTIMATIVA aproximada — ver comentário mais abaixo, onde
+    // "acumuladoDiasTrabalhados" é calculado de forma diferente pra
+    // salário MENSAL nesse caso.
+    const dataInicioParam = searchParams.get('dataInicio')
+    const dataFimParam = searchParams.get('dataFim')
+    const periodoCustomizado = !!(dataInicioParam && dataFimParam)
 
-    const inicioMes = new Date(ano, mes - 1, 1)
-    const fimMes = new Date(ano, mes, 0, 23, 59, 59)
+    const inicioMes = periodoCustomizado
+      ? new Date(dataInicioParam + 'T00:00:00')
+      : new Date(ano, mes - 1, 1)
+    const fimMes = periodoCustomizado
+      ? new Date(dataFimParam + 'T23:59:59')
+      : new Date(ano, mes, 0, 23, 59, 59)
 
     const config = await prisma.configuracaoGlobal.findFirst()
 
     // Detectar safra: fonte da verdade é a Safra ATIVA (model Safra), não
     // mais ConfiguracaoGlobal.inicioSafra/fimSafra (campo duplicado, mantido
     // no schema mas não é mais lido aqui). Calculado uma vez só (não depende
-    // do funcionário), usando o meio do mês como data de referência.
+    // do funcionário), usando o meio do período (mês inteiro, ou o período
+    // customizado quando informado) como data de referência.
     const safraAtiva = await prisma.safra.findFirst({
       where: { status: 'ATIVA' },
       orderBy: { dataInicio: 'desc' },
     })
     let estaNaSafra = false
     if (safraAtiva?.dataInicio) {
-      const meioDoMes = new Date(ano, mes - 1, 15)
+      const meioDoMes = periodoCustomizado
+        ? new Date((inicioMes.getTime() + fimMes.getTime()) / 2)
+        : new Date(ano, mes - 1, 15)
       estaNaSafra =
         meioDoMes >= new Date(safraAtiva.dataInicio) &&
         (!safraAtiva.dataFim || meioDoMes <= new Date(safraAtiva.dataFim))
@@ -230,15 +245,37 @@ export async function GET(request: NextRequest) {
       const totalDescontos = descontoHorasDevidas + descontoFaltas
 
       // Total acumulado:
-      // - MENSAL: salário cheio do mês + horas extras - descontos (Faltas formais e Horas Devidas).
-      //   NÃO reduz proporcionalmente por dias sem registro (ex: domingos de folga) —
-      //   só desconta o que está formalmente registrado como Falta ou Hora Devida.
+      // - MENSAL, mês inteiro (modo padrão): salário cheio do mês + horas
+      //   extras - descontos (Faltas formais e Horas Devidas). NÃO reduz
+      //   proporcionalmente por dias sem registro (ex: domingos de folga) —
+      //   só desconta o que está formalmente registrado como Falta ou Hora
+      //   Devida.
+      // - MENSAL, período customizado: não faz sentido mostrar o salário
+      //   MENSAL cheio pra uma janela de poucos dias — aqui sim proporciona
+      //   por dia (valorDia × dias do período, descontando domingos de
+      //   folga esperados e faltas). É uma ESTIMATIVA aproximada, não uma
+      //   folha de pagamento oficial.
       // - DIARIO: mantém o cálculo por dias trabalhados, já que salarioBase representa
       //   o valor por dia, não um total mensal — diarista só recebe pelos dias que trabalhou.
-      const acumuladoDiasTrabalhados = func.tipoSalario === 'DIARIO'
-        ? diasTrabalhados * valorDia
-        : salarioBase
-      const totalAcumulado = acumuladoDiasTrabalhados + valorHorasExtras - totalDescontos
+      let acumuladoDiasTrabalhados: number
+      if (func.tipoSalario === 'DIARIO') {
+        acumuladoDiasTrabalhados = diasTrabalhados * valorDia
+      } else if (periodoCustomizado) {
+        const diasNoPeriodo = Math.round((fimMes.getTime() - inicioMes.getTime()) / 86400000) + 1
+        const domingosDeFolgaNoPeriodo = domingosPorMes < 4 ? folgasSemRegistro.length : 0
+        const diasPagaveis = Math.max(0, diasNoPeriodo - totalFaltas - domingosDeFolgaNoPeriodo)
+        acumuladoDiasTrabalhados = diasPagaveis * valorDia
+      } else {
+        acumuladoDiasTrabalhados = salarioBase
+      }
+      // No período customizado, a falta já foi excluída dos "dias
+      // pagáveis" acima — não desconta de novo aqui (senão descontaria a
+      // falta duas vezes). No modo mês inteiro, o desconto de falta
+      // continua sendo aplicado separadamente, como sempre foi.
+      const totalDescontosAcumulado = periodoCustomizado && func.tipoSalario !== 'DIARIO'
+        ? descontoHorasDevidas
+        : totalDescontos
+      const totalAcumulado = acumuladoDiasTrabalhados + valorHorasExtras - totalDescontosAcumulado
 
       // Para funcionários com pagamento proporcional por hora, o total acumulado é
       // recalculado dia a dia (acumuladoProporcional), descontando as faltas normalmente.
@@ -266,7 +303,17 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ success: true, data: { mes, ano, resumo } })
+    return NextResponse.json({
+      success: true,
+      data: {
+        mes,
+        ano,
+        periodoCustomizado,
+        dataInicio: periodoCustomizado ? inicioMes.toISOString() : null,
+        dataFim: periodoCustomizado ? fimMes.toISOString() : null,
+        resumo,
+      },
+    })
   } catch (error) {
     console.error('GET /api/resumo-mensal:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
