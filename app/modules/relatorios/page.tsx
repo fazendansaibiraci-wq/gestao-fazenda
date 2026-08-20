@@ -191,6 +191,7 @@ export default function RelatoriosPage() {
       somaHorasMaquina: number
       buracoReal: number
       relevante: boolean
+      precisaAjuste: boolean
       horimetroInicialAjuste: number
       horimetroFinalAjuste: number
       dataAjuste: string
@@ -233,7 +234,15 @@ export default function RelatoriosPage() {
         qtdAtividades: atividadesNoIntervalo.length,
         somaHorasMaquina,
         buracoReal,
+        // "Relevante" destaca qualquer divergência grande o suficiente pra
+        // chamar atenção, seja falta (positivo) ou sobra (negativo) de
+        // horas — ambos valem a pena o gestor olhar. Mas o botão "Lançar
+        // ajuste" só deve aparecer quando FALTA hora de verdade
+        // (buracoReal positivo): um buraco negativo significa que já tem
+        // atividade (ou mais de uma) cobrindo aquele intervalo — não há o
+        // que ajustar, lançar mais horas ali só pioraria a divergência.
         relevante: Math.abs(buracoReal) > 3,
+        precisaAjuste: buracoReal > 3,
         horimetroInicialAjuste,
         horimetroFinalAjuste: b.horimetroAtual,
         dataAjuste: b.data,
@@ -1014,7 +1023,7 @@ export default function RelatoriosPage() {
                                                       {iv.buracoReal.toFixed(1)}h
                                                     </td>
                                                     <td className="py-1.5 pr-3 text-right">
-                                                      {iv.relevante && (
+                                                      {iv.precisaAjuste && (
                                                         <button
                                                           onClick={(e) => {
                                                             e.stopPropagation()
