@@ -12,6 +12,8 @@ interface RegistroMaquinaParaCalculo {
   maquinaId?: string | null
   data: Date | string
   horasMaquina?: number | null
+  horimetroInicial?: number | null
+  horimetroFinal?: number | null
 }
 
 export interface ResumoCombustivelMaquina {
@@ -69,9 +71,19 @@ export function calcularCombustivelPorMaquina(
       0
     )
     const consumoMedioLH = totalHoras > 0 ? totalLitros / totalHoras : 0
+    // Mesmo "plano B" usado na reconciliação por intervalo (Registro de
+    // Atividades): se horasMaquina não foi preenchido no registro, cai pro
+    // cálculo via horímetro (final - inicial). Sem isso, registros sem
+    // horasMaquina populado eram contados como 0h aqui, mesmo tendo
+    // horímetro completo — subestimando o total e gerando falso positivo
+    // de divergência mesmo quando os intervalos já estavam corretos.
     const horasRegistradasAtividades = registrosMaquinaFiltrados
       .filter((r: any) => r.maquinaId === maquinaId)
-      .reduce((acc: number, r: any) => acc + (r.horasMaquina || 0), 0)
+      .reduce((acc: number, r: any) => {
+        if (r.horasMaquina != null) return acc + r.horasMaquina
+        if (r.horimetroFinal != null && r.horimetroInicial != null) return acc + (r.horimetroFinal - r.horimetroInicial)
+        return acc
+      }, 0)
 
     // Divergência entre o horímetro (totalHoras) e as horas registradas nas
     // atividades, em qualquer direção, usada como conferência cruzada.
