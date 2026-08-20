@@ -212,7 +212,17 @@ export default function RelatoriosPage() {
 
       const atividadesNoIntervalo = registrosMaquina.filter((r: any) => {
         const d = toDateOnly(r.data)
-        return d >= toDateOnly(a.data) && d <= toDateOnly(b.data)
+        const inicio = toDateOnly(a.data)
+        const fim = toDateOnly(b.data)
+        // Uma atividade datada exatamente no dia de um abastecimento (o que
+        // é sempre o caso pra ajustes, cuja data é preenchida com a data do
+        // abastecimento seguinte) pertence ao intervalo que TERMINA nesse
+        // dia, não ao que começa — senão o mesmo registro seria contado
+        // duas vezes (uma em cada intervalo vizinho que compartilha essa
+        // data como fronteira). Só o primeiro intervalo do período inclui
+        // o próprio dia inicial, pra não perder atividades datadas ali.
+        const incluiInicio = i === 0
+        return (incluiInicio ? d >= inicio : d > inicio) && d <= fim
       })
 
       const somaHorasMaquina = atividadesNoIntervalo.reduce((acc: number, r: any) => {
