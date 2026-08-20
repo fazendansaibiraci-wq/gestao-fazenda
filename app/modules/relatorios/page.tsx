@@ -167,6 +167,14 @@ export default function RelatoriosPage() {
   // `abastecimentos`/`registros` já carregados nesta página (sem chamada de
   // API nova). Só é chamada sob demanda, quando o usuário expande o detalhe
   // de uma máquina divergente.
+  // Compara só a data (dia/mês/ano), ignorando o horário — evita o bug de um
+  // ajuste salvo com horário fixo (meio-dia) cair no intervalo errado quando
+  // o abastecimento do mesmo dia foi registrado em outro horário.
+  const toDateOnly = (dt: string | Date) => {
+    const d = new Date(dt)
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  }
+
   const getBuracosPorMaquina = (maquinaId: string) => {
     const abastecimentosMaquina = abastecimentos
       .filter((a: any) => a.maquinaId === maquinaId)
@@ -203,8 +211,8 @@ export default function RelatoriosPage() {
       const deltaAbastecimento = (b.horimetroAtual || 0) - (a.horimetroAtual || 0)
 
       const atividadesNoIntervalo = registrosMaquina.filter((r: any) => {
-        const d = new Date(r.data)
-        return d >= new Date(a.data) && d <= new Date(b.data)
+        const d = toDateOnly(r.data)
+        return d >= toDateOnly(a.data) && d <= toDateOnly(b.data)
       })
 
       const somaHorasMaquina = atividadesNoIntervalo.reduce((acc: number, r: any) => {
