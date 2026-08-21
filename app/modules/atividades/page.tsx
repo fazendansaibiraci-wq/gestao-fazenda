@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import { redirect, useRouter, useSearchParams } from 'next/navigation'
 import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 
@@ -68,6 +68,23 @@ export default function AtividadesPage() {
   const [talhoes, setTalhoes] = useState<{ id: string; nome: string }[]>([])
   const [tiposAtividade, setTiposAtividade] = useState<{ id: number; nome: string }[]>([])
   const [maquinas, setMaquinas] = useState<{ id: string; nome: string }[]>([])
+
+  // "Recalcular carga contratual": corrige horasprevistasdia/horasExtras/
+  // horasDevidas de registros já lançados quando o cadastro do funcionário
+  // (carga horária) mudou depois da atividade ter sido criada — esses
+  // campos são gravados como retrato do momento do lançamento, não
+  // recalculados automaticamente. Sempre mostra uma prévia (dry-run) antes
+  // de aplicar de verdade, já que mexe em horas extras que afetam o valor
+  // pago no Resumo Mensal.
+  const [recalculando, setRecalculando] = useState(false)
+  const [previaRecalculo, setPreviaRecalculo] = useState<{
+    totalAnalisados: number
+    totalAlterados: number
+    mudancas: { id: string; data: string; funcionarioNome: string; cargaAntes: number; cargaDepois: number; extrasAntes: number; extrasDepois: number; devidasAntes: number; devidasDepois: number }[]
+    mudancasOmitidas: number
+  } | null>(null)
+  const [aplicandoRecalculo, setAplicandoRecalculo] = useState(false)
+  const [recalculoConcluido, setRecalculoConcluido] = useState(false)
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
 
   const userRole = (session?.user as any)?.role || ''
@@ -172,6 +189,55 @@ export default function AtividadesPage() {
       }
     } catch (err) {
       console.error('Erro ao carregar máquinas:', err)
+    }
+  }
+
+  const handlePreviaRecalculo = async () => {
+    if (!filtroDataInicio || !filtroDataFim) return
+    setRecalculando(true)
+    setRecalculoConcluido(false)
+    try {
+      const res = await fetch('/api/registros-atividade/recalcular-carga-horaria', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataInicio: filtroDataInicio, dataFim: filtroDataFim, confirmar: false }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setPreviaRecalculo(data)
+      } else {
+        alert(data.error || 'Erro ao calcular prévia')
+      }
+    } catch (err) {
+      console.error('Erro ao calcular prévia de recálculo:', err)
+      alert('Erro ao calcular prévia')
+    } finally {
+      setRecalculando(false)
+    }
+  }
+
+  const handleConfirmarRecalculo = async () => {
+    if (!filtroDataInicio || !filtroDataFim) return
+    setAplicandoRecalculo(true)
+    try {
+      const res = await fetch('/api/registros-atividade/recalcular-carga-horaria', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataInicio: filtroDataInicio, dataFim: filtroDataFim, confirmar: true }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setRecalculoConcluido(true)
+        setPreviaRecalculo(null)
+        load() // recarrega a lista pra refletir os novos valores na tela
+      } else {
+        alert(data.error || 'Erro ao aplicar recálculo')
+      }
+    } catch (err) {
+      console.error('Erro ao aplicar recálculo:', err)
+      alert('Erro ao aplicar recálculo')
+    } finally {
+      setAplicandoRecalculo(false)
     }
   }
 
@@ -429,6 +495,24 @@ export default function AtividadesPage() {
         </div>
         {uploadError && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{uploadError}</p>
+        )}
+        {isGestor && (
+          <div className="pt-1 border-t">
+            <button
+              onClick={handlePreviaRecalculo}
+              disabled={!filtroDataInicio || !filtroDataFim || recalculando}
+              title={!filtroDataInicio || !filtroDataFim ? 'Selecione data início e fim primeiro' : 'Recalcula a carga contratual esperada (e horas extras/devidas) dos dias já lançados nesse período, usando o cadastro atual do(s) funcionário(s)'}
+              className="mt-3 flex items-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${recalculando ? 'animate-spin' : ''}`} />
+              Recalcular carga contratual (dias já lançados no período filtrado)
+            </button>
+            {recalculoConcluido && (
+              <p className="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 inline-block">
+                Recálculo aplicado com sucesso.
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -744,6 +828,82 @@ export default function AtividadesPage() {
           </div>
           <div className="flex-1 bg-gray-200">
             <iframe src={atestadoModal.url} className="w-full h-full border-0" title="Atestado Médico" />
+          </div>
+        </div>
+      )}
+
+      {previaRecalculo && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <h3 className="font-semibold text-primary flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Prévia do recálculo de carga contratual
+              </h3>
+              <button onClick={() => setPreviaRecalculo(null)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto flex-1">
+              <p className="text-sm text-gray-600 mb-3">
+                Analisados <strong>{previaRecalculo.totalAnalisados}</strong> registro(s) no período
+                {' '}{filtroDataInicio.split('-').reverse().join('/')} a {filtroDataFim.split('-').reverse().join('/')}.
+                {' '}<strong>{previaRecalculo.totalAlterados}</strong> serão alterados.
+              </p>
+              {previaRecalculo.totalAlterados === 0 ? (
+                <p className="text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-3">
+                  Nenhuma diferença encontrada — a carga contratual já está de acordo com o cadastro atual nesse período.
+                </p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto border rounded-lg">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-gray-500 bg-gray-50 border-b">
+                          <th className="py-2 px-2 font-medium">Data</th>
+                          <th className="py-2 px-2 font-medium">Funcionário</th>
+                          <th className="py-2 px-2 font-medium text-right">Carga</th>
+                          <th className="py-2 px-2 font-medium text-right">Extras</th>
+                          <th className="py-2 px-2 font-medium text-right">Devidas</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previaRecalculo.mudancas.map((m) => (
+                          <tr key={m.id} className="border-b last:border-0">
+                            <td className="py-1.5 px-2">{m.data.split('-').reverse().join('/')}</td>
+                            <td className="py-1.5 px-2">{m.funcionarioNome}</td>
+                            <td className="py-1.5 px-2 text-right">{m.cargaAntes}h → <strong>{m.cargaDepois}h</strong></td>
+                            <td className="py-1.5 px-2 text-right">{m.extrasAntes}h → <strong>{m.extrasDepois}h</strong></td>
+                            <td className="py-1.5 px-2 text-right">{m.devidasAntes}h → <strong>{m.devidasDepois}h</strong></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {previaRecalculo.mudancasOmitidas > 0 && (
+                    <p className="text-xs text-gray-400 mt-2">+ {previaRecalculo.mudancasOmitidas} outra(s) alteração(ões) não mostrada(s) aqui.</p>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="flex gap-3 px-5 py-4 border-t">
+              <button
+                onClick={() => setPreviaRecalculo(null)}
+                disabled={aplicandoRecalculo}
+                className="flex-1 px-4 py-2 border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              {previaRecalculo.totalAlterados > 0 && (
+                <button
+                  onClick={handleConfirmarRecalculo}
+                  disabled={aplicandoRecalculo}
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {aplicandoRecalculo ? 'Aplicando...' : `Confirmar recálculo (${previaRecalculo.totalAlterados})`}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
