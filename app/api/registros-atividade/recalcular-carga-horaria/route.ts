@@ -85,6 +85,18 @@ export async function POST(request: NextRequest) {
       if (Math.abs(cargaHorariaDia - cargaAntes) < 0.01) continue // sem mudança real
 
       const horasCalculadas = reg.horasCalculadas ?? 0
+      // "Antes": horasExtras/horasDevidas nunca ficam salvos como campo —
+      // são sempre derivados (horasCalculadas vs carga contratual), igual
+      // faz o resto do app. Recalcula o "antes" aqui do mesmo jeito, só que
+      // usando a carga contratual ANTIGA (a que já estava salva).
+      let extrasAntes = 0
+      let devidasAntes = 0
+      if (horasCalculadas > cargaAntes) {
+        extrasAntes = horasCalculadas - cargaAntes
+      } else if (horasCalculadas < cargaAntes) {
+        devidasAntes = cargaAntes - horasCalculadas
+      }
+
       let horasExtras = 0
       let horasDevidas = 0
       let ehHoraExtra = false
@@ -101,9 +113,9 @@ export async function POST(request: NextRequest) {
         funcionarioNome: reg.funcionario.name,
         cargaAntes: Math.round(cargaAntes * 100) / 100,
         cargaDepois: Math.round(cargaHorariaDia * 100) / 100,
-        extrasAntes: Math.round((reg.horasExtras ?? 0) * 100) / 100,
+        extrasAntes: Math.round(extrasAntes * 100) / 100,
         extrasDepois: Math.round(horasExtras * 100) / 100,
-        devidasAntes: Math.round((reg.horasDevidas ?? 0) * 100) / 100,
+        devidasAntes: Math.round(devidasAntes * 100) / 100,
         devidasDepois: Math.round(horasDevidas * 100) / 100,
       })
 
@@ -112,9 +124,10 @@ export async function POST(request: NextRequest) {
           where: { id: reg.id },
           data: {
             horasprevistasdia: cargaHorariaDia,
-            horasExtras,
-            horasDevidas,
             ehHoraExtra,
+            // Mesma regra usada no POST/PUT normal ao criar/editar um
+            // registro — mantém consistência com o resto do app.
+            statusAprovacao: ehHoraExtra ? 'pendente' : 'aprovado',
           },
         })
       }
