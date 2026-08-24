@@ -12,10 +12,10 @@ import { exportarRegistroDiarioPdf, exportarTodosRegistrosDiariosPdf } from '@/l
 
 interface ResumoFuncionario {
   funcionario: { id: string; name: string; role: string; pagamentoProporcionalDiario?: boolean }
-  estaNaSafra: boolean
+  regimeSalario: 'safra' | 'entressafra' | 'misto'
+  diasSafraNoPeriodo: number
+  diasEntressafraNoPeriodo: number
   salarioBase: number
-  valorDia: number
-  valorHoraNormal: number
   valorHoraExtra: number
   diasTrabalhados: number
   totalFaltas: number
@@ -290,10 +290,17 @@ export default function ResumoMensalPage() {
                     <h3 className="font-bold text-lg text-primary">{r.funcionario.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-gray-500">{r.funcionario.role}</span>
-                      {r.estaNaSafra ? (
+                      {r.regimeSalario === 'safra' ? (
                         <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">Safra</span>
-                      ) : (
+                      ) : r.regimeSalario === 'entressafra' ? (
                         <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">Entressafra</span>
+                      ) : (
+                        <span
+                          className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium"
+                          title={`${r.diasSafraNoPeriodo} dia(s) em Safra + ${r.diasEntressafraNoPeriodo} dia(s) em Entressafra`}
+                        >
+                          Misto ({r.diasSafraNoPeriodo}+{r.diasEntressafraNoPeriodo}d)
+                        </span>
                       )}
                     </div>
                   </div>
@@ -303,7 +310,11 @@ export default function ResumoMensalPage() {
                 <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 text-sm">
-                      {r.estaNaSafra ? 'Salário Safra' : 'Salário Entressafra'}
+                      {r.regimeSalario === 'safra'
+                        ? 'Salário Safra'
+                        : r.regimeSalario === 'entressafra'
+                        ? 'Salário Entressafra'
+                        : `Salário (rateado ${r.diasSafraNoPeriodo}d Safra + ${r.diasEntressafraNoPeriodo}d Entressafra)`}
                     </span>
                     <span className="font-bold text-lg text-primary">{fmt(r.salarioBase)}</span>
                   </div>
@@ -431,10 +442,17 @@ export default function ResumoMensalPage() {
                         >
                           <td className="px-4 py-3 font-medium">{r.funcionario.name}</td>
                           <td className="px-4 py-3">
-                            {r.estaNaSafra ? (
+                            {r.regimeSalario === 'safra' ? (
                               <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">Safra</span>
-                            ) : (
+                            ) : r.regimeSalario === 'entressafra' ? (
                               <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">Entressafra</span>
+                            ) : (
+                              <span
+                                className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium"
+                                title={`${r.diasSafraNoPeriodo} dia(s) em Safra + ${r.diasEntressafraNoPeriodo} dia(s) em Entressafra`}
+                              >
+                                Misto
+                              </span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-gray-600">{r.diasTrabalhados}</td>
