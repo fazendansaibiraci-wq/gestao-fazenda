@@ -108,6 +108,7 @@ domingosPorMes        Int?   @default(2)
   ajustesEstoqueRegistrados AjusteEstoque[]
   entradasProdutoRegistradas EntradaProduto[]
   ajustesHorimetroRegistrados AjusteHorimetro[]
+  transferenciasEstoqueRegistradas TransferenciaEstoque[]
 
   receitasCriadas  ReceitaBase[]     @relation("ReceitaBaseCriador")
   ajustesReceita   AjusteReceita[]
@@ -274,6 +275,7 @@ model Produto {
   entradas           EntradaProduto[]
   aplicacaoInsumoItens AplicacaoInsumoItem[]
   estoqueLocais EstoqueLocal[]
+  transferencias TransferenciaEstoque[]
 
   @@map("produtos")
 }
@@ -286,8 +288,30 @@ model Local {
   estoques  EstoqueLocal[]
   saidas         SaidaProduto[]
   ajustesEstoque AjusteEstoque[]
+  transferenciasOrigem  TransferenciaEstoque[] @relation("TransferenciaOrigem")
+  transferenciasDestino TransferenciaEstoque[] @relation("TransferenciaDestino")
 
   @@map("locais")
+}
+
+model TransferenciaEstoque {
+  id             String   @id @default(cuid())
+  produto        Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId      String
+  localOrigem    Local    @relation("TransferenciaOrigem", fields: [localOrigemId], references: [id])
+  localOrigemId  String
+  localDestino   Local    @relation("TransferenciaDestino", fields: [localDestinoId], references: [id])
+  localDestinoId String
+  quantidade     Float
+  data           DateTime
+  observacao     String?
+  registradoPor      User   @relation(fields: [registradoPorId], references: [id])
+  registradoPorId    String
+
+  dataCriacao DateTime @default(now())
+
+  @@index([produtoId])
+  @@map("transferencias_estoque")
 }
 
 model EstoqueLocal {
