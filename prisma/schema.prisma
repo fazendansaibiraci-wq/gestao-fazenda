@@ -44,6 +44,17 @@ enum SafraStatus {
   ENCERRADA
 }
 
+// Regime salarial: independente da entidade Safra (ciclo agronômico, com
+// talhões/insumos/etc — ver model Safra). Este é só o "botão manual" que
+// decide, pra cálculo de salário/hora extra/carga horária, se o sistema
+// deve usar os valores de Safra ou de Entressafra cadastrados. Trocado à
+// mão em Configurações Gerais quando a virada de período acontecer — não
+// tem lógica de data automática.
+enum RegimeSalarial {
+  SAFRA
+  ENTRESSAFRA
+}
+
 enum TipoAtividade {
   PULVERIZACAO
   HERBICIDA
@@ -1220,6 +1231,11 @@ model ConfiguracaoGlobal {
   cargaHorariaEntressafra Float     @default(8)
   inicioSafra             DateTime?
   fimSafra                DateTime?
+  // Botão manual (ver enum RegimeSalarial acima) — substituiu, a partir de
+  // 25/08/2026, o cálculo automático por data que comparava cada dia contra
+  // a Safra ATIVA. A troca agora é sempre manual, feita em Configurações
+  // Gerais.
+  regimeSalarial          RegimeSalarial @default(ENTRESSAFRA)
   updatedAt               DateTime  @updatedAt
   lembreteTurmasTexto     String?
   lembreteTurmasAtivo     Boolean   @default(false)

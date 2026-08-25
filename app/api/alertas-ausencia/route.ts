@@ -58,11 +58,9 @@ export async function GET(request: NextRequest) {
     }
 
     const config = await prisma.configuracaoGlobal.findFirst()
-    const safraAtiva = await prisma.safra.findFirst({ where: { status: 'ATIVA' }, orderBy: { dataInicio: 'desc' } })
-    function estaNaSafraNaData(data: Date): boolean {
-      if (!safraAtiva?.dataInicio) return false
-      return data >= new Date(safraAtiva.dataInicio) && (!safraAtiva.dataFim || data <= new Date(safraAtiva.dataFim))
-    }
+    // Regime salarial: botão manual em Configurações Gerais (não mais
+    // baseado na data de cada dia comparada à Safra ATIVA).
+    const estaNaSafra = config?.regimeSalarial === 'SAFRA'
 
     const whereUser: any = { active: true }
     if (userRole === 'FUNCIONARIO') {
@@ -122,7 +120,7 @@ export async function GET(request: NextRequest) {
 
       for (let dia = 1; dia <= ultimoDia; dia++) {
         const dataDia = new Date(ano, mesNum - 1, dia)
-        const cargaDia = calcularCargaHorariaDia(dataDia, func, config, true, estaNaSafraNaData(dataDia))
+        const cargaDia = calcularCargaHorariaDia(dataDia, func, config, true, estaNaSafra)
 
         if (cargaDia > 0) {
           const chave = `${ano}-${String(mesNum).padStart(2, '0')}-${String(dia).padStart(2, '0')}`

@@ -130,19 +130,10 @@ export async function PUT(
 
     const dataRegistro = new Date(body.data || registro.data)
 
-    // Detectar safra: fonte da verdade é a Safra ATIVA (model Safra), não
-    // mais ConfiguracaoGlobal.inicioSafra/fimSafra (campo duplicado, mantido
-    // no schema mas não é mais lido aqui).
-    const safraAtiva = await prisma.safra.findFirst({
-      where: { status: 'ATIVA' },
-      orderBy: { dataInicio: 'desc' },
-    })
-    let estaNaSafra = false
-    if (safraAtiva?.dataInicio) {
-      estaNaSafra =
-        dataRegistro >= new Date(safraAtiva.dataInicio) &&
-        (!safraAtiva.dataFim || dataRegistro <= new Date(safraAtiva.dataFim))
-    }
+    // Regime salarial: botão manual em Configurações Gerais (não mais
+    // baseado na data do registro comparada à Safra ATIVA). Ver comentário
+    // no enum RegimeSalarial (schema.prisma).
+    const estaNaSafra = config?.regimeSalarial === 'SAFRA'
 
     const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config, false, estaNaSafra)
 

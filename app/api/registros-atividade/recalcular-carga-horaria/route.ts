@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
       prisma.configuracaoGlobal.findFirst(),
     ])
 
-    const safraAtiva = await prisma.safra.findFirst({
-      where: { status: 'ATIVA' },
-      orderBy: { dataInicio: 'desc' },
-    })
+    // Regime salarial: botão manual em Configurações Gerais, aplicado
+    // igual pra todos os registros recalculados nesta chamada (não mais
+    // baseado na data de cada registro comparada à Safra ATIVA).
+    const estaNaSafra = config?.regimeSalarial === 'SAFRA'
 
     const mudancas: {
       id: string
@@ -79,11 +79,6 @@ export async function POST(request: NextRequest) {
 
     for (const reg of registros) {
       const dataRegistro = new Date(reg.data)
-      const estaNaSafra = !!(
-        safraAtiva?.dataInicio &&
-        dataRegistro >= new Date(safraAtiva.dataInicio) &&
-        (!safraAtiva.dataFim || dataRegistro <= new Date(safraAtiva.dataFim))
-      )
       const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, reg.funcionario, config, false, estaNaSafra)
       const cargaAntes = reg.horasprevistasdia ?? (config?.cargaHorariaEntressafra || 8)
 

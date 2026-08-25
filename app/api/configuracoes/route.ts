@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       config = await prisma.configuracaoGlobal.create({
         data: {
           cargaHorariaEntressafra: 8,
+          regimeSalarial: 'ENTRESSAFRA',
           inicioSafra: null,
           fimSafra: null,
           lembreteTurmasTexto: null,
@@ -45,6 +46,7 @@ export async function PUT(request: NextRequest) {
       config = await prisma.configuracaoGlobal.create({
         data: {
           cargaHorariaEntressafra: body.cargaHorariaEntressafra ?? 8,
+          regimeSalarial: body.regimeSalarial === 'SAFRA' ? 'SAFRA' : 'ENTRESSAFRA',
           inicioSafra: body.inicioSafra ? new Date(body.inicioSafra) : null,
           fimSafra: body.fimSafra ? new Date(body.fimSafra) : null,
           lembreteTurmasTexto: body.lembreteTurmasTexto ?? null,
@@ -56,6 +58,13 @@ export async function PUT(request: NextRequest) {
         where: { id: config.id },
         data: {
           cargaHorariaEntressafra: body.cargaHorariaEntressafra ?? config.cargaHorariaEntressafra,
+          // Regime salarial: botão manual (ver enum RegimeSalarial no
+          // schema) — só grava se vier explicitamente no body, pra não
+          // resetar o regime ativo a cada save de outro campo.
+          regimeSalarial:
+            body.regimeSalarial === 'SAFRA' || body.regimeSalarial === 'ENTRESSAFRA'
+              ? body.regimeSalarial
+              : config.regimeSalarial,
           // inicioSafra/fimSafra não são mais controlados pela tela de
           // Configurações (a fonte da verdade passou a ser a Safra ATIVA em
           // Cadastros → Safras) — só grava se vier explicitamente no body,

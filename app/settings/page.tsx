@@ -17,6 +17,7 @@ interface User {
 interface ConfiguracaoGlobal {
   id: string
   cargaHorariaEntressafra: number
+  regimeSalarial: 'SAFRA' | 'ENTRESSAFRA'
 }
 
 const roleLabels = {
@@ -46,6 +47,7 @@ export default function SettingsPage() {
   const [config, setConfig] = useState<ConfiguracaoGlobal | null>(null)
   const [configForm, setConfigForm] = useState({
     cargaHorariaEntressafra: 8,
+    regimeSalarial: 'ENTRESSAFRA' as 'SAFRA' | 'ENTRESSAFRA',
   })
   const [savingConfig, setSavingConfig] = useState(false)
   const [configSuccess, setConfigSuccess] = useState('')
@@ -93,6 +95,7 @@ export default function SettingsPage() {
         setConfig(data.data)
         setConfigForm({
           cargaHorariaEntressafra: data.data.cargaHorariaEntressafra,
+          regimeSalarial: data.data.regimeSalarial || 'ENTRESSAFRA',
         })
       }
     } catch {
@@ -250,6 +253,41 @@ export default function SettingsPage() {
             </div>
           )}
           <form onSubmit={handleSaveConfig} className="space-y-4">
+            <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
+              <label className="block text-sm font-bold mb-2 text-amber-900">
+                Regime de cálculo: Salário, Hora Extra e Carga Horária
+              </label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfigForm({ ...configForm, regimeSalarial: 'SAFRA' })}
+                  className={`flex-1 px-4 py-2 rounded-lg border-2 font-medium transition ${
+                    configForm.regimeSalarial === 'SAFRA'
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
+                  }`}
+                >
+                  Safra
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfigForm({ ...configForm, regimeSalarial: 'ENTRESSAFRA' })}
+                  className={`flex-1 px-4 py-2 rounded-lg border-2 font-medium transition ${
+                    configForm.regimeSalarial === 'ENTRESSAFRA'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                  }`}
+                >
+                  Entressafra
+                </button>
+              </div>
+              <p className="text-xs text-amber-800 mt-2">
+                Controla manualmente qual regime o sistema usa em TODO lançamento novo, edição e no Resumo Mensal —
+                salário, hora extra e carga horária. Troque aqui exatamente no dia da virada de período. Registros de
+                datas passadas lançados/editados enquanto o regime errado estiver ativo vão sair com os valores
+                errados — confira com atenção se precisar mexer em algo atrasado perto da virada.
+              </p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Carga Horária Entressafra (horas/dia)</label>
@@ -263,7 +301,8 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-              As datas da safra agora são controladas em Cadastros → Safras.
+              As datas da safra (ciclo agronômico de talhões/insumos) continuam controladas em Cadastros → Safras —
+              isso é independente do regime de cálculo salarial acima.
             </div>
             <button type="submit" disabled={savingConfig} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
               <Save className="w-4 h-4" />
