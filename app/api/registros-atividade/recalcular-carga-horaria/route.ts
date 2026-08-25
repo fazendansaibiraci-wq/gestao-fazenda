@@ -79,7 +79,12 @@ export async function POST(request: NextRequest) {
 
     for (const reg of registros) {
       const dataRegistro = new Date(reg.data)
-      const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, reg.funcionario, config)
+      const estaNaSafra = !!(
+        safraAtiva?.dataInicio &&
+        dataRegistro >= new Date(safraAtiva.dataInicio) &&
+        (!safraAtiva.dataFim || dataRegistro <= new Date(safraAtiva.dataFim))
+      )
+      const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, reg.funcionario, config, false, estaNaSafra)
       const cargaAntes = reg.horasprevistasdia ?? (config?.cargaHorariaEntressafra || 8)
 
       if (Math.abs(cargaHorariaDia - cargaAntes) < 0.01) continue // sem mudança real

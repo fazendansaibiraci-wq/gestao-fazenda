@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calcularTotaisHoras } from '@/lib/calculoTotaisFuncionario'
+import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 
 export async function GET(request: NextRequest) {
   try {
@@ -99,6 +100,9 @@ export async function GET(request: NextRequest) {
         valorHoraExtraEntressafra: true,
         valorHoraExtraSafra: true,
         cargaHorariaSafra: true,
+        cargaHorariaSegSex: true,
+        cargaHorariaSabado: true,
+        cargaHorariaDomingo: true,
         pagamentoProporcionalDiario: true,
         domingosPorMes: true,
       },
@@ -142,7 +146,7 @@ export async function GET(request: NextRequest) {
         ? salarioBaseNaData(data)
         : salarioBaseNaData(data) / 30
       const valorHoraNormalNaData = (data: Date) => func.tipoSalario === 'DIARIO'
-        ? salarioBaseNaData(data) / (config?.cargaHorariaEntressafra || 8)
+        ? salarioBaseNaData(data) / calcularCargaHorariaDia(data, func, config, false, estaNaSafraNaData(data))
         : salarioBaseNaData(data) / 220
 
       // Salário "do período" ratado pelos dias corridos de cada regime —

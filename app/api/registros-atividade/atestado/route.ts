@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     // contar como dia normal trabalhado, creditando a carga horária cheia
     // do dia (sem desconto pro funcionário). Sem talhão, pois não é
     // atividade feita em nenhum lugar real.
-    const [funcionario, config] = await Promise.all([
+    const [funcionario, config, safraAtiva] = await Promise.all([
       prisma.user.findUnique({
         where: { id: registro.funcionarioId },
         select: {
@@ -51,9 +51,15 @@ export async function POST(request: NextRequest) {
         },
       }),
       prisma.configuracaoGlobal.findFirst(),
+      prisma.safra.findFirst({ where: { status: 'ATIVA' }, orderBy: { dataInicio: 'desc' } }),
     ])
 
-    const cargaHorariaDia = calcularCargaHorariaDia(registro.data, funcionario, config)
+    const estaNaSafra = !!(
+      safraAtiva?.dataInicio &&
+      registro.data >= new Date(safraAtiva.dataInicio) &&
+      (!safraAtiva.dataFim || registro.data <= new Date(safraAtiva.dataFim))
+    )
+    const cargaHorariaDia = calcularCargaHorariaDia(registro.data, funcionario, config, false, estaNaSafra)
 
     const atualizado = await prisma.registroAtividade.update({
       where: { id: registroId },

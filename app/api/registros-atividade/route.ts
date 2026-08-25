@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
     // Carga horária por dia da semana
     const dataRegistro = new Date(body.data)
     const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 6=Sab
-    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config)
+    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config, false, estaNaSafra)
 
     // Compensação de falta via Banco de Horas: se o motivo da falta for
     // "banco_horas" e o funcionário tiver saldo suficiente, o dia deixa de

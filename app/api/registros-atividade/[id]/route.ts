@@ -144,7 +144,7 @@ export async function PUT(
         (!safraAtiva.dataFim || dataRegistro <= new Date(safraAtiva.dataFim))
     }
 
-    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config)
+    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config, false, estaNaSafra)
 
     let horasCalculadas = registro.horasCalculadas
     let ehHoraExtra = registro.ehHoraExtra
