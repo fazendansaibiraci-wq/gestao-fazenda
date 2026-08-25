@@ -16,7 +16,10 @@ interface User {
 
 interface ConfiguracaoGlobal {
   id: string
-  cargaHorariaEntressafra: number
+  cargaHorariaEntressafraSegQui: number
+  cargaHorariaEntressafraSexta: number
+  cargaHorariaEntressafraSabado: number
+  cargaHorariaEntressafraDomingo: number
   regimeSalarial: 'SAFRA' | 'ENTRESSAFRA'
 }
 
@@ -46,7 +49,10 @@ export default function SettingsPage() {
 
   const [config, setConfig] = useState<ConfiguracaoGlobal | null>(null)
   const [configForm, setConfigForm] = useState({
-    cargaHorariaEntressafra: 8,
+    cargaHorariaEntressafraSegQui: 9,
+    cargaHorariaEntressafraSexta: 8,
+    cargaHorariaEntressafraSabado: 0,
+    cargaHorariaEntressafraDomingo: 0,
     regimeSalarial: 'ENTRESSAFRA' as 'SAFRA' | 'ENTRESSAFRA',
   })
   const [savingConfig, setSavingConfig] = useState(false)
@@ -94,7 +100,10 @@ export default function SettingsPage() {
         const data = await res.json()
         setConfig(data.data)
         setConfigForm({
-          cargaHorariaEntressafra: data.data.cargaHorariaEntressafra,
+          cargaHorariaEntressafraSegQui: data.data.cargaHorariaEntressafraSegQui ?? 9,
+          cargaHorariaEntressafraSexta: data.data.cargaHorariaEntressafraSexta ?? 8,
+          cargaHorariaEntressafraSabado: data.data.cargaHorariaEntressafraSabado ?? 0,
+          cargaHorariaEntressafraDomingo: data.data.cargaHorariaEntressafraDomingo ?? 0,
           regimeSalarial: data.data.regimeSalarial || 'ENTRESSAFRA',
         })
       }
@@ -288,17 +297,54 @@ export default function SettingsPage() {
                 errados — confira com atenção se precisar mexer em algo atrasado perto da virada.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Carga Horária Entressafra (horas/dia)</label>
-                <input
-                  type="number"
-                  value={configForm.cargaHorariaEntressafra}
-                  onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafra: parseFloat(e.target.value) })}
-                  className="w-full border rounded-lg px-3 py-2"
-                  step="0.5" min="1" max="24" required
-                />
+            <div>
+              <label className="block text-sm font-medium mb-2">Carga Horária Entressafra (horas/dia, igual pra todo mundo)</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Segunda a Quinta</label>
+                  <input
+                    type="number"
+                    value={configForm.cargaHorariaEntressafraSegQui}
+                    onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafraSegQui: parseFloat(e.target.value) })}
+                    className="w-full border rounded-lg px-3 py-2"
+                    step="0.5" min="0" max="24" required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Sexta</label>
+                  <input
+                    type="number"
+                    value={configForm.cargaHorariaEntressafraSexta}
+                    onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafraSexta: parseFloat(e.target.value) })}
+                    className="w-full border rounded-lg px-3 py-2"
+                    step="0.5" min="0" max="24" required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Sábado</label>
+                  <input
+                    type="number"
+                    value={configForm.cargaHorariaEntressafraSabado}
+                    onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafraSabado: parseFloat(e.target.value) })}
+                    className="w-full border rounded-lg px-3 py-2"
+                    step="0.5" min="0" max="24" required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Domingo</label>
+                  <input
+                    type="number"
+                    value={configForm.cargaHorariaEntressafraDomingo}
+                    onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafraDomingo: parseFloat(e.target.value) })}
+                    className="w-full border rounded-lg px-3 py-2"
+                    step="0.5" min="0" max="24" required
+                  />
+                </div>
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Não trabalha o dia inteiro? Deixa 0. Isso soma 1h de almoço já descontada (ex: 07h-17h com 1h de
+                almoço = 9h de jornada).
+              </p>
             </div>
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
               As datas da safra (ciclo agronômico de talhões/insumos) continuam controladas em Cadastros → Safras —

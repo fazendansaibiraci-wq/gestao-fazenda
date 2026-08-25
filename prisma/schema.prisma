@@ -1228,7 +1228,18 @@ model Implemento {
 
 model ConfiguracaoGlobal {
   id                      String    @id @default(cuid())
+  // Fallback interno (não editável diretamente na UI desde 25/08/2026) —
+  // ver os 4 campos por dia da semana abaixo, que são a fonte real usada
+  // no cálculo. Mantido só como valor de segurança caso algum dos 4 abaixo
+  // esteja nulo.
   cargaHorariaEntressafra Float     @default(8)
+  // Jornada de Entressafra: mesma pra todo mundo, por dia da semana
+  // (Segunda a Quinta / Sexta / Sábado / Domingo). Sábado e Domingo não
+  // são trabalhados por padrão.
+  cargaHorariaEntressafraSegQui  Float? @default(9)
+  cargaHorariaEntressafraSexta   Float? @default(8)
+  cargaHorariaEntressafraSabado  Float? @default(0)
+  cargaHorariaEntressafraDomingo Float? @default(0)
   inicioSafra             DateTime?
   fimSafra                DateTime?
   // Botão manual (ver enum RegimeSalarial acima) — substituiu, a partir de

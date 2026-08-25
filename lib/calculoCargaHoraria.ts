@@ -1,18 +1,17 @@
 // Calcula a carga horária prevista para um dia específico.
 //
-// A partir de 24/08/2026: a jornada individual cadastrada por funcionário
-// (Segunda a Sexta / Sábado / Domingo) só vale nos dias que caem dentro da
-// Safra — é lá que cada funcionário tem sua própria carga horária. Fora da
-// Safra (Entressafra), a carga horária passa a ser a mesma pra todo mundo:
-// o número único cadastrado em Configurações Gerais
-// (ConfiguracaoGlobal.cargaHorariaEntressafra), ignorando a jornada
-// individual. Antes disso, a jornada individual era usada o ano inteiro,
-// inclusive na Entressafra — o que pagava/descontava hora extra errado
-// pra quem tinha jornada de Safra maior que a de Entressafra.
+// Na Safra: jornada individual cadastrada por funcionário (Segunda a
+// Sexta / Sábado / Domingo, em Cadastro de Funcionário → Jornada de
+// Trabalho) — cada um tem a sua.
 //
-// Domingo é especial: quando domingosPorMes está entre 1 e 3, não existe
-// regra fixa de qual domingo é de trabalho — os funcionários combinam
-// informalmente entre eles. Por isso:
+// Na Entressafra: mesma jornada pra todo mundo, cadastrada em
+// Configurações Gerais, com um valor por dia da semana (Segunda a
+// Quinta / Sexta / Sábado / Domingo) — não mais um número único igual
+// em todos os dias. Sábado e Domingo não são trabalhados por padrão
+// (ficam zerados a menos que explicitamente configurados).
+//
+// A ambiguidade de domingo (domingosPorMes) só existe na Safra — na
+// Entressafra o fim de semana é sempre folga, sem exceção:
 // - No contexto de um Registro de Atividade real (contextoFalta=false, o
 //   padrão): o próprio registro já é prova de que era a vez do
 //   funcionário, então sempre retorna a carga prevista de domingo.
@@ -36,6 +35,10 @@ interface FuncionarioCargaHoraria {
 
 interface ConfigCargaHoraria {
   cargaHorariaEntressafra?: number | null
+  cargaHorariaEntressafraSegQui?: number | null
+  cargaHorariaEntressafraSexta?: number | null
+  cargaHorariaEntressafraSabado?: number | null
+  cargaHorariaEntressafraDomingo?: number | null
 }
 
 export function calcularCargaHorariaDia(
@@ -45,13 +48,21 @@ export function calcularCargaHorariaDia(
   contextoFalta: boolean = false,
   estaNaSafra: boolean = false
 ): number {
-  const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 6=Sab
-  const domingosPorMes = funcionario?.domingosPorMes ?? 2
+  const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 1=Seg...4=Qui, 5=Sex, 6=Sab
 
-  // Carga horária "normal" do dia, já resolvendo Safra (jornada
-  // individual) vs Entressafra (número único global).
-  const cargaPadraoDoDia = (): number => {
-    if (!estaNaSafra) return config?.cargaHorariaEntressafra || 8
+  if (!estaNaSafra) {
+    // Entressafra: mesma jornada pra todo mundo, fixa por dia da semana.
+    // Sábado e Domingo não são trabalhados (0 por padrão, a menos que
+    // explicitamente configurados em Configurações Gerais).
+    if (diaSemana === 0) return config?.cargaHorariaEntressafraDomingo ?? 0
+    if (diaSemana === 6) return config?.cargaHorariaEntressafraSabado ?? 0
+    if (diaSemana === 5) return config?.cargaHorariaEntressafraSexta ?? (config?.cargaHorariaEntressafra || 8)
+    return config?.cargaHorariaEntressafraSegQui ?? (config?.cargaHorariaEntressafra || 8)
+  }
+
+  // Safra: jornada individual do funcionário.
+  const domingosPorMes = funcionario?.domingosPorMes ?? 2
+  const cargaSafraDoDia = (): number => {
     if (diaSemana === 0) return funcionario?.cargaHorariaDomingo ?? (config?.cargaHorariaEntressafra || 8)
     if (diaSemana === 6) return funcionario?.cargaHorariaSabado ?? (config?.cargaHorariaEntressafra || 8)
     return funcionario?.cargaHorariaSegSex ?? (config?.cargaHorariaEntressafra || 8)
@@ -64,7 +75,7 @@ export function calcularCargaHorariaDia(
     }
     if (domingosPorMes >= 4) {
       // trabalha todo domingo, sem ambiguidade
-      return cargaPadraoDoDia()
+      return cargaSafraDoDia()
     }
     // domingosPorMes entre 1 e 3: alternância informal, sem regra fixa
     if (contextoFalta) {
@@ -74,7 +85,7 @@ export function calcularCargaHorariaDia(
       return 0
     }
     // Contexto de registro real: o registro já prova que era a vez dele.
-    return cargaPadraoDoDia()
+    return cargaSafraDoDia()
   }
-  return cargaPadraoDoDia()
+  return cargaSafraDoDia()
 }
