@@ -197,18 +197,30 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      // Domingos sem NENHUM registro (nem atividade nem falta) — quando
-      // o funcionário não tem expectativa garantida de trabalhar todo
-      // domingo (domingosPorMes < 4), isso é esperado (combinado
-      // informalmente), não um buraco de dado. Gera uma linha "Folga"
-      // só pra exibição, sem criar nada no banco.
+      // Dias sem NENHUM registro (nem atividade nem falta) que são
+      // esperados como folga — gera uma linha "Folga" só pra exibição,
+      // sem criar nada no banco (e sem contar como falta).
+      // - Entressafra: sábado e domingo NUNCA são esperados como dia de
+      //   trabalho (regra fixa, igual pra todo mundo — ver
+      //   calcularCargaHorariaDia). Qualquer sábado ou domingo sem
+      //   registro é folga.
+      // - Safra: só domingo pode ser folga, e só quando o funcionário não
+      //   tem expectativa garantida de trabalhar TODO domingo
+      //   (domingosPorMes < 4) — a alternância é combinada informalmente
+      //   entre eles.
       const domingosPorMes = func.domingosPorMes ?? 2
       const diasComRegistro = new Set(registrosFuncionario.map((r) => r.data.toISOString().split('T')[0]))
       const folgasSemRegistro: typeof registrosDiarios = []
-      if (domingosPorMes < 4) {
+      {
         const cursor = new Date(inicioMes)
         while (cursor <= fimMes) {
-          if (cursor.getDay() === 0) {
+          const diaSemana = cursor.getDay()
+          const ehSabado = diaSemana === 6
+          const ehDomingo = diaSemana === 0
+          const deveSerFolga = estaNaSafra
+            ? (ehDomingo && domingosPorMes < 4)
+            : (ehSabado || ehDomingo)
+          if (deveSerFolga) {
             const chave = cursor.toISOString().split('T')[0]
             if (!diasComRegistro.has(chave)) {
               const [anoFolga, mesFolga, diaFolga] = chave.split('-').map(Number)
@@ -264,8 +276,8 @@ export async function GET(request: NextRequest) {
         acumuladoDiasTrabalhados = diasTrabalhados * valorDia
       } else if (periodoCustomizado) {
         const diasNoPeriodo = Math.round((fimMes.getTime() - inicioMes.getTime()) / 86400000) + 1
-        const domingosDeFolgaNoPeriodo = domingosPorMes < 4 ? folgasSemRegistro.length : 0
-        const diasPagaveis = Math.max(0, diasNoPeriodo - totalFaltas - domingosDeFolgaNoPeriodo)
+        const diasDeFolgaNoPeriodo = folgasSemRegistro.length
+        const diasPagaveis = Math.max(0, diasNoPeriodo - totalFaltas - diasDeFolgaNoPeriodo)
         acumuladoDiasTrabalhados = diasPagaveis * valorDia
       } else {
         acumuladoDiasTrabalhados = salarioBase
