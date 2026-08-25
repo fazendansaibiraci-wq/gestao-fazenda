@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calcularTotaisHoras } from '@/lib/calculoTotaisFuncionario'
-import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 
 export async function GET(request: NextRequest) {
   try {
@@ -113,11 +112,16 @@ export async function GET(request: NextRequest) {
         ? salarioBase
         : salarioBase / 30
 
-      // Valor hora normal: DIARIO divide pela carga horária do dia (jornada
-      // individual na Safra, número global na Entressafra — ver
-      // calcularCargaHorariaDia); MENSAL divide por 220
+      // Valor hora normal: DIARIO divide pela carga horária "padrão" do
+      // regime — Safra usa a jornada individual (Segunda-Sexta) do
+      // funcionário, Entressafra usa o valor global de Segunda a Quinta.
+      // NÃO usa uma data específica aqui (ex: o primeiro dia do período)
+      // porque esse dia pode cair num sábado/domingo, que agora tem carga
+      // horária 0 na Entressafra — dividir por 0 quebrava a tela.
       const valorHoraNormal = func.tipoSalario === 'DIARIO'
-        ? salarioBase / calcularCargaHorariaDia(inicioMes, func, config, false, estaNaSafra)
+        ? salarioBase / (estaNaSafra
+            ? (func.cargaHorariaSegSex || config?.cargaHorariaEntressafra || 8)
+            : (config?.cargaHorariaEntressafraSegQui || config?.cargaHorariaEntressafra || 8))
         : salarioBase / 220
 
       let totalFaltas = 0
