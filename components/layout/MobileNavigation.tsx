@@ -44,7 +44,7 @@ const menuItems = [
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Meus Relatórios', href: '/modules/meus-relatorios', icon: BarChart3, role: 'FUNCIONARIO' },
   { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO' },
-  { label: 'Cadastro Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
+  { label: 'Configurações/Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
 ]
 
 export function MobileNavigation() {

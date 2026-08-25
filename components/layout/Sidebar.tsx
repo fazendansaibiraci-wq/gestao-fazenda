@@ -64,7 +64,7 @@ export function Sidebar() {
     { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR|GERENTE' },
     { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
     { label: 'Locais', href: '/modules/locais', icon: MapPin, excludeRoles: 'FUNCIONARIO' },
-    { label: 'Cadastro Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
+    { label: 'Configurações/Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
 
   const combustivelItems = ([
