@@ -87,6 +87,22 @@ export default function AtividadesPage() {
   const [recalculoConcluido, setRecalculoConcluido] = useState(false)
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
 
+  // "Limpar faltas de fim de semana": remove faltas automáticas
+  // (motivoFalta='nao_registrado') geradas em sábado/domingo ANTES da
+  // correção de 25/08/2026 que fez a carga horária de Entressafra variar
+  // por dia da semana — dias que hoje têm carga esperada 0 (não deveriam
+  // ter gerado falta nenhuma). Mesmo padrão de prévia (dry-run) antes de
+  // aplicar de verdade.
+  const [limpandoFaltas, setLimpandoFaltas] = useState(false)
+  const [previaLimpezaFaltas, setPreviaLimpezaFaltas] = useState<{
+    totalAnalisados: number
+    totalAlterados: number
+    mudancas: { id: string; data: string; funcionarioNome: string; diaSemana: string }[]
+    mudancasOmitidas: number
+  } | null>(null)
+  const [aplicandoLimpezaFaltas, setAplicandoLimpezaFaltas] = useState(false)
+  const [limpezaFaltasConcluida, setLimpezaFaltasConcluida] = useState(false)
+
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
   const userId = (session?.user as any)?.id
@@ -244,6 +260,55 @@ export default function AtividadesPage() {
   const formatarDataCurta = (data: string) => {
     const [, mes, dia] = data.split('-')
     return `${dia}/${mes}`
+  }
+
+  const handlePreviaLimpezaFaltas = async () => {
+    if (!filtroDataInicio || !filtroDataFim) return
+    setLimpandoFaltas(true)
+    setLimpezaFaltasConcluida(false)
+    try {
+      const res = await fetch('/api/registros-atividade/limpar-faltas-fim-de-semana', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataInicio: filtroDataInicio, dataFim: filtroDataFim, confirmar: false }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setPreviaLimpezaFaltas(data)
+      } else {
+        alert(data.error || 'Erro ao calcular prévia')
+      }
+    } catch (err) {
+      console.error('Erro ao calcular prévia de limpeza de faltas:', err)
+      alert('Erro ao calcular prévia')
+    } finally {
+      setLimpandoFaltas(false)
+    }
+  }
+
+  const handleConfirmarLimpezaFaltas = async () => {
+    if (!filtroDataInicio || !filtroDataFim) return
+    setAplicandoLimpezaFaltas(true)
+    try {
+      const res = await fetch('/api/registros-atividade/limpar-faltas-fim-de-semana', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataInicio: filtroDataInicio, dataFim: filtroDataFim, confirmar: true }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setLimpezaFaltasConcluida(true)
+        setPreviaLimpezaFaltas(null)
+        load() // recarrega a lista pra refletir a remoção
+      } else {
+        alert(data.error || 'Erro ao aplicar limpeza')
+      }
+    } catch (err) {
+      console.error('Erro ao aplicar limpeza de faltas:', err)
+      alert('Erro ao aplicar limpeza')
+    } finally {
+      setAplicandoLimpezaFaltas(false)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -497,12 +562,12 @@ export default function AtividadesPage() {
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{uploadError}</p>
         )}
         {isGestor && (
-          <div className="pt-1 border-t">
+          <div className="pt-1 border-t space-y-2">
             <button
               onClick={handlePreviaRecalculo}
               disabled={!filtroDataInicio || !filtroDataFim || recalculando}
               title={!filtroDataInicio || !filtroDataFim ? 'Selecione data início e fim primeiro' : 'Recalcula a carga contratual esperada (e horas extras/devidas) dos dias já lançados nesse período, usando o cadastro atual do(s) funcionário(s)'}
-              className="mt-3 flex items-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw className={`w-4 h-4 ${recalculando ? 'animate-spin' : ''}`} />
               Recalcular carga contratual (dias já lançados no período filtrado)
@@ -510,6 +575,21 @@ export default function AtividadesPage() {
             {recalculoConcluido && (
               <p className="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 inline-block">
                 Recálculo aplicado com sucesso.
+              </p>
+            )}
+            <br />
+            <button
+              onClick={handlePreviaLimpezaFaltas}
+              disabled={!filtroDataInicio || !filtroDataFim || limpandoFaltas}
+              title={!filtroDataInicio || !filtroDataFim ? 'Selecione data início e fim primeiro' : 'Remove faltas automáticas de sábado/domingo geradas antes da correção da carga horária de Entressafra — só mexe em dias que hoje têm carga esperada 0'}
+              className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 className={`w-4 h-4 ${limpandoFaltas ? 'animate-pulse' : ''}`} />
+              Limpar faltas de fim de semana indevidas (Entressafra) no período filtrado
+            </button>
+            {limpezaFaltasConcluida && (
+              <p className="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 inline-block">
+                Limpeza aplicada com sucesso.
               </p>
             )}
           </div>
@@ -901,6 +981,78 @@ export default function AtividadesPage() {
                   className="flex-1 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {aplicandoRecalculo ? 'Aplicando...' : `Confirmar recálculo (${previaRecalculo.totalAlterados})`}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previaLimpezaFaltas && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <h3 className="font-semibold text-primary flex items-center gap-2">
+                <Trash2 className="w-4 h-4" />
+                Prévia da limpeza de faltas de fim de semana
+              </h3>
+              <button onClick={() => setPreviaLimpezaFaltas(null)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto flex-1">
+              <p className="text-sm text-gray-600 mb-3">
+                Analisadas <strong>{previaLimpezaFaltas.totalAnalisados}</strong> falta(s) automática(s) no período
+                {' '}{filtroDataInicio.split('-').reverse().join('/')} a {filtroDataFim.split('-').reverse().join('/')}.
+                {' '}<strong>{previaLimpezaFaltas.totalAlterados}</strong> serão excluídas (caem em sábado/domingo com carga esperada 0 hoje).
+              </p>
+              {previaLimpezaFaltas.totalAlterados === 0 ? (
+                <p className="text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-3">
+                  Nenhuma falta indevida encontrada nesse período.
+                </p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto border rounded-lg">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-gray-500 bg-gray-50 border-b">
+                          <th className="py-2 px-2 font-medium">Data</th>
+                          <th className="py-2 px-2 font-medium">Dia</th>
+                          <th className="py-2 px-2 font-medium">Funcionário</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previaLimpezaFaltas.mudancas.map((m) => (
+                          <tr key={m.id} className="border-b last:border-0">
+                            <td className="py-1.5 px-2">{m.data.split('-').reverse().join('/')}</td>
+                            <td className="py-1.5 px-2 capitalize">{m.diaSemana}</td>
+                            <td className="py-1.5 px-2">{m.funcionarioNome}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {previaLimpezaFaltas.mudancasOmitidas > 0 && (
+                    <p className="text-xs text-gray-400 mt-2">+ {previaLimpezaFaltas.mudancasOmitidas} outra(s) não mostrada(s) aqui.</p>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="flex gap-3 px-5 py-4 border-t">
+              <button
+                onClick={() => setPreviaLimpezaFaltas(null)}
+                disabled={aplicandoLimpezaFaltas}
+                className="flex-1 px-4 py-2 border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              {previaLimpezaFaltas.totalAlterados > 0 && (
+                <button
+                  onClick={handleConfirmarLimpezaFaltas}
+                  disabled={aplicandoLimpezaFaltas}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {aplicandoLimpezaFaltas ? 'Excluindo...' : `Confirmar exclusão (${previaLimpezaFaltas.totalAlterados})`}
                 </button>
               )}
             </div>
