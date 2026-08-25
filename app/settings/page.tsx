@@ -57,6 +57,7 @@ export default function SettingsPage() {
   })
   const [savingConfig, setSavingConfig] = useState(false)
   const [configSuccess, setConfigSuccess] = useState('')
+  const [abaAtiva, setAbaAtiva] = useState<'safra-entressafra' | 'usuarios'>('safra-entressafra')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -250,7 +251,30 @@ export default function SettingsPage() {
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">{success}</div>
       )}
 
-      {isGestor && (
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setAbaAtiva('safra-entressafra')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            abaAtiva === 'safra-entressafra'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Safra / Entressafra
+        </button>
+        <button
+          onClick={() => setAbaAtiva('usuarios')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            abaAtiva === 'usuarios'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Usuários
+        </button>
+      </div>
+
+      {isGestor && abaAtiva === 'safra-entressafra' && (
         <div className="card">
           <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
             <Settings className="w-5 h-5" />
@@ -358,14 +382,14 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {!showForm && (
+      {!showForm && abaAtiva === 'usuarios' && (
         <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
           <Plus className="w-5 h-5" />
           Novo Usuário
         </button>
       )}
 
-      {showForm && (
+      {showForm && abaAtiva === 'usuarios' && (
         <div className={`card ${editingId ? 'border-l-4 border-l-blue-500' : ''}`}>
           <div className="flex items-center gap-2 mb-4">
             {editingId && <Edit2 className="w-5 h-5 text-blue-600" />}
@@ -446,6 +470,7 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {abaAtiva === 'usuarios' && (
       <div className="card">
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
           <Users className="w-5 h-5" />
@@ -515,6 +540,7 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }
