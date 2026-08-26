@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { UserPlus, Pencil, Trash2, Eye } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import { SalarioPeriodoTable } from '@/components/SalarioPeriodoTable'
 
 interface Funcionario {
   id: string
@@ -22,6 +23,7 @@ export default function FuncionariosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('ATIVO')
+  const [abaAtiva, setAbaAtiva] = useState<'lista' | 'safra' | 'entressafra'>('lista')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -91,6 +93,32 @@ export default function FuncionariosPage() {
         </Link>
       </div>
 
+      {/* Abas */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {([
+          { key: 'lista', label: 'Lista' },
+          { key: 'safra', label: 'Salário Safra' },
+          { key: 'entressafra', label: 'Salário Entressafra' },
+        ] as const).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setAbaAtiva(key)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              abaAtiva === key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {abaAtiva === 'safra' && <SalarioPeriodoTable tipo="SAFRA" />}
+      {abaAtiva === 'entressafra' && <SalarioPeriodoTable tipo="ENTRESSAFRA" />}
+
+      {abaAtiva === 'lista' && (
+        <>
       {/* Filtros */}
       <div className="card">
         <div className="flex gap-2">
@@ -203,6 +231,8 @@ export default function FuncionariosPage() {
           </p>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }
