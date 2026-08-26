@@ -1296,15 +1296,37 @@ model PeriodoRegimeSalarial {
 // valor, permitindo reajustes ano a ano sem sobrescrever o histórico.
 // salarioMensal OU salarioDiaria é preenchido conforme o User.tipoSalario
 // do funcionário (nunca os dois).
+// Salário/hora extra/jornada de cada funcionário, específico de cada
+// período de Safra/Entressafra cadastrado (ver PeriodoRegimeSalarial
+// acima). Substitui os antigos campos fixos User.salarioSafra/
+// salarioEntressafra/valorHoraExtraSafra/valorHoraExtraEntressafra/
+// tipoSalario/cargaHorariaSegSex/cargaHorariaSabado/cargaHorariaDomingo/
+// domingosPorMes (mantidos no schema por enquanto, mas em processo de
+// migração pra este model) — cada período (mesmo repetindo o tipo, ex:
+// Safra 2026 e Safra 2027) tem seu próprio valor, permitindo reajustes
+// ano a ano sem sobrescrever o histórico.
+// salarioMensal OU salarioDiaria é preenchido conforme o tipoSalario
+// (nunca os dois). Os campos de jornada têm estrutura diferente conforme
+// o tipo do período (ver PeriodoRegimeSalarial.tipo): num período SAFRA
+// usa-se cargaHorariaSegSex + domingosTrabalhadosPorMes; num período
+// ENTRESSAFRA usa-se cargaHorariaSegQui + cargaHorariaSexta.
+// cargaHorariaSabado/cargaHorariaDomingo são usados nos dois tipos.
 model SalarioPeriodo {
   id                      String                @id @default(cuid())
   funcionario             User                  @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
   funcionarioId           String
   periodo                 PeriodoRegimeSalarial @relation(fields: [periodoRegimeSalarialId], references: [id], onDelete: Cascade)
   periodoRegimeSalarialId String
+  tipoSalario             TipoSalario?
   salarioMensal           Float?
   salarioDiaria           Float?
   valorHoraExtra          Float?
+  cargaHorariaSegSex             Float? // Safra
+  cargaHorariaSegQui             Float? // Entressafra
+  cargaHorariaSexta              Float? // Entressafra
+  cargaHorariaSabado             Float? // Safra e Entressafra
+  cargaHorariaDomingo            Float? // Safra e Entressafra
+  domingosTrabalhadosPorMes      Int?   // Safra
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
 

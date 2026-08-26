@@ -13,23 +13,52 @@ interface Periodo {
 interface FuncionarioSalario {
   id: string
   name: string
-  tipoSalario: 'MENSAL' | 'DIARIO' | null
+  tipoSalarioCadastro: 'MENSAL' | 'DIARIO' | null
   salario: {
     id: string
+    tipoSalario: 'MENSAL' | 'DIARIO' | null
     salarioMensal: number | null
     salarioDiaria: number | null
     valorHoraExtra: number | null
+    cargaHorariaSegSex: number | null
+    cargaHorariaSegQui: number | null
+    cargaHorariaSexta: number | null
+    cargaHorariaSabado: number | null
+    cargaHorariaDomingo: number | null
+    domingosTrabalhadosPorMes: number | null
   } | null
 }
 
 interface LinhaEdicao {
+  tipoSalario: 'MENSAL' | 'DIARIO' | ''
   salarioMensal: string
   salarioDiaria: string
   valorHoraExtra: string
+  cargaHorariaSegSex: string
+  cargaHorariaSegQui: string
+  cargaHorariaSexta: string
+  cargaHorariaSabado: string
+  cargaHorariaDomingo: string
+  domingosTrabalhadosPorMes: string
 }
 
 function formatarData(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+}
+
+function linhaVazia(tipoSalarioCadastro: 'MENSAL' | 'DIARIO' | null): LinhaEdicao {
+  return {
+    tipoSalario: tipoSalarioCadastro || '',
+    salarioMensal: '',
+    salarioDiaria: '',
+    valorHoraExtra: '',
+    cargaHorariaSegSex: '',
+    cargaHorariaSegQui: '',
+    cargaHorariaSexta: '',
+    cargaHorariaSabado: '',
+    cargaHorariaDomingo: '',
+    domingosTrabalhadosPorMes: '2',
+  }
 }
 
 export function SalarioPeriodoTable({ tipo }: { tipo: 'SAFRA' | 'ENTRESSAFRA' }) {
@@ -86,10 +115,21 @@ export function SalarioPeriodoTable({ tipo }: { tipo: 'SAFRA' | 'ENTRESSAFRA' })
       setFuncionarios(lista)
       const novasEdicoes: Record<string, LinhaEdicao> = {}
       for (const f of lista) {
-        novasEdicoes[f.id] = {
-          salarioMensal: f.salario?.salarioMensal != null ? String(f.salario.salarioMensal) : '',
-          salarioDiaria: f.salario?.salarioDiaria != null ? String(f.salario.salarioDiaria) : '',
-          valorHoraExtra: f.salario?.valorHoraExtra != null ? String(f.salario.valorHoraExtra) : '',
+        if (f.salario) {
+          novasEdicoes[f.id] = {
+            tipoSalario: f.salario.tipoSalario || f.tipoSalarioCadastro || '',
+            salarioMensal: f.salario.salarioMensal != null ? String(f.salario.salarioMensal) : '',
+            salarioDiaria: f.salario.salarioDiaria != null ? String(f.salario.salarioDiaria) : '',
+            valorHoraExtra: f.salario.valorHoraExtra != null ? String(f.salario.valorHoraExtra) : '',
+            cargaHorariaSegSex: f.salario.cargaHorariaSegSex != null ? String(f.salario.cargaHorariaSegSex) : '',
+            cargaHorariaSegQui: f.salario.cargaHorariaSegQui != null ? String(f.salario.cargaHorariaSegQui) : '',
+            cargaHorariaSexta: f.salario.cargaHorariaSexta != null ? String(f.salario.cargaHorariaSexta) : '',
+            cargaHorariaSabado: f.salario.cargaHorariaSabado != null ? String(f.salario.cargaHorariaSabado) : '',
+            cargaHorariaDomingo: f.salario.cargaHorariaDomingo != null ? String(f.salario.cargaHorariaDomingo) : '',
+            domingosTrabalhadosPorMes: f.salario.domingosTrabalhadosPorMes != null ? String(f.salario.domingosTrabalhadosPorMes) : '2',
+          }
+        } else {
+          novasEdicoes[f.id] = linhaVazia(f.tipoSalarioCadastro)
         }
       }
       setEdicoes(novasEdicoes)
@@ -116,9 +156,16 @@ export function SalarioPeriodoTable({ tipo }: { tipo: 'SAFRA' | 'ENTRESSAFRA' })
         body: JSON.stringify({
           funcionarioId,
           periodoRegimeSalarialId: periodoSelecionadoId,
+          tipoSalario: edicao.tipoSalario || null,
           salarioMensal: edicao.salarioMensal,
           salarioDiaria: edicao.salarioDiaria,
           valorHoraExtra: edicao.valorHoraExtra,
+          cargaHorariaSegSex: edicao.cargaHorariaSegSex,
+          cargaHorariaSegQui: edicao.cargaHorariaSegQui,
+          cargaHorariaSexta: edicao.cargaHorariaSexta,
+          cargaHorariaSabado: edicao.cargaHorariaSabado,
+          cargaHorariaDomingo: edicao.cargaHorariaDomingo,
+          domingosTrabalhadosPorMes: edicao.domingosTrabalhadosPorMes,
         }),
       })
       const data = await res.json()
@@ -148,6 +195,8 @@ export function SalarioPeriodoTable({ tipo }: { tipo: 'SAFRA' | 'ENTRESSAFRA' })
     )
   }
 
+  const inputClass = 'w-24 border rounded-lg px-2 py-1'
+
   return (
     <div className="space-y-4">
       <div className="card">
@@ -173,87 +222,155 @@ export function SalarioPeriodoTable({ tipo }: { tipo: 'SAFRA' | 'ENTRESSAFRA' })
         {loadingFuncionarios ? (
           <div className="text-center py-8 text-gray-500">Carregando funcionários...</div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="px-3 py-2 text-left font-semibold text-gray-700">Funcionário</th>
-                <th className="px-3 py-2 text-left font-semibold text-gray-700">Salário (R$)</th>
-                <th className="px-3 py-2 text-left font-semibold text-gray-700">Valor Hora Extra (R$/h)</th>
-                <th className="px-3 py-2 text-right font-semibold text-gray-700">Ação</th>
+                <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Funcionário</th>
+                <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Tipo de Salário</th>
+                <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Salário (R$)</th>
+                <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Hora Extra (R$/h)</th>
+                {tipo === 'SAFRA' ? (
+                  <>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Seg a Sex (h/dia)</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Seg a Qui (h/dia)</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Sexta (h/dia)</th>
+                  </>
+                )}
+                <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Sábado (h/dia)</th>
+                <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Domingo (h/dia)</th>
+                {tipo === 'SAFRA' && (
+                  <th className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Domingos/mês</th>
+                )}
+                <th className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">Ação</th>
               </tr>
             </thead>
             <tbody>
               {funcionarios.map((f) => {
                 const edicao = edicoes[f.id]
                 if (!edicao) return null
-                const semTipoSalario = !f.tipoSalario
                 const semCadastro = !f.salario
                 return (
                   <tr key={f.id} className="border-b border-gray-100">
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-900">{f.name}</span>
-                        {semCadastro && !semTipoSalario && (
-                          <span title="Sem salário cadastrado neste período">
+                        {semCadastro && (
+                          <span title="Sem cadastro neste período">
                             <AlertTriangle className="w-4 h-4 text-amber-500" />
                           </span>
                         )}
                       </div>
-                      {semTipoSalario && (
-                        <span className="text-xs text-gray-400">Sem tipo de salário definido no cadastro</span>
-                      )}
                     </td>
                     <td className="px-3 py-2">
-                      {semTipoSalario ? (
-                        <span className="text-gray-400">—</span>
-                      ) : f.tipoSalario === 'MENSAL' ? (
+                      <select
+                        value={edicao.tipoSalario}
+                        onChange={(e) => handleCampoChange(f.id, 'tipoSalario', e.target.value)}
+                        className="border rounded-lg px-2 py-1"
+                      >
+                        <option value="">Selecione</option>
+                        <option value="MENSAL">Mensal</option>
+                        <option value="DIARIO">Diário</option>
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      {edicao.tipoSalario === 'DIARIO' ? (
                         <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={edicao.salarioMensal}
-                          onChange={(e) => handleCampoChange(f.id, 'salarioMensal', e.target.value)}
-                          placeholder="0,00"
-                          className="w-32 border rounded-lg px-2 py-1"
-                        />
-                      ) : (
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          type="number" step="0.01" min="0" placeholder="0,00"
                           value={edicao.salarioDiaria}
                           onChange={(e) => handleCampoChange(f.id, 'salarioDiaria', e.target.value)}
-                          placeholder="0,00"
-                          className="w-32 border rounded-lg px-2 py-1"
+                          className={inputClass}
                         />
+                      ) : edicao.tipoSalario === 'MENSAL' ? (
+                        <input
+                          type="number" step="0.01" min="0" placeholder="0,00"
+                          value={edicao.salarioMensal}
+                          onChange={(e) => handleCampoChange(f.id, 'salarioMensal', e.target.value)}
+                          className={inputClass}
+                        />
+                      ) : (
+                        <span className="text-gray-400">—</span>
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      {semTipoSalario ? (
-                        <span className="text-gray-400">—</span>
-                      ) : (
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={edicao.valorHoraExtra}
-                          onChange={(e) => handleCampoChange(f.id, 'valorHoraExtra', e.target.value)}
-                          placeholder="0,00"
-                          className="w-32 border rounded-lg px-2 py-1"
-                        />
-                      )}
+                      <input
+                        type="number" step="0.01" min="0" placeholder="0,00"
+                        value={edicao.valorHoraExtra}
+                        onChange={(e) => handleCampoChange(f.id, 'valorHoraExtra', e.target.value)}
+                        className={inputClass}
+                      />
                     </td>
-                    <td className="px-3 py-2 text-right">
-                      {!semTipoSalario && (
-                        <button
-                          onClick={() => handleSalvar(f.id)}
-                          disabled={salvandoId === f.id}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-white text-xs rounded-lg hover:bg-primary/90 transition disabled:opacity-50"
+                    {tipo === 'SAFRA' ? (
+                      <td className="px-3 py-2">
+                        <input
+                          type="number" step="0.5" min="0" max="24" placeholder="Ex: 10"
+                          value={edicao.cargaHorariaSegSex}
+                          onChange={(e) => handleCampoChange(f.id, 'cargaHorariaSegSex', e.target.value)}
+                          className={inputClass}
+                        />
+                      </td>
+                    ) : (
+                      <>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number" step="0.5" min="0" max="24" placeholder="Ex: 9"
+                            value={edicao.cargaHorariaSegQui}
+                            onChange={(e) => handleCampoChange(f.id, 'cargaHorariaSegQui', e.target.value)}
+                            className={inputClass}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number" step="0.5" min="0" max="24" placeholder="Ex: 8"
+                            value={edicao.cargaHorariaSexta}
+                            onChange={(e) => handleCampoChange(f.id, 'cargaHorariaSexta', e.target.value)}
+                            className={inputClass}
+                          />
+                        </td>
+                      </>
+                    )}
+                    <td className="px-3 py-2">
+                      <input
+                        type="number" step="0.5" min="0" max="24" placeholder="Ex: 0"
+                        value={edicao.cargaHorariaSabado}
+                        onChange={(e) => handleCampoChange(f.id, 'cargaHorariaSabado', e.target.value)}
+                        className={inputClass}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number" step="0.5" min="0" max="24" placeholder="Ex: 0"
+                        value={edicao.cargaHorariaDomingo}
+                        onChange={(e) => handleCampoChange(f.id, 'cargaHorariaDomingo', e.target.value)}
+                        className={inputClass}
+                      />
+                    </td>
+                    {tipo === 'SAFRA' && (
+                      <td className="px-3 py-2">
+                        <select
+                          value={edicao.domingosTrabalhadosPorMes}
+                          onChange={(e) => handleCampoChange(f.id, 'domingosTrabalhadosPorMes', e.target.value)}
+                          className="border rounded-lg px-2 py-1"
                         >
-                          <Save className="w-3.5 h-3.5" />
-                          {salvandoId === f.id ? 'Salvando...' : sucessoId === f.id ? 'Salvo!' : 'Salvar'}
-                        </button>
-                      )}
+                          <option value="0">Não trabalha</option>
+                          <option value="1">1/mês</option>
+                          <option value="2">2/mês</option>
+                          <option value="3">3/mês</option>
+                          <option value="4">4/mês</option>
+                        </select>
+                      </td>
+                    )}
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => handleSalvar(f.id)}
+                        disabled={salvandoId === f.id}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-white text-xs rounded-lg hover:bg-primary/90 transition disabled:opacity-50"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        {salvandoId === f.id ? 'Salvando...' : sucessoId === f.id ? 'Salvo!' : 'Salvar'}
+                      </button>
                     </td>
                   </tr>
                 )

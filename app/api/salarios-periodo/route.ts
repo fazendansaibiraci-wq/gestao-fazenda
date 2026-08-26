@@ -8,6 +8,11 @@ import { prisma } from '@/lib/prisma'
 // informado — pra montar a tabela editável da aba Safra/Entressafra em
 // Funcionários. Um funcionário sem SalarioPeriodo pro período aparece com
 // `salario: null`, que a tela usa pra mostrar o aviso de "sem cadastro".
+// `tipoSalarioCadastro` é só uma referência (o Tipo de Salário que o
+// funcionário tinha no Cadastro antes dessa mudança) — usado pra
+// pré-selecionar o dropdown na primeira vez que o período é aberto pra
+// esse funcionário; o valor que realmente vale é o salvo em
+// SalarioPeriodo.tipoSalario.
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -35,7 +40,19 @@ export async function GET(request: NextRequest) {
         tipoSalario: true,
         salariosPeriodo: {
           where: { periodoRegimeSalarialId: periodoId },
-          select: { id: true, salarioMensal: true, salarioDiaria: true, valorHoraExtra: true },
+          select: {
+            id: true,
+            tipoSalario: true,
+            salarioMensal: true,
+            salarioDiaria: true,
+            valorHoraExtra: true,
+            cargaHorariaSegSex: true,
+            cargaHorariaSegQui: true,
+            cargaHorariaSexta: true,
+            cargaHorariaSabado: true,
+            cargaHorariaDomingo: true,
+            domingosTrabalhadosPorMes: true,
+          },
         },
       },
       orderBy: { name: 'asc' },
@@ -44,7 +61,7 @@ export async function GET(request: NextRequest) {
     const data = funcionarios.map((f) => ({
       id: f.id,
       name: f.name,
-      tipoSalario: f.tipoSalario,
+      tipoSalarioCadastro: f.tipoSalario,
       salario: f.salariosPeriodo[0] || null,
     }))
 
@@ -56,7 +73,8 @@ export async function GET(request: NextRequest) {
 }
 
 // POST: cria ou atualiza (upsert) o SalarioPeriodo de UM funcionário num
-// período específico — a tela salva linha por linha.
+// período específico — a tela salva linha por linha. `tipoSalario` agora
+// é definido por período (não mais herdado do Cadastro de Funcionário).
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -65,10 +83,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { funcionarioId, periodoRegimeSalarialId, salarioMensal, salarioDiaria, valorHoraExtra } = body
+    const {
+      funcionarioId,
+      periodoRegimeSalarialId,
+      tipoSalario,
+      salarioMensal,
+      salarioDiaria,
+      valorHoraExtra,
+      cargaHorariaSegSex,
+      cargaHorariaSegQui,
+      cargaHorariaSexta,
+      cargaHorariaSabado,
+      cargaHorariaDomingo,
+      domingosTrabalhadosPorMes,
+    } = body
 
     if (!funcionarioId || !periodoRegimeSalarialId) {
       return NextResponse.json({ error: 'Informe funcionarioId e periodoRegimeSalarialId' }, { status: 400 })
+    }
+    if (tipoSalario !== 'MENSAL' && tipoSalario !== 'DIARIO' && tipoSalario !== null && tipoSalario !== undefined && tipoSalario !== '') {
+      return NextResponse.json({ error: 'tipoSalario deve ser MENSAL ou DIARIO' }, { status: 400 })
     }
 
     const funcionario = await prisma.user.findUnique({ where: { id: funcionarioId } })
@@ -80,22 +114,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Período não encontrado' }, { status: 404 })
     }
 
+    const tipoSalarioFinal = tipoSalario === 'MENSAL' || tipoSalario === 'DIARIO' ? tipoSalario : null
+    const numOuNull = (v: any) => (v !== undefined && v !== null && v !== '' ? parseFloat(v) : null)
+    const intOuNull = (v: any) => (v !== undefined && v !== null && v !== '' ? parseInt(v, 10) : null)
+
+    const dados = {
+      tipoSalario: tipoSalarioFinal,
+      salarioMensal: tipoSalarioFinal === 'MENSAL' ? numOuNull(salarioMensal) : null,
+      salarioDiaria: tipoSalarioFinal === 'DIARIO' ? numOuNull(salarioDiaria) : null,
+      valorHoraExtra: numOuNull(valorHoraExtra),
+      cargaHorariaSegSex: periodo.tipo === 'SAFRA' ? numOuNull(cargaHorariaSegSex) : null,
+      cargaHorariaSegQui: periodo.tipo === 'ENTRESSAFRA' ? numOuNull(cargaHorariaSegQui) : null,
+      cargaHorariaSexta: periodo.tipo === 'ENTRESSAFRA' ? numOuNull(cargaHorariaSexta) : null,
+      cargaHorariaSabado: numOuNull(cargaHorariaSabado),
+      cargaHorariaDomingo: numOuNull(cargaHorariaDomingo),
+      domingosTrabalhadosPorMes: periodo.tipo === 'SAFRA' ? intOuNull(domingosTrabalhadosPorMes) : null,
+    }
+
     const salario = await prisma.salarioPeriodo.upsert({
       where: {
         funcionarioId_periodoRegimeSalarialId: { funcionarioId, periodoRegimeSalarialId },
       },
-      create: {
-        funcionarioId,
-        periodoRegimeSalarialId,
-        salarioMensal: funcionario.tipoSalario === 'MENSAL' && salarioMensal !== undefined && salarioMensal !== '' ? parseFloat(salarioMensal) : null,
-        salarioDiaria: funcionario.tipoSalario === 'DIARIO' && salarioDiaria !== undefined && salarioDiaria !== '' ? parseFloat(salarioDiaria) : null,
-        valorHoraExtra: valorHoraExtra !== undefined && valorHoraExtra !== '' ? parseFloat(valorHoraExtra) : null,
-      },
-      update: {
-        salarioMensal: funcionario.tipoSalario === 'MENSAL' && salarioMensal !== undefined && salarioMensal !== '' ? parseFloat(salarioMensal) : null,
-        salarioDiaria: funcionario.tipoSalario === 'DIARIO' && salarioDiaria !== undefined && salarioDiaria !== '' ? parseFloat(salarioDiaria) : null,
-        valorHoraExtra: valorHoraExtra !== undefined && valorHoraExtra !== '' ? parseFloat(valorHoraExtra) : null,
-      },
+      create: { funcionarioId, periodoRegimeSalarialId, ...dados },
+      update: dados,
     })
 
     return NextResponse.json({ success: true, data: salario })

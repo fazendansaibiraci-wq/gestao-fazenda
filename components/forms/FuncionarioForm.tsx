@@ -20,12 +20,7 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     confirmPassword: '',
     phone: initialData?.phone || '',
     role: initialData?.role || UserRole.FUNCIONARIO,
-    tipoSalario: initialData?.tipoSalario || 'MENSAL',
     cargaHorariaSafra: initialData?.cargaHorariaSafra || '',
-    cargaHorariaSegSex: initialData?.cargaHorariaSegSex || '',
-    cargaHorariaSabado: initialData?.cargaHorariaSabado || '',
-    cargaHorariaDomingo: initialData?.cargaHorariaDomingo || '',
-   domingosPorMes: String(initialData?.domingosPorMes ?? '2'),
     active: initialData?.active !== undefined ? initialData.active : true,
     pagamentoProporcionalDiario: initialData?.pagamentoProporcionalDiario || false,
     ocultarRegistroAtividades: initialData?.ocultarRegistroAtividades || false,
@@ -149,17 +144,9 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
       <div className="card">
         <h3 className="text-lg font-semibold text-primary mb-4">Remuneração</h3>
         <div className="space-y-4">
-          <div className="form-group">
-            <label htmlFor="tipoSalario">Tipo de Salário *</label>
-            <select id="tipoSalario" name="tipoSalario" value={form.tipoSalario} onChange={handleChange} disabled={loading}>
-              <option value="MENSAL">Mensal</option>
-              <option value="DIARIO">Diário</option>
-            </select>
-          </div>
-
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-            Salário e hora extra agora são cadastrados por período, em Funcionários → abas "Salário Safra" /
-            "Salário Entressafra".
+            Tipo de salário, salário, hora extra e jornada de trabalho agora são cadastrados por período, em
+            Funcionários → abas "Salário Safra" / "Salário Entressafra".
           </div>
 
           <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
@@ -170,43 +157,6 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
           <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
             <input type="checkbox" id="ocultarRegistroAtividades" name="ocultarRegistroAtividades" checked={form.ocultarRegistroAtividades} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
             <label htmlFor="ocultarRegistroAtividades" style={{fontSize:'14px', fontWeight:500, cursor:'pointer', margin:0}}>Ocultar aba "Registro de Atividades" pra esse usuário</label>
-          </div>
-        </div>
-      </div>
-
-      {/* Jornada */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-primary mb-4">Jornada de Trabalho</h3>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="form-group">
-              <label htmlFor="cargaHorariaSegSex">Segunda a Sexta (h/dia)</label>
-              <input type="number" id="cargaHorariaSegSex" name="cargaHorariaSegSex" value={form.cargaHorariaSegSex} onChange={handleChange} disabled={loading} step="0.5" min="1" max="24" placeholder="Ex: 10" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="cargaHorariaSabado">Sábado (h/dia)</label>
-              <input type="number" id="cargaHorariaSabado" name="cargaHorariaSabado" value={form.cargaHorariaSabado} onChange={handleChange} disabled={loading} step="0.5" min="0" max="24" placeholder="Ex: 8" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="cargaHorariaDomingo">Domingo (h/dia)</label>
-              <input type="number" id="cargaHorariaDomingo" name="cargaHorariaDomingo" value={form.cargaHorariaDomingo} onChange={handleChange} disabled={loading} step="0.5" min="0" max="24" placeholder="Ex: 6" />
-            </div>
-          </div>
-          <div className="form-group">
-            <label htmlFor="domingosPorMes">Domingos trabalhados por mês</label>
-            <select id="domingosPorMes" name="domingosPorMes" value={form.domingosPorMes} onChange={handleChange} disabled={loading}>
-              <option value="0">Não trabalha aos domingos</option>
-              <option value="1">1 domingo por mês</option>
-              <option value="2">2 domingos por mês</option>
-              <option value="3">3 domingos por mês</option>
-              <option value="4">4 domingos por mês</option>
-            </select>
-          </div>
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs text-blue-700">
-              <strong>Como funciona:</strong> O sistema verifica se o domingo em questão é um dos domingos que o funcionário trabalha no mês. 
-              Ex: se trabalha 2 domingos por mês, o 1º e 3º domingo serão considerados dia de trabalho. Os demais, qualquer hora trabalhada conta como hora extra.
-            </p>
           </div>
         </div>
       </div>
