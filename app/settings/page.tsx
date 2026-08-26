@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { Users, Plus, Edit2, Trash2, Check, X, Eye, EyeOff, Settings, Save } from 'lucide-react'
+import { Users, Plus, Edit2, Trash2, Check, X, Eye, EyeOff, Settings } from 'lucide-react'
 
 interface User {
   id: string
@@ -12,14 +12,6 @@ interface User {
   role: 'FUNCIONARIO' | 'GERENTE' | 'AGRONOMO' | 'GESTOR'
   active: boolean
   createdAt: string
-}
-
-interface ConfiguracaoGlobal {
-  id: string
-  cargaHorariaEntressafraSegQui: number
-  cargaHorariaEntressafraSexta: number
-  cargaHorariaEntressafraSabado: number
-  cargaHorariaEntressafraDomingo: number
 }
 
 interface PeriodoRegimeSalarial {
@@ -53,15 +45,6 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  const [config, setConfig] = useState<ConfiguracaoGlobal | null>(null)
-  const [configForm, setConfigForm] = useState({
-    cargaHorariaEntressafraSegQui: 9,
-    cargaHorariaEntressafraSexta: 8,
-    cargaHorariaEntressafraSabado: 0,
-    cargaHorariaEntressafraDomingo: 0,
-  })
-  const [savingConfig, setSavingConfig] = useState(false)
-  const [configSuccess, setConfigSuccess] = useState('')
   const [abaAtiva, setAbaAtiva] = useState<'safra-entressafra' | 'usuarios'>('safra-entressafra')
 
   // Períodos de Safra/Entressafra (fonte da verdade do cálculo dia a dia
@@ -91,7 +74,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadUsers()
-    loadConfig()
     loadPeriodos()
   }, [])
 
@@ -107,24 +89,6 @@ export default function SettingsPage() {
       setError('Erro ao carregar usuários')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadConfig = async () => {
-    try {
-      const res = await fetch('/api/configuracoes')
-      if (res.ok) {
-        const data = await res.json()
-        setConfig(data.data)
-        setConfigForm({
-          cargaHorariaEntressafraSegQui: data.data.cargaHorariaEntressafraSegQui ?? 9,
-          cargaHorariaEntressafraSexta: data.data.cargaHorariaEntressafraSexta ?? 8,
-          cargaHorariaEntressafraSabado: data.data.cargaHorariaEntressafraSabado ?? 0,
-          cargaHorariaEntressafraDomingo: data.data.cargaHorariaEntressafraDomingo ?? 0,
-        })
-      }
-    } catch {
-      console.error('Erro ao carregar configurações')
     }
   }
 
@@ -183,28 +147,6 @@ export default function SettingsPage() {
       if (res.ok) loadPeriodos()
     } catch {
       console.error('Erro ao excluir período')
-    }
-  }
-
-  const handleSaveConfig = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSavingConfig(true)
-    setConfigSuccess('')
-    try {
-      const res = await fetch('/api/configuracoes', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(configForm),
-      })
-      if (res.ok) {
-        setConfigSuccess('Configurações salvas com sucesso!')
-        loadConfig()
-        setTimeout(() => setConfigSuccess(''), 3000)
-      }
-    } catch {
-      setError('Erro ao salvar configurações')
-    } finally {
-      setSavingConfig(false)
     }
   }
 
@@ -353,11 +295,6 @@ export default function SettingsPage() {
             <Settings className="w-5 h-5" />
             Configurações Globais
           </h2>
-          {configSuccess && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-              {configSuccess}
-            </div>
-          )}
 
           <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg mb-4">
             <label className="block text-sm font-bold mb-2 text-amber-900">
@@ -476,65 +413,10 @@ export default function SettingsPage() {
             )}
           </div>
 
-          <form onSubmit={handleSaveConfig} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Carga Horária Entressafra (horas/dia, igual pra todo mundo)</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Segunda a Quinta</label>
-                  <input
-                    type="number"
-                    value={configForm.cargaHorariaEntressafraSegQui}
-                    onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafraSegQui: parseFloat(e.target.value) })}
-                    className="w-full border rounded-lg px-3 py-2"
-                    step="0.5" min="0" max="24" required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Sexta</label>
-                  <input
-                    type="number"
-                    value={configForm.cargaHorariaEntressafraSexta}
-                    onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafraSexta: parseFloat(e.target.value) })}
-                    className="w-full border rounded-lg px-3 py-2"
-                    step="0.5" min="0" max="24" required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Sábado</label>
-                  <input
-                    type="number"
-                    value={configForm.cargaHorariaEntressafraSabado}
-                    onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafraSabado: parseFloat(e.target.value) })}
-                    className="w-full border rounded-lg px-3 py-2"
-                    step="0.5" min="0" max="24" required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Domingo</label>
-                  <input
-                    type="number"
-                    value={configForm.cargaHorariaEntressafraDomingo}
-                    onChange={(e) => setConfigForm({ ...configForm, cargaHorariaEntressafraDomingo: parseFloat(e.target.value) })}
-                    className="w-full border rounded-lg px-3 py-2"
-                    step="0.5" min="0" max="24" required
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Não trabalha o dia inteiro? Deixa 0. Isso soma 1h de almoço já descontada (ex: 07h-17h com 1h de
-                almoço = 9h de jornada).
-              </p>
-            </div>
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-              As datas da safra (ciclo agronômico de talhões/insumos) continuam controladas em Cadastros → Safras —
-              isso é independente do regime de cálculo salarial acima.
-            </div>
-            <button type="submit" disabled={savingConfig} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
-              <Save className="w-4 h-4" />
-              {savingConfig ? 'Salvando...' : 'Salvar Configurações'}
-            </button>
-          </form>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            As datas da safra (ciclo agronômico de talhões/insumos) continuam controladas em Cadastros → Safras —
+            isso é independente do regime de cálculo salarial acima.
+          </div>
         </div>
       )}
 
