@@ -64,8 +64,9 @@ export function Sidebar() {
     { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR|GERENTE' },
     { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
     { label: 'Locais', href: '/modules/locais', icon: MapPin, excludeRoles: 'FUNCIONARIO' },
-    { label: 'Configurações/Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
+
+  const configuracoesItem = { label: 'Configurações/Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' }
 
   const combustivelItems = ([
     { label: 'Abastecimento', href: '/modules/combustivel', icon: Fuel },
@@ -150,6 +151,17 @@ export function Sidebar() {
                 </div>
               )}
             </>
+          )}
+
+          {/* Configurações/Usuários — item de menu principal (fora de Cadastros) */}
+          {show(configuracoesItem.role) && (
+            <Link
+              href={configuracoesItem.href}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive(configuracoesItem.href) ? 'bg-secondary text-primary font-semibold' : 'text-light hover:bg-secondary/20'}`}
+            >
+              <Settings className="w-5 h-5 flex-shrink-0" />
+              {isOpen && <span className="truncate">{configuracoesItem.label}</span>}
+            </Link>
           )}
 
           {/* Cadastros — sub-menu */}
