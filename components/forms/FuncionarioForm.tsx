@@ -21,10 +21,6 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     phone: initialData?.phone || '',
     role: initialData?.role || UserRole.FUNCIONARIO,
     tipoSalario: initialData?.tipoSalario || 'MENSAL',
-    salarioEntressafra: initialData?.salarioEntressafra || '',
-    salarioSafra: initialData?.salarioSafra || '',
-    valorHoraExtraEntressafra: initialData?.valorHoraExtraEntressafra || '',
-    valorHoraExtraSafra: initialData?.valorHoraExtraSafra || '',
     cargaHorariaSafra: initialData?.cargaHorariaSafra || '',
     cargaHorariaSegSex: initialData?.cargaHorariaSegSex || '',
     cargaHorariaSabado: initialData?.cargaHorariaSabado || '',
@@ -161,26 +157,9 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
             </select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="form-group">
-              <label htmlFor="salarioEntressafra">Salário Entressafra (R$)</label>
-              <input type="number" id="salarioEntressafra" name="salarioEntressafra" value={form.salarioEntressafra} onChange={handleChange} disabled={loading} step="0.01" placeholder="0,00" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="salarioSafra">Salário Safra (R$)</label>
-              <input type="number" id="salarioSafra" name="salarioSafra" value={form.salarioSafra} onChange={handleChange} disabled={loading} step="0.01" placeholder="0,00" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="form-group">
-              <label htmlFor="valorHoraExtraEntressafra">Valor Hora Extra Entressafra (R$/h)</label>
-              <input type="number" id="valorHoraExtraEntressafra" name="valorHoraExtraEntressafra" value={form.valorHoraExtraEntressafra} onChange={handleChange} disabled={loading} step="0.01" placeholder="0,00" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="valorHoraExtraSafra">Valor Hora Extra Safra (R$/h)</label>
-              <input type="number" id="valorHoraExtraSafra" name="valorHoraExtraSafra" value={form.valorHoraExtraSafra} onChange={handleChange} disabled={loading} step="0.01" placeholder="0,00" />
-            </div>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            Salário e hora extra agora são cadastrados por período, em Funcionários → abas "Salário Safra" /
+            "Salário Entressafra".
           </div>
 
           <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
