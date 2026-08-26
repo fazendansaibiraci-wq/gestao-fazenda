@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
-import { buscarPeriodosRegimeSalarial, obterRegimeNaData, mensagemPeriodoNaoCadastrado } from '@/lib/regimeSalarial'
+import { mensagemPeriodoNaoCadastrado } from '@/lib/regimeSalarial'
+import { buscarPeriodosComId, obterPeriodoNaData, buscarSalarioPeriodoFuncionario, mensagemSalarioNaoCadastrado, shimsParaCargaHoraria } from '@/lib/salarioPeriodo'
 
 export async function GET(request: NextRequest) {
   try {
@@ -153,24 +154,10 @@ export async function POST(request: NextRequest) {
     }
 
     const funcionarioId = body.funcionarioId || session.user?.id as string
-    const [funcionario, config] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: funcionarioId },
-        select: {
-          cargaHorariaSafra: true,
-          cargaHorariaSegSex: true,
-          cargaHorariaSabado: true,
-          cargaHorariaDomingo: true,
-          domingosPorMes: true,
-          valorHoraExtraEntressafra: true,
-          valorHoraExtraSafra: true,
-          salarioEntressafra: true,
-          salarioSafra: true,
-          tipoSalario: true,
-        },
-      }),
-      prisma.configuracaoGlobal.findFirst(),
-    ])
+    const funcionario = await prisma.user.findUnique({
+      where: { id: funcionarioId },
+      select: { name: true },
+    })
 
     // Regime salarial: determinado automaticamente pela data deste
     // registro, comparada contra os períodos cadastrados em
@@ -178,12 +165,25 @@ export async function POST(request: NextRequest) {
     // model PeriodoRegimeSalarial no schema). Bloqueia o lançamento se o
     // dia não cair em nenhum período cadastrado.
     const dataDoRegistro = new Date(body.data)
-    const periodos = await buscarPeriodosRegimeSalarial()
-    const regimeDoDia = obterRegimeNaData(dataDoRegistro, periodos)
-    if (!regimeDoDia) {
+    const periodosComId = await buscarPeriodosComId()
+    const periodoDoDia = obterPeriodoNaData(dataDoRegistro, periodosComId)
+    if (!periodoDoDia) {
       return NextResponse.json({ error: mensagemPeriodoNaoCadastrado(dataDoRegistro) }, { status: 400 })
     }
-    const estaNaSafra = regimeDoDia === 'SAFRA'
+    const estaNaSafra = periodoDoDia.tipo === 'SAFRA'
+
+    // Salário/hora extra/jornada: cadastrados por funcionário e por
+    // período em Funcionários → Salário Safra/Entressafra (ver
+    // lib/salarioPeriodo.ts). Bloqueia o lançamento se faltar esse
+    // cadastro pro período em questão.
+    const dadosSalario = await buscarSalarioPeriodoFuncionario(funcionarioId, periodoDoDia.id)
+    if (!dadosSalario) {
+      return NextResponse.json(
+        { error: mensagemSalarioNaoCadastrado(funcionario?.name || 'Funcionário', dataDoRegistro) },
+        { status: 400 }
+      )
+    }
+    const { funcionarioShim, configShim } = shimsParaCargaHoraria(dadosSalario)
 
     // Calcular horas brutas
     let horasBrutas = null
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
     // Carga horária por dia da semana
     const dataRegistro = new Date(body.data)
     const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 6=Sab
-    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config, false, estaNaSafra)
+    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
 
     // Compensação de falta via Banco de Horas: se o motivo da falta for
     // "banco_horas" e o funcionário tiver saldo suficiente, o dia deixa de
@@ -255,9 +255,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const valorHoraExtra = estaNaSafra
-      ? (funcionario?.valorHoraExtraSafra || 0)
-      : (funcionario?.valorHoraExtraEntressafra || 0)
+    const valorHoraExtra = dadosSalario.valorHoraExtra || 0
 
     const registro = await prisma.registroAtividade.create({
       data: {

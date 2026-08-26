@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { put, del } from '@vercel/blob'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 import { buscarPeriodosRegimeSalarial, obterRegimeNaData, mensagemPeriodoNaoCadastrado } from '@/lib/regimeSalarial'
+import { buscarPeriodosComId, obterPeriodoNaData, buscarSalarioPeriodoFuncionario, mensagemSalarioNaoCadastrado, shimsParaCargaHoraria } from '@/lib/salarioPeriodo'
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,29 +42,33 @@ export async function POST(request: NextRequest) {
     // contar como dia normal trabalhado, creditando a carga horária cheia
     // do dia (sem desconto pro funcionário). Sem talhão, pois não é
     // atividade feita em nenhum lugar real.
-    const [funcionario, config] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: registro.funcionarioId },
-        select: {
-          cargaHorariaSegSex: true,
-          cargaHorariaSabado: true,
-          cargaHorariaDomingo: true,
-          domingosPorMes: true,
-        },
-      }),
-      prisma.configuracaoGlobal.findFirst(),
-    ])
+    const funcionario = await prisma.user.findUnique({
+      where: { id: registro.funcionarioId },
+      select: { name: true },
+    })
 
     // Regime salarial: determinado automaticamente pela data deste
     // registro, comparada contra os períodos cadastrados em
     // Configurações → Safra/Entressafra (ver lib/regimeSalarial.ts).
-    const periodos = await buscarPeriodosRegimeSalarial()
-    const regimeDoDia = obterRegimeNaData(registro.data, periodos)
-    if (!regimeDoDia) {
+    const periodosComId = await buscarPeriodosComId()
+    const periodoDoDia = obterPeriodoNaData(registro.data, periodosComId)
+    if (!periodoDoDia) {
       return NextResponse.json({ error: mensagemPeriodoNaoCadastrado(registro.data) }, { status: 400 })
     }
-    const estaNaSafra = regimeDoDia === 'SAFRA'
-    const cargaHorariaDia = calcularCargaHorariaDia(registro.data, funcionario, config, false, estaNaSafra)
+    const estaNaSafra = periodoDoDia.tipo === 'SAFRA'
+
+    // Salário/hora extra/jornada: cadastrados por funcionário e por
+    // período em Funcionários → Salário Safra/Entressafra (ver
+    // lib/salarioPeriodo.ts).
+    const dadosSalario = await buscarSalarioPeriodoFuncionario(registro.funcionarioId, periodoDoDia.id)
+    if (!dadosSalario) {
+      return NextResponse.json(
+        { error: mensagemSalarioNaoCadastrado(funcionario?.name || 'Funcionário', registro.data) },
+        { status: 400 }
+      )
+    }
+    const { funcionarioShim, configShim } = shimsParaCargaHoraria(dadosSalario)
+    const cargaHorariaDia = calcularCargaHorariaDia(registro.data, funcionarioShim, configShim, false, estaNaSafra)
 
     const atualizado = await prisma.registroAtividade.update({
       where: { id: registroId },

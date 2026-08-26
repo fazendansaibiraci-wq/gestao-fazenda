@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calcularCombustivelPorMaquina } from '@/lib/calculoCombustivelPorMaquina'
+import { buscarPeriodosComId, obterPeriodoNaData, buscarTodosSalariosPeriodo } from '@/lib/salarioPeriodo'
 
 // Esta API expõe SOMENTE totais agregados por talhão (custoHHPorHa / custoHMPorHa).
 // O cálculo intermediário usa o salário individual de cada funcionário (Valor HH),
@@ -38,10 +39,10 @@ export async function GET(request: NextRequest) {
         talhaoId: true,
         funcionarioId: true,
         maquinaId: true,
+        data: true,
         horasCalculadas: true,
         horasMaquina: true,
         talhao: { select: { nome: true, area: true } },
-        funcionario: { select: { tipoSalario: true, salarioSafra: true, salarioEntressafra: true } },
         maquina: { select: { valor: true, valorResidual: true, vidaUtilHoras: true } },
       },
     })
@@ -81,36 +82,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: [] })
     }
 
-    // Data de referência pra determinar se está na safra: o meio do período
-    // filtrado (mesma ideia do resumo-mensal, que usa o meio do mês), ou hoje
-    // quando não há período definido.
-    let dataReferenciaSafra = new Date()
-    if (dataInicio && dataFim) {
-      const inicio = new Date(dataInicio)
-      const fim = new Date(dataFim)
-      dataReferenciaSafra = new Date((inicio.getTime() + fim.getTime()) / 2)
-    }
+    // Salário/hora normal (Valor HH): cadastrado por funcionário e por
+    // período em Funcionários → Salário Safra/Entressafra (ver
+    // lib/salarioPeriodo.ts). Resolvido POR REGISTRO, usando a data
+    // daquele registro específico (não mais um único "meio do período"
+    // pro filtro inteiro) — mais preciso quando o intervalo filtrado
+    // cruza a fronteira Safra/Entressafra. Registro cujo dia não cai em
+    // nenhum período cadastrado, ou cujo funcionário não tem
+    // SalarioPeriodo pro período, não contribui pro Custo HH (fica de
+    // fora do cálculo, reportado em `funcionariosSemSalario`).
+    const periodosComId = await buscarPeriodosComId()
+    const todosSalarios = await buscarTodosSalariosPeriodo()
+    const funcionariosSemSalario = new Set<string>()
 
-    // Fonte da verdade: Safra ATIVA (model Safra), não mais
-    // ConfiguracaoGlobal.inicioSafra/fimSafra (campo duplicado, mantido no
-    // schema mas não é mais lido aqui).
-    const safraAtiva = await prisma.safra.findFirst({
-      where: { status: 'ATIVA' },
-      orderBy: { dataInicio: 'desc' },
-    })
-    let estaNaSafra = false
-    if (safraAtiva?.dataInicio) {
-      estaNaSafra =
-        dataReferenciaSafra >= new Date(safraAtiva.dataInicio) &&
-        (!safraAtiva.dataFim || dataReferenciaSafra <= new Date(safraAtiva.dataFim))
-    }
-
-    // Valor HH por funcionário — mesma fórmula usada em app/api/resumo-mensal/route.ts.
-    const calcularValorHH = (func: { tipoSalario: string | null; salarioSafra: number | null; salarioEntressafra: number | null }) => {
-      const salarioBase = estaNaSafra ? (func.salarioSafra || 0) : (func.salarioEntressafra || 0)
-      return func.tipoSalario === 'DIARIO'
-        ? salarioBase / (config?.cargaHorariaEntressafra || 8)
-        : salarioBase / 220
+    const calcularValorHH = (funcionarioId: string, data: Date): number | null => {
+      const periodo = obterPeriodoNaData(data, periodosComId)
+      if (!periodo) return null
+      const dados = todosSalarios.get(`${funcionarioId}:${periodo.id}`)
+      if (!dados) {
+        funcionariosSemSalario.add(funcionarioId)
+        return null
+      }
+      const salarioBase = dados.tipoSalario === 'DIARIO' ? (dados.salarioDiaria || 0) : (dados.salarioMensal || 0)
+      const cargaReferencia = periodo.tipo === 'SAFRA'
+        ? (dados.cargaHorariaSegSex || 8)
+        : (dados.cargaHorariaSegQui || 8)
+      return dados.tipoSalario === 'DIARIO' ? salarioBase / cargaReferencia : salarioBase / 220
     }
 
     // Consumo médio (L/h) e valor médio por litro históricos de cada máquina
@@ -176,10 +173,12 @@ export async function GET(request: NextRequest) {
       }
       const acumulado = acumuladorPorTalhao.get(r.talhaoId)!
 
-      if (r.funcionario) {
-        const valorHH = calcularValorHH(r.funcionario)
-        acumulado.custoHH += (r.horasCalculadas || 0) * valorHH
-        acumulado.horasHH += r.horasCalculadas || 0
+      if (r.funcionarioId) {
+        const valorHH = calcularValorHH(r.funcionarioId, r.data)
+        if (valorHH !== null) {
+          acumulado.custoHH += (r.horasCalculadas || 0) * valorHH
+          acumulado.horasHH += r.horasCalculadas || 0
+        }
       }
 
       if (r.maquinaId) {
@@ -209,7 +208,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ success: true, data: resultado })
+    return NextResponse.json({ success: true, data: resultado, funcionariosSemSalario: funcionariosSemSalario.size })
   } catch (error) {
     console.error('GET /api/relatorios/custo-hh-hm:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

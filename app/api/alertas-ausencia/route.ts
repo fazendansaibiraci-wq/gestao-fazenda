@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
-import { buscarPeriodosRegimeSalarial, obterRegimeNaData } from '@/lib/regimeSalarial'
+import { buscarPeriodosComId, obterPeriodoNaData, buscarTodosSalariosPeriodo, shimsParaCargaHoraria } from '@/lib/salarioPeriodo'
 
 // O servidor (Vercel) roda em UTC, não no horário de Brasília. Usar
 // new Date().getFullYear()/getMonth()/getDate() direto reflete o dia em UTC,
@@ -58,15 +58,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: [] })
     }
 
-    const config = await prisma.configuracaoGlobal.findFirst()
-    // Regime salarial: determinado automaticamente pela data de CADA dia
-    // verificado, comparada contra os períodos cadastrados em
-    // Configurações → Safra/Entressafra (ver lib/regimeSalarial.ts). Dia
-    // sem período cadastrado não gera falta automática (não dá pra saber
-    // a carga esperada sem saber o regime) — em vez disso entra em
-    // `diasSemPeriodo`, devolvido como alerta separado pra avisar que
-    // falta cadastrar o período.
-    const periodos = await buscarPeriodosRegimeSalarial()
+    // Regime salarial + salário/hora extra/jornada: determinados
+    // automaticamente pela data de CADA dia verificado e pelo
+    // funcionário, comparando contra os períodos cadastrados em
+    // Configurações → Safra/Entressafra (ver lib/regimeSalarial.ts) e o
+    // SalarioPeriodo cadastrado em Funcionários → Salário Safra/
+    // Entressafra. Dia sem período cadastrado não gera falta automática
+    // (não dá pra saber a carga esperada sem saber o regime) — em vez
+    // disso entra em `diasSemPeriodo`, devolvido como alerta separado
+    // pra avisar que falta cadastrar o período. Funcionário sem
+    // SalarioPeriodo pro período entra em `funcionariosSemSalario`, pelo
+    // mesmo motivo.
+    const periodosComId = await buscarPeriodosComId()
+    const todosSalarios = await buscarTodosSalariosPeriodo()
 
     const whereUser: any = { active: true }
     if (userRole === 'FUNCIONARIO') {
@@ -77,14 +81,7 @@ export async function GET(request: NextRequest) {
 
     const funcionarios = await prisma.user.findMany({
       where: whereUser,
-      select: {
-        id: true,
-        name: true,
-        cargaHorariaSegSex: true,
-        cargaHorariaSabado: true,
-        cargaHorariaDomingo: true,
-        domingosPorMes: true,
-      },
+      select: { id: true, name: true },
     })
 
     if (funcionarios.length === 0) {
@@ -117,33 +114,41 @@ export async function GET(request: NextRequest) {
 
     const ultimoDia = fimIntervalo.getDate()
 
-    // Regime de cada dia do intervalo, resolvido uma única vez (não muda
-    // por funcionário). Dias sem período cadastrado entram em
+    // Período de cada dia do intervalo, resolvido uma única vez (não
+    // muda por funcionário). Dias sem período cadastrado entram em
     // `diasSemPeriodo` e são pulados na checagem de falta.
-    const regimePorDia = new Map<number, 'SAFRA' | 'ENTRESSAFRA' | null>()
+    const periodoPorDia = new Map<number, { id: string; tipo: 'SAFRA' | 'ENTRESSAFRA' } | null>()
     const diasSemPeriodo: string[] = []
     for (let dia = 1; dia <= ultimoDia; dia++) {
       const dataDia = new Date(ano, mesNum - 1, dia)
-      const regimeDoDia = obterRegimeNaData(dataDia, periodos)
-      regimePorDia.set(dia, regimeDoDia)
-      if (!regimeDoDia) {
+      const periodoDoDia = obterPeriodoNaData(dataDia, periodosComId)
+      periodoPorDia.set(dia, periodoDoDia)
+      if (!periodoDoDia) {
         diasSemPeriodo.push(`${ano}-${String(mesNum).padStart(2, '0')}-${String(dia).padStart(2, '0')}`)
       }
     }
 
     // Primeiro identifica os dias faltantes de cada funcionário (lógica já existente).
     const candidatosPorFuncionario: { func: (typeof funcionarios)[number]; diasFaltantes: string[] }[] = []
+    const funcionariosSemSalario = new Set<string>()
 
     for (const func of funcionarios) {
       const datasRegistradas = registrosPorFuncionario.get(func.id) || new Set<string>()
       const diasFaltantes: string[] = []
 
       for (let dia = 1; dia <= ultimoDia; dia++) {
-        const regimeDoDia = regimePorDia.get(dia)
-        if (!regimeDoDia) continue // sem período cadastrado — não dá pra saber a carga esperada
+        const periodoDoDia = periodoPorDia.get(dia)
+        if (!periodoDoDia) continue // sem período cadastrado — não dá pra saber a carga esperada
+
+        const dadosSalario = todosSalarios.get(`${func.id}:${periodoDoDia.id}`)
+        if (!dadosSalario) {
+          funcionariosSemSalario.add(`${func.name} (${periodoDoDia.tipo})`)
+          continue
+        }
 
         const dataDia = new Date(ano, mesNum - 1, dia)
-        const cargaDia = calcularCargaHorariaDia(dataDia, func, config, true, regimeDoDia === 'SAFRA')
+        const { funcionarioShim, configShim } = shimsParaCargaHoraria(dadosSalario)
+        const cargaDia = calcularCargaHorariaDia(dataDia, funcionarioShim, configShim, true, periodoDoDia.tipo === 'SAFRA')
 
         if (cargaDia > 0) {
           const chave = `${ano}-${String(mesNum).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
@@ -159,7 +164,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (candidatosPorFuncionario.length === 0) {
-      return NextResponse.json({ success: true, data: [], diasSemPeriodo })
+      return NextResponse.json({ success: true, data: [], diasSemPeriodo, funcionariosSemSalario: Array.from(funcionariosSemSalario).sort() })
     }
 
     // Falta automática não tem talhão real (não é uma atividade feita em
@@ -226,7 +231,7 @@ export async function GET(request: NextRequest) {
       console.error('GET /api/alertas-ausencia: nenhum talhão ativo ou safra encontrada para gerar faltas automáticas')
     }
 
-    return NextResponse.json({ success: true, data: resultado, diasSemPeriodo })
+    return NextResponse.json({ success: true, data: resultado, diasSemPeriodo, funcionariosSemSalario: Array.from(funcionariosSemSalario).sort() })
   } catch (error) {
     console.error('GET /api/alertas-ausencia:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

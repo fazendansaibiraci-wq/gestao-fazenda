@@ -43,6 +43,7 @@ export default function ResumoMensalPage() {
   const { data: session, status } = useSession()
   const [resumo, setResumo] = useState<ResumoFuncionario[]>([])
   const [diasSemPeriodo, setDiasSemPeriodo] = useState<string[]>([])
+  const [funcionariosSemSalario, setFuncionariosSemSalario] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [mes, setMes] = useState(new Date().getMonth() + 1)
   const [ano, setAno] = useState(new Date().getFullYear())
@@ -79,6 +80,7 @@ export default function ResumoMensalPage() {
       const data = await res.json()
       setResumo(data.data?.resumo || [])
       setDiasSemPeriodo(data.data?.diasSemPeriodo || [])
+      setFuncionariosSemSalario(data.data?.funcionariosSemSalario || [])
       if (isFuncionario && data.data?.resumo?.length > 0) {
         setExpandidos([data.data.resumo[0].funcionario.id])
       }
@@ -291,6 +293,13 @@ export default function ResumoMensalPage() {
           ⚠️ {diasSemPeriodo.length === 1
             ? `O dia ${new Date(diasSemPeriodo[0] + 'T12:00:00').toLocaleDateString('pt-BR')} deste período não tem Safra nem Entressafra cadastrada.`
             : `${diasSemPeriodo.length} dias deste período não têm Safra nem Entressafra cadastrada.`} Cadastre o período em Configurações → Safra/Entressafra pra completar o cálculo desses dias.
+        </div>
+      )}
+
+      {funcionariosSemSalario.length > 0 && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+          ⚠️ Sem salário/jornada cadastrado: {funcionariosSemSalario.join(', ')}. Cadastre em Funcionários → Salário
+          Safra/Entressafra pra completar o cálculo desses dias.
         </div>
       )}
 

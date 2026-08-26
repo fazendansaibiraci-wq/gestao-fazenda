@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getDaysInMonth, startOfMonth, endOfMonth } from 'date-fns'
+import { buscarPeriodosComId, obterPeriodoNaData, buscarTodosSalariosPeriodo } from '@/lib/salarioPeriodo'
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,12 +28,11 @@ export async function GET(request: NextRequest) {
       where: {
         role: 'FUNCIONARIO',
         active: true,
-        tipoSalario: { not: null },
       },
     })
 
     // Verificar se há horas extras pendentes no período
-    const horasExtrasPendentes = await prisma.aProvaçãoHoraExtra.count({
+    const horasExtrasPendentes = await prisma.aprovacaoHoraExtra.count({
       where: {
         status: 'pendente',
         criadoEm: {
@@ -46,9 +46,26 @@ export async function GET(request: NextRequest) {
       ? `Existem ${horasExtrasPendentes} horas extras pendentes de aprovação. Aprove-as antes de exportar.`
       : null
 
+    // Salário/hora extra: cadastrados por funcionário e por período em
+    // Funcionários → Salário Safra/Entressafra (ver lib/salarioPeriodo.ts).
+    // Este painel usa o período que cobre o MEIO do mês como referência
+    // única pro mês inteiro (não é um rateio dia a dia, como no Resumo
+    // Mensal) — igual sempre foi aqui, só que agora escolhendo
+    // corretamente entre Safra e Entressafra em vez de usar sempre
+    // Entressafra (bug antigo).
+    const meioDoMes = new Date(ano, mesNum - 1, 15)
+    const periodosComId = await buscarPeriodosComId()
+    const periodoDoMes = obterPeriodoNaData(meioDoMes, periodosComId)
+    const todosSalarios = await buscarTodosSalariosPeriodo()
+
     // Calcular dados de cada funcionário
     const folha = await Promise.all(
       funcionarios.map(async (func) => {
+        const dadosSalario = periodoDoMes ? todosSalarios.get(`${func.id}:${periodoDoMes.id}`) : null
+        const tipoSalario = dadosSalario?.tipoSalario ?? null
+        const salarioCadastrado = tipoSalario === 'DIARIO' ? dadosSalario?.salarioDiaria : dadosSalario?.salarioMensal
+        const valorHoraExtraCadastrado = dadosSalario?.valorHoraExtra ?? 0
+
         // 1. Dias trabalhados (contar registros de atividade)
         const registrosAtividade = await prisma.registroAtividade.count({
           where: {
@@ -62,19 +79,19 @@ export async function GET(request: NextRequest) {
 
         // 2. Salário base (calculado)
         let salarioBase = 0
-        if (func.tipoSalario === 'MENSAL' && func.salarioEntressafra) {
+        if (tipoSalario === 'MENSAL' && salarioCadastrado) {
           // Salário mensal: (valor ÷ horas úteis) × dias trabalhados
           const horasDiaUtil = 8
           const horasUteisDoMes = diasUteisDoMes * horasDiaUtil
-          const valorHora = func.salarioEntressafra / horasUteisDoMes
+          const valorHora = salarioCadastrado / horasUteisDoMes
           salarioBase = valorHora * horasDiaUtil * registrosAtividade
-        } else if (func.tipoSalario === 'DIARIO' && func.salarioEntressafra) {
+        } else if (tipoSalario === 'DIARIO' && salarioCadastrado) {
           // Salário diário: valor/dia × dias trabalhados
-          salarioBase = func.salarioEntressafra * registrosAtividade
+          salarioBase = salarioCadastrado * registrosAtividade
         }
 
         // 3. Horas extras aprovadas
-        const horasExtrasAp = await prisma.aProvaçãoHoraExtra.aggregate({
+        const horasExtrasAp = await prisma.aprovacaoHoraExtra.aggregate({
           where: {
             funcionarioId: func.id,
             status: 'aprovado',
@@ -86,8 +103,7 @@ export async function GET(request: NextRequest) {
           _sum: { horasExtras: true },
         })
 
-        const horasExtrasValue = (horasExtrasAp._sum.horasExtras || 0) *
-          (func.valorHoraExtraEntressafra || 0)
+        const horasExtrasValue = (horasExtrasAp._sum.horasExtras || 0) * valorHoraExtraCadastrado
 
         // 4. Vales do mês
         const vales = await prisma.vale.aggregate({
@@ -107,7 +123,7 @@ export async function GET(request: NextRequest) {
         })
 
         const horasNegativas = Math.max(0, -(banco?.saldoHoras || 0))
-        const desconto = horasNegativas * ((func.salarioEntressafra || 0) / (diasUteisDoMes * 8))
+        const desconto = horasNegativas * ((salarioCadastrado || 0) / (diasUteisDoMes * 8))
 
         const liquido = salarioBase + horasExtrasValue - (vales._sum.valor || 0) - desconto
 

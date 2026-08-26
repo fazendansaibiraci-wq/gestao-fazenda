@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
-import { buscarPeriodosRegimeSalarial, obterRegimeNaData } from '@/lib/regimeSalarial'
+import { buscarPeriodosComId, obterPeriodoNaData, buscarTodosSalariosPeriodo, shimsParaCargaHoraria } from '@/lib/salarioPeriodo'
 
 // Limpeza pontual: o cron de falta automática (alertas-ausencia) gerou
 // faltas em sábados/domingos ANTES da correção de 25/08/2026 que fez a
@@ -32,38 +32,32 @@ export async function POST(request: NextRequest) {
     const inicio = new Date(dataInicio + 'T00:00:00')
     const fim = new Date(dataFim + 'T23:59:59')
 
-    const [candidatos, config] = await Promise.all([
-      prisma.registroAtividade.findMany({
-        where: {
-          ...(funcionarioId ? { funcionarioId } : {}),
-          data: { gte: inicio, lte: fim },
-          isFalta: true,
-          motivoFalta: 'nao_registrado',
-        },
-        include: {
-          funcionario: {
-            select: {
-              id: true,
-              name: true,
-              cargaHorariaSegSex: true,
-              cargaHorariaSabado: true,
-              cargaHorariaDomingo: true,
-              domingosPorMes: true,
-            },
-          },
-        },
-        orderBy: { data: 'asc' },
-      }),
-      prisma.configuracaoGlobal.findFirst(),
-    ])
+    const candidatos = await prisma.registroAtividade.findMany({
+      where: {
+        ...(funcionarioId ? { funcionarioId } : {}),
+        data: { gte: inicio, lte: fim },
+        isFalta: true,
+        motivoFalta: 'nao_registrado',
+      },
+      include: {
+        funcionario: { select: { id: true, name: true } },
+      },
+      orderBy: { data: 'asc' },
+    })
 
-    // Regime salarial: determinado automaticamente pela data de CADA
-    // registro, comparada contra os períodos cadastrados em
-    // Configurações → Safra/Entressafra. Registro cujo dia não cai em
-    // nenhum período cadastrado é pulado (não dá pra saber se a carga
-    // esperada é 0 sem saber o regime) e reportado em `diasSemPeriodo`.
-    const periodos = await buscarPeriodosRegimeSalarial()
+    // Regime salarial + salário/hora extra/jornada: determinados
+    // automaticamente pela data de CADA registro e pelo funcionário,
+    // comparando contra os períodos cadastrados em Configurações →
+    // Safra/Entressafra e o SalarioPeriodo cadastrado em Funcionários →
+    // Salário Safra/Entressafra. Registro cujo dia não cai em nenhum
+    // período cadastrado, OU cujo funcionário não tem SalarioPeriodo pro
+    // período, é pulado (não dá pra saber se a carga esperada é 0 sem
+    // saber a jornada) e reportado em `diasSemPeriodo`/
+    // `funcionariosSemSalario`.
+    const periodosComId = await buscarPeriodosComId()
+    const todosSalarios = await buscarTodosSalariosPeriodo()
     const diasSemPeriodo = new Set<string>()
+    const funcionariosSemSalario = new Set<string>()
 
     const paraExcluir: { id: string; data: string; funcionarioNome: string; diaSemana: string }[] = []
     const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
@@ -73,14 +67,20 @@ export async function POST(request: NextRequest) {
       const diaSemana = dataRegistro.getUTCDay()
       if (diaSemana !== 0 && diaSemana !== 6) continue // só sábado/domingo
 
-      const regimeDoDia = obterRegimeNaData(dataRegistro, periodos)
-      if (!regimeDoDia) {
+      const periodoDoDia = obterPeriodoNaData(dataRegistro, periodosComId)
+      if (!periodoDoDia) {
         diasSemPeriodo.add(reg.data.toISOString().split('T')[0])
         continue
       }
-      const estaNaSafra = regimeDoDia === 'SAFRA'
+      const dadosSalario = todosSalarios.get(`${reg.funcionarioId}:${periodoDoDia.id}`)
+      if (!dadosSalario) {
+        funcionariosSemSalario.add(`${reg.funcionario.name} (${periodoDoDia.tipo})`)
+        continue
+      }
+      const estaNaSafra = periodoDoDia.tipo === 'SAFRA'
+      const { funcionarioShim, configShim } = shimsParaCargaHoraria(dadosSalario)
 
-      const cargaEsperada = calcularCargaHorariaDia(dataRegistro, reg.funcionario, config, false, estaNaSafra)
+      const cargaEsperada = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
       if (cargaEsperada > 0) continue // esse dia realmente tem expectativa de trabalho — não mexe
 
       paraExcluir.push({
@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
       mudancas: paraExcluir.slice(0, 50),
       mudancasOmitidas: Math.max(0, paraExcluir.length - 50),
       diasSemPeriodo: Array.from(diasSemPeriodo).sort(),
+      funcionariosSemSalario: Array.from(funcionariosSemSalario).sort(),
     })
   } catch (error: any) {
     console.error('Erro ao limpar faltas de fim de semana:', error)

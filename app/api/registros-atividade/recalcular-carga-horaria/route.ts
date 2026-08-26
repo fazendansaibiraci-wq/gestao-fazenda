@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
-import { buscarPeriodosRegimeSalarial, obterRegimeNaData } from '@/lib/regimeSalarial'
+import { buscarPeriodosComId, obterPeriodoNaData, buscarTodosSalariosPeriodo, shimsParaCargaHoraria } from '@/lib/salarioPeriodo'
 
 // Recalcula "horasprevistasdia" (carga contratual) e, em cascata,
 // horasExtras/horasDevidas/ehHoraExtra de Registros de Atividade já
@@ -33,40 +33,31 @@ export async function POST(request: NextRequest) {
     const inicio = new Date(dataInicio + 'T00:00:00')
     const fim = new Date(dataFim + 'T23:59:59')
 
-    const [registros, config] = await Promise.all([
-      prisma.registroAtividade.findMany({
-        where: {
-          ...(funcionarioId ? { funcionarioId } : {}),
-          data: { gte: inicio, lte: fim },
-          isFalta: false,
-          isAjusteHorimetro: false,
-          horasCalculadas: { not: null },
-        },
-        include: {
-          funcionario: {
-            select: {
-              id: true,
-              name: true,
-              cargaHorariaSegSex: true,
-              cargaHorariaSabado: true,
-              cargaHorariaDomingo: true,
-              domingosPorMes: true,
-              valorHoraExtraSafra: true,
-              valorHoraExtraEntressafra: true,
-            },
-          },
-        },
-        orderBy: { data: 'asc' },
-      }),
-      prisma.configuracaoGlobal.findFirst(),
-    ])
+    const registros = await prisma.registroAtividade.findMany({
+      where: {
+        ...(funcionarioId ? { funcionarioId } : {}),
+        data: { gte: inicio, lte: fim },
+        isFalta: false,
+        isAjusteHorimetro: false,
+        horasCalculadas: { not: null },
+      },
+      include: {
+        funcionario: { select: { id: true, name: true } },
+      },
+      orderBy: { data: 'asc' },
+    })
 
-    // Regime salarial: determinado automaticamente pela data de CADA
-    // registro (não mais um botão único pra todos), comparada contra os
-    // períodos cadastrados em Configurações → Safra/Entressafra. Registro
-    // cujo dia não cai em nenhum período cadastrado é pulado (não dá pra
-    // recalcular sem saber o regime) e reportado em `diasSemPeriodo`.
-    const periodos = await buscarPeriodosRegimeSalarial()
+    // Regime salarial + salário/hora extra/jornada: determinados
+    // automaticamente pela data de CADA registro e pelo funcionário (não
+    // mais um cadastro único pra todos), comparando contra os períodos
+    // cadastrados em Configurações → Safra/Entressafra e o
+    // SalarioPeriodo cadastrado em Funcionários → Salário Safra/
+    // Entressafra. Registro cujo dia não cai em nenhum período
+    // cadastrado, OU cujo funcionário não tem SalarioPeriodo pro período,
+    // é pulado (não dá pra recalcular sem saber a jornada) e reportado em
+    // `diasSemPeriodo`/`funcionariosSemSalario`.
+    const periodosComId = await buscarPeriodosComId()
+    const todosSalarios = await buscarTodosSalariosPeriodo()
 
     const mudancas: {
       id: string
@@ -81,17 +72,24 @@ export async function POST(request: NextRequest) {
     }[] = []
 
     const diasSemPeriodo = new Set<string>()
+    const funcionariosSemSalario = new Set<string>()
 
     for (const reg of registros) {
       const dataRegistro = new Date(reg.data)
-      const regimeDoDia = obterRegimeNaData(dataRegistro, periodos)
-      if (!regimeDoDia) {
+      const periodoDoDia = obterPeriodoNaData(dataRegistro, periodosComId)
+      if (!periodoDoDia) {
         diasSemPeriodo.add(reg.data.toISOString().split('T')[0])
         continue
       }
-      const estaNaSafra = regimeDoDia === 'SAFRA'
-      const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, reg.funcionario, config, false, estaNaSafra)
-      const cargaAntes = reg.horasprevistasdia ?? (config?.cargaHorariaEntressafra || 8)
+      const dadosSalario = todosSalarios.get(`${reg.funcionarioId}:${periodoDoDia.id}`)
+      if (!dadosSalario) {
+        funcionariosSemSalario.add(`${reg.funcionario.name} (${periodoDoDia.tipo})`)
+        continue
+      }
+      const estaNaSafra = periodoDoDia.tipo === 'SAFRA'
+      const { funcionarioShim, configShim } = shimsParaCargaHoraria(dadosSalario)
+      const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
+      const cargaAntes = reg.horasprevistasdia ?? 8
 
       if (Math.abs(cargaHorariaDia - cargaAntes) < 0.01) continue // sem mudança real
 
@@ -152,6 +150,7 @@ export async function POST(request: NextRequest) {
       mudancas: mudancas.slice(0, 50), // preview: até 50 linhas de exemplo
       mudancasOmitidas: Math.max(0, mudancas.length - 50),
       diasSemPeriodo: Array.from(diasSemPeriodo).sort(),
+      funcionariosSemSalario: Array.from(funcionariosSemSalario).sort(),
     })
   } catch (error: any) {
     console.error('Erro ao recalcular carga contratual:', error)

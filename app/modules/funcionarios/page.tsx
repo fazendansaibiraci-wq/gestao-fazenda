@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { UserPlus, Pencil, Trash2, Eye } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { SalarioPeriodoTable } from '@/components/SalarioPeriodoTable'
+import { MigrarSalarioLegado } from '@/components/MigrarSalarioLegado'
 
 interface Funcionario {
   id: string
@@ -24,6 +25,7 @@ export default function FuncionariosPage() {
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('ATIVO')
   const [abaAtiva, setAbaAtiva] = useState<'lista' | 'safra' | 'entressafra'>('lista')
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -114,8 +116,12 @@ export default function FuncionariosPage() {
         ))}
       </div>
 
-      {abaAtiva === 'safra' && <SalarioPeriodoTable tipo="SAFRA" />}
-      {abaAtiva === 'entressafra' && <SalarioPeriodoTable tipo="ENTRESSAFRA" />}
+      {(abaAtiva === 'safra' || abaAtiva === 'entressafra') && (
+        <MigrarSalarioLegado onConcluido={() => setRefreshKey((k) => k + 1)} />
+      )}
+
+      {abaAtiva === 'safra' && <SalarioPeriodoTable key={`safra-${refreshKey}`} tipo="SAFRA" />}
+      {abaAtiva === 'entressafra' && <SalarioPeriodoTable key={`entressafra-${refreshKey}`} tipo="ENTRESSAFRA" />}
 
       {abaAtiva === 'lista' && (
         <>
