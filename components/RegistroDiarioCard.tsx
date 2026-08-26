@@ -14,6 +14,7 @@ export interface RegistroDiario {
   horasDevidas: number
   isFalta: boolean
   isFolga?: boolean
+  isSemPeriodo?: boolean
   motivoFalta: string | null
   passouDiretoAlmoco: boolean
 }
@@ -33,7 +34,9 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario }:
   return (
     <div
       className={`rounded-lg p-3 text-sm ${
-        dia.isFalta
+        dia.isSemPeriodo
+          ? 'bg-amber-50 border border-amber-200'
+          : dia.isFalta
           ? 'bg-red-50 border border-red-100'
           : dia.isFolga
           ? 'bg-blue-50 border border-blue-100'
@@ -50,7 +53,11 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario }:
             weekday: 'short', day: '2-digit', month: '2-digit'
           })}
         </span>
-        {dia.isFalta ? (
+        {dia.isSemPeriodo ? (
+          <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+            ⚠️ Sem período cadastrado
+          </span>
+        ) : dia.isFalta ? (
           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
             Falta {dia.motivoFalta ? `— ${dia.motivoFalta}` : ''}
           </span>
@@ -77,7 +84,7 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario }:
         )}
       </div>
 
-      {!dia.isFalta && !dia.isFolga && (
+      {!dia.isFalta && !dia.isFolga && !(dia.isSemPeriodo && !dia.horaEntrada) && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs text-gray-600">
           <div>
             <span className="block text-gray-400">Entrada</span>

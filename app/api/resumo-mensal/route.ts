@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calcularTotaisHoras } from '@/lib/calculoTotaisFuncionario'
+import { buscarPeriodosRegimeSalarial, obterRegimeNaData } from '@/lib/regimeSalarial'
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,14 +36,48 @@ export async function GET(request: NextRequest) {
 
     const config = await prisma.configuracaoGlobal.findFirst()
 
-    // Regime salarial: botão manual em Configurações Gerais (ver enum
-    // RegimeSalarial no schema.prisma) — substituiu, a partir de
-    // 25/08/2026, o cálculo automático que comparava a data de cada
-    // registro contra a Safra ATIVA (model Safra, que é a entidade
-    // agronômica de ciclo de plantio/colheita, e não muda mais o regime
-    // salarial). A troca de regime agora é sempre manual, feita aqui.
-    const estaNaSafra = config?.regimeSalarial === 'SAFRA'
-    const regimeSalario: 'safra' | 'entressafra' = estaNaSafra ? 'safra' : 'entressafra'
+    // Regime salarial: determinado DIA A DIA (não mais um botão único pro
+    // período inteiro, nem uma única checagem no meio do mês), comparando
+    // cada data contra os períodos cadastrados em Configurações →
+    // Safra/Entressafra (ver lib/regimeSalarial.ts e o model
+    // PeriodoRegimeSalarial no schema). Um mês que cruza a fronteira
+    // Safra/Entressafra (ex: agosto/2026, safra terminando em 19/08) usa a
+    // tarifa correta em cada dia, e o salário mensal cheio é rateado
+    // proporcionalmente aos dias corridos de cada regime dentro do período
+    // (ver salarioBaseProporcional, mais abaixo). Dias que não caem em
+    // NENHUM período cadastrado entram em `diasSemPeriodo` — mostrados com
+    // aviso pontual nesse dia específico, sem travar o resto do resumo.
+    const periodos = await buscarPeriodosRegimeSalarial()
+    function regimeNaData(data: Date): 'SAFRA' | 'ENTRESSAFRA' | null {
+      return obterRegimeNaData(data, periodos)
+    }
+
+    // Dias corridos do período, quantos em cada regime, e quantos sem
+    // período nenhum cadastrado — usado pro rateio proporcional do
+    // salário MENSAL cheio (modo padrão) e pro aviso de pendência no
+    // topo da resposta. Em períodos 100% Safra ou 100% Entressafra dá o
+    // mesmo resultado de sempre (sem regressão).
+    let diasNoPeriodo = 0
+    let diasSafraNoPeriodo = 0
+    let diasEntressafraNoPeriodo = 0
+    const diasSemPeriodo: string[] = []
+    {
+      const cursor = new Date(inicioMes)
+      while (cursor <= fimMes) {
+        diasNoPeriodo++
+        const regime = regimeNaData(cursor)
+        if (regime === 'SAFRA') diasSafraNoPeriodo++
+        else if (regime === 'ENTRESSAFRA') diasEntressafraNoPeriodo++
+        else diasSemPeriodo.push(cursor.toISOString().split('T')[0])
+        cursor.setDate(cursor.getDate() + 1)
+      }
+    }
+    const regimeSalario: 'safra' | 'entressafra' | 'misto' =
+      diasSafraNoPeriodo === diasNoPeriodo
+        ? 'safra'
+        : diasEntressafraNoPeriodo === diasNoPeriodo
+        ? 'entressafra'
+        : 'misto'
 
     const whereUser: any = {
       active: true,
@@ -99,45 +134,113 @@ export async function GET(request: NextRequest) {
     const resumo = funcionarios.map((func) => {
       const registrosFuncionario = registros.filter(r => r.funcionarioId === func.id)
 
-      const salarioBase = estaNaSafra
-        ? (func.salarioSafra || 0)
-        : (func.salarioEntressafra || 0)
+      const salarioSafraFunc = func.salarioSafra || 0
+      const salarioEntressafraFunc = func.salarioEntressafra || 0
+      const valorHoraExtraSafraFunc = func.valorHoraExtraSafra || 0
+      const valorHoraExtraEntressafraFunc = func.valorHoraExtraEntressafra || 0
 
-      const valorHoraExtra = estaNaSafra
-        ? (func.valorHoraExtraSafra || 0)
-        : (func.valorHoraExtraEntressafra || 0)
+      // Tarifas por DIA (não mais uma bandeira única pro período inteiro) —
+      // cada função abaixo olha a data recebida e devolve a tarifa correta
+      // (Safra ou Entressafra) daquele dia específico, ou null se o dia
+      // não cai em nenhum período cadastrado (não dá pra saber a tarifa).
+      const salarioBaseNaData = (data: Date): number | null => {
+        const r = regimeNaData(data)
+        if (!r) return null
+        return r === 'SAFRA' ? salarioSafraFunc : salarioEntressafraFunc
+      }
+      const valorHoraExtraNaData = (data: Date): number | null => {
+        const r = regimeNaData(data)
+        if (!r) return null
+        return r === 'SAFRA' ? valorHoraExtraSafraFunc : valorHoraExtraEntressafraFunc
+      }
+      const valorDiaNaData = (data: Date): number | null => {
+        const base = salarioBaseNaData(data)
+        if (base === null) return null
+        return func.tipoSalario === 'DIARIO' ? base : base / 30
+      }
 
-      // Valor dia: DIARIO usa o valor cadastrado diretamente; MENSAL divide por 30
-      const valorDia = func.tipoSalario === 'DIARIO'
-        ? salarioBase
-        : salarioBase / 30
-
-      // Valor hora normal: DIARIO divide pela carga horária "padrão" do
-      // regime — Safra usa a jornada individual (Segunda-Sexta) do
-      // funcionário, Entressafra usa o valor global de Segunda a Quinta.
-      // NÃO usa uma data específica aqui (ex: o primeiro dia do período)
-      // porque esse dia pode cair num sábado/domingo, que agora tem carga
-      // horária 0 na Entressafra — dividir por 0 quebrava a tela.
-      const valorHoraNormal = func.tipoSalario === 'DIARIO'
-        ? salarioBase / (estaNaSafra
-            ? (func.cargaHorariaSegSex || config?.cargaHorariaEntressafra || 8)
-            : (config?.cargaHorariaEntressafraSegQui || config?.cargaHorariaEntressafra || 8))
-        : salarioBase / 220
+      // Salário "do período" rateado pelos dias corridos de cada regime —
+      // usado como referência de exibição e como o salário MENSAL cheio no
+      // modo padrão (mês inteiro). Ex: agosto/2026 com 19 dias em Safra e
+      // 12 em Entressafra dá 19/31 do Salário Safra + 12/31 do
+      // Entressafra. Dias sem período cadastrado não entram na conta (nem
+      // no numerador nem no denominador ponderado), então o rateio segue
+      // proporcional só entre os dias que TÊM regime conhecido.
+      const salarioBaseProporcional = diasNoPeriodo > 0
+        ? (diasSafraNoPeriodo / diasNoPeriodo) * salarioSafraFunc + (diasEntressafraNoPeriodo / diasNoPeriodo) * salarioEntressafraFunc
+        : 0
+      const valorHoraExtraMedia = diasNoPeriodo > 0
+        ? (diasSafraNoPeriodo / diasNoPeriodo) * valorHoraExtraSafraFunc + (diasEntressafraNoPeriodo / diasNoPeriodo) * valorHoraExtraEntressafraFunc
+        : 0
+      // Valor hora normal "de referência", pra exibição: usa a carga
+      // horária de referência de cada regime (Segunda a Sexta na Safra,
+      // Segunda a Quinta na Entressafra) em vez de um dia real do
+      // período — evita dividir por carga horária 0 de fim de semana
+      // (mesmo motivo do fix 9a7cc03). Pondera pelos mesmos dias
+      // corridos usados no rateio acima.
+      const cargaReferenciaSafra = func.cargaHorariaSegSex || config?.cargaHorariaEntressafra || 8
+      const cargaReferenciaEntressafra = config?.cargaHorariaEntressafraSegQui || config?.cargaHorariaEntressafra || 8
+      const valorHoraNormalSafra = func.tipoSalario === 'DIARIO' ? salarioSafraFunc / cargaReferenciaSafra : salarioSafraFunc / 220
+      const valorHoraNormalEntressafra = func.tipoSalario === 'DIARIO' ? salarioEntressafraFunc / cargaReferenciaEntressafra : salarioEntressafraFunc / 220
+      const valorHoraNormalMedia = diasNoPeriodo > 0
+        ? (diasSafraNoPeriodo / diasNoPeriodo) * valorHoraNormalSafra + (diasEntressafraNoPeriodo / diasNoPeriodo) * valorHoraNormalEntressafra
+        : 0
 
       let totalFaltas = 0
+      let descontoFaltas = 0
+      const faltasDatas = new Set<string>()
       let acumuladoProporcional = 0
 
       const { totalHorasExtras, totalHorasDevidas, totalHorasTrabalhadas, diasTrabalhados, agregadosPorData } =
         calcularTotaisHoras(registrosFuncionario, config?.cargaHorariaEntressafra || 8)
 
-      // Pagamento proporcional por dia (específico do Resumo Mensal): usa os
-      // mesmos agregados por dia calculados acima.
+      // Valor de horas extras e desconto de horas devidas: soma dia a dia,
+      // cada um na tarifa do seu próprio dia (em vez de multiplicar o
+      // total do período por uma tarifa única). Dia sem período
+      // cadastrado não contribui pro valor em R$ (não dá pra saber a
+      // tarifa) — as horas em si continuam contadas normalmente em
+      // totalHorasExtras/totalHorasDevidas, só o valor monetário fica de
+      // fora até o período ser cadastrado.
+      let valorHorasExtras = 0
+      let descontoHorasDevidas = 0
+      for (const [chaveData, agregado] of agregadosPorData) {
+        const [yD, mD, dD] = chaveData.split('-').map(Number)
+        const dataDoDia = new Date(yD, mD - 1, dD)
+
+        const tarifaExtra = valorHoraExtraNaData(dataDoDia)
+        if (tarifaExtra !== null) valorHorasExtras += agregado.horasExtrasDia * tarifaExtra
+
+        // Valor hora normal do dia: DIARIO usa valorDia/cargaDia do
+        // próprio dia; MENSAL usa salarioBase/220 — mesma regra usada no
+        // resto do app, só que agora resolvida por dia.
+        if (func.tipoSalario === 'DIARIO') {
+          const valorDiaDoDia = valorDiaNaData(dataDoDia)
+          if (valorDiaDoDia !== null && agregado.cargaDia > 0) {
+            descontoHorasDevidas += agregado.horasDevidasDia * (valorDiaDoDia / agregado.cargaDia)
+          }
+        } else {
+          const salarioBaseDoDia = salarioBaseNaData(dataDoDia)
+          if (salarioBaseDoDia !== null) {
+            descontoHorasDevidas += agregado.horasDevidasDia * (salarioBaseDoDia / 220)
+          }
+        }
+      }
+
+      // Pagamento proporcional por dia (específico do Resumo Mensal): usa
+      // os mesmos agregados por dia calculados acima, cada um na tarifa
+      // do seu próprio dia. Dia sem período cadastrado não soma nada aqui
+      // (fica de fora do acumulado até o período ser cadastrado).
       if (func.pagamentoProporcionalDiario) {
-        for (const { somaHorasDia, cargaDia } of agregadosPorData.values()) {
-          const valorHoraDoDia = valorDia / cargaDia
+        for (const [chaveData, { somaHorasDia, cargaDia }] of agregadosPorData) {
+          const [yD, mD, dD] = chaveData.split('-').map(Number)
+          const dataDoDia = new Date(yD, mD - 1, dD)
+          const valorDiaDoDia = valorDiaNaData(dataDoDia)
+          const valorHoraExtraDoDia = valorHoraExtraNaData(dataDoDia)
+          if (valorDiaDoDia === null || valorHoraExtraDoDia === null || cargaDia <= 0) continue
+          const valorHoraDoDia = valorDiaDoDia / cargaDia
           const pagamentoDoDia = somaHorasDia < cargaDia
             ? somaHorasDia * valorHoraDoDia
-            : valorDia + (somaHorasDia - cargaDia) * valorHoraExtra
+            : valorDiaDoDia + (somaHorasDia - cargaDia) * valorHoraExtraDoDia
           acumuladoProporcional += pagamentoDoDia
         }
       }
@@ -145,6 +248,11 @@ export async function GET(request: NextRequest) {
       const registrosDiarios = registrosFuncionario.map((reg) => {
         if (reg.isFalta) {
           totalFaltas++
+          if (func.tipoSalario !== 'DIARIO') {
+            const valorDiaDoDia = valorDiaNaData(reg.data)
+            if (valorDiaDoDia !== null) descontoFaltas += valorDiaDoDia
+          }
+          faltasDatas.add(reg.data.toISOString().split('T')[0])
           return {
             data: reg.data,
             horaEntrada: null,
@@ -192,42 +300,40 @@ export async function GET(request: NextRequest) {
           horasDevidas: Math.round(horasDevidas * 100) / 100,
           isFalta: false,
           isFolga: false,
+          isSemPeriodo: !regimeNaData(reg.data),
           motivoFalta: null,
           passouDiretoAlmoco: reg.passouDiretoAlmoco,
         }
       })
 
-      // Dias sem NENHUM registro (nem atividade nem falta) que são
-      // esperados como folga — gera uma linha "Folga" só pra exibição,
-      // sem criar nada no banco (e sem contar como falta).
-      // - Entressafra: sábado e domingo NUNCA são esperados como dia de
-      //   trabalho (regra fixa, igual pra todo mundo — ver
-      //   calcularCargaHorariaDia). Qualquer sábado ou domingo sem
-      //   registro é folga.
-      // - Safra: só domingo pode ser folga, e só quando o funcionário não
-      //   tem expectativa garantida de trabalhar TODO domingo
-      //   (domingosPorMes < 4) — a alternância é combinada informalmente
-      //   entre eles.
+      // Dias sem NENHUM registro (nem atividade nem falta):
+      // - Se o dia cai dentro de um período cadastrado: gera uma linha
+      //   "Folga" só pra exibição (sem criar nada no banco, sem contar
+      //   como falta) quando é esperado que não se trabalhe:
+      //   - Entressafra: sábado e domingo NUNCA são esperados como dia de
+      //     trabalho (regra fixa, igual pra todo mundo).
+      //   - Safra: só domingo pode ser folga, e só quando o funcionário
+      //     não tem expectativa garantida de trabalhar TODO domingo
+      //     (domingosPorMes < 4) — a alternância é combinada
+      //     informalmente entre eles.
+      // - Se o dia NÃO cai em nenhum período cadastrado: gera uma linha
+      //   de aviso "Sem período cadastrado" em vez de Folga — não dá pra
+      //   saber se seria dia de trabalho ou folga sem saber o regime.
       const domingosPorMes = func.domingosPorMes ?? 2
       const diasComRegistro = new Set(registrosFuncionario.map((r) => r.data.toISOString().split('T')[0]))
       const folgasSemRegistro: typeof registrosDiarios = []
       {
         const cursor = new Date(inicioMes)
         while (cursor <= fimMes) {
-          const diaSemana = cursor.getDay()
-          const ehSabado = diaSemana === 6
-          const ehDomingo = diaSemana === 0
-          const deveSerFolga = estaNaSafra
-            ? (ehDomingo && domingosPorMes < 4)
-            : (ehSabado || ehDomingo)
-          if (deveSerFolga) {
-            const chave = cursor.toISOString().split('T')[0]
-            if (!diasComRegistro.has(chave)) {
-              const [anoFolga, mesFolga, diaFolga] = chave.split('-').map(Number)
+          const chave = cursor.toISOString().split('T')[0]
+          if (!diasComRegistro.has(chave)) {
+            const regimeDoDia = regimeNaData(cursor)
+            const [anoFolga, mesFolga, diaFolga] = chave.split('-').map(Number)
+            const dataMeioDia = new Date(Date.UTC(anoFolga, mesFolga - 1, diaFolga, 12, 0, 0))
+
+            if (!regimeDoDia) {
               folgasSemRegistro.push({
-                // Meio-dia UTC evita que a conversão pro fuso do navegador
-                // (ex.: Brasil, UTC-3) empurre a data pro dia anterior na exibição.
-                data: new Date(Date.UTC(anoFolga, mesFolga - 1, diaFolga, 12, 0, 0)),
+                data: dataMeioDia,
                 horaEntrada: null,
                 horaSaida: null,
                 horasBrutas: 0,
@@ -237,10 +343,39 @@ export async function GET(request: NextRequest) {
                 horasExtras: 0,
                 horasDevidas: 0,
                 isFalta: false,
-                isFolga: true,
+                isFolga: false,
+                isSemPeriodo: true,
                 motivoFalta: null,
                 passouDiretoAlmoco: false,
               })
+            } else {
+              const diaSemana = cursor.getDay()
+              const ehSabado = diaSemana === 6
+              const ehDomingo = diaSemana === 0
+              const deveSerFolga = regimeDoDia === 'SAFRA'
+                ? (ehDomingo && domingosPorMes < 4)
+                : (ehSabado || ehDomingo)
+              if (deveSerFolga) {
+                folgasSemRegistro.push({
+                  // Meio-dia UTC evita que a conversão pro fuso do
+                  // navegador (ex.: Brasil, UTC-3) empurre a data pro dia
+                  // anterior na exibição.
+                  data: dataMeioDia,
+                  horaEntrada: null,
+                  horaSaida: null,
+                  horasBrutas: 0,
+                  descontoAlmoco: 0,
+                  horasTrabalhadas: 0,
+                  cargaContratual: 0,
+                  horasExtras: 0,
+                  horasDevidas: 0,
+                  isFalta: false,
+                  isFolga: true,
+                  isSemPeriodo: false,
+                  motivoFalta: null,
+                  passouDiretoAlmoco: false,
+                })
+              }
             }
           }
           cursor.setDate(cursor.getDate() + 1)
@@ -250,37 +385,54 @@ export async function GET(request: NextRequest) {
         (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime()
       )
 
-      // Cálculo acumulado
-      const valorHorasExtras = totalHorasExtras * valorHoraExtra
-      const descontoHorasDevidas = totalHorasDevidas * valorHoraNormal
-      const descontoFaltas = func.tipoSalario === 'DIARIO' ? 0 : totalFaltas * valorDia
+      // Cálculo acumulado (valorHorasExtras, descontoHorasDevidas e
+      // descontoFaltas já vêm somados dia a dia, cada um na tarifa
+      // correta, e já excluem dias sem período cadastrado)
       const totalDescontos = descontoHorasDevidas + descontoFaltas
 
       // Total acumulado:
-      // - MENSAL, mês inteiro (modo padrão): salário cheio do mês (no
-      //   regime manual ativo em Configurações Gerais) + horas extras -
-      //   descontos (Faltas formais e Horas Devidas). NÃO reduz
-      //   proporcionalmente por dias sem registro (ex: domingos de folga) —
-      //   só desconta o que está formalmente registrado como Falta ou Hora
-      //   Devida.
+      // - MENSAL, mês inteiro (modo padrão): salário cheio do mês
+      //   (rateado Safra/Entressafra pelos dias corridos quando o
+      //   período cruza a fronteira — ver salarioBaseProporcional) +
+      //   horas extras - descontos (Faltas formais e Horas Devidas). NÃO
+      //   reduz proporcionalmente por dias sem registro (ex: domingos de
+      //   folga) — só desconta o que está formalmente registrado como
+      //   Falta ou Hora Devida.
       // - MENSAL, período customizado: não faz sentido mostrar o salário
-      //   MENSAL cheio pra uma janela de poucos dias — aqui sim proporciona
-      //   por dia (valorDia × dias do período, descontando domingos de
-      //   folga esperados e faltas). É uma ESTIMATIVA aproximada, não uma
-      //   folha de pagamento oficial.
-      // - DIARIO: mantém o cálculo por dias trabalhados, já que salarioBase
-      //   representa o valor por dia, não um total mensal — diarista só
-      //   recebe pelos dias que trabalhou.
+      //   MENSAL cheio pra uma janela de poucos dias — aqui sim
+      //   proporciona dia a dia (cada dia na sua tarifa), descontando
+      //   domingos de folga esperados e faltas. Dias sem período
+      //   cadastrado não entram na soma (nem como pagáveis nem como
+      //   descontados) até o período ser cadastrado. É uma ESTIMATIVA
+      //   aproximada, não uma folha de pagamento oficial.
+      // - DIARIO: soma cada dia efetivamente trabalhado na tarifa do seu
+      //   próprio dia (fica de fora se o dia não tiver período
+      //   cadastrado) — diarista só recebe pelos dias que trabalhou.
       let acumuladoDiasTrabalhados: number
       if (func.tipoSalario === 'DIARIO') {
-        acumuladoDiasTrabalhados = diasTrabalhados * valorDia
+        acumuladoDiasTrabalhados = 0
+        for (const chaveData of agregadosPorData.keys()) {
+          const [yD, mD, dD] = chaveData.split('-').map(Number)
+          const valorDiaDoDia = valorDiaNaData(new Date(yD, mD - 1, dD))
+          if (valorDiaDoDia !== null) acumuladoDiasTrabalhados += valorDiaDoDia
+        }
       } else if (periodoCustomizado) {
-        const diasNoPeriodo = Math.round((fimMes.getTime() - inicioMes.getTime()) / 86400000) + 1
-        const diasDeFolgaNoPeriodo = folgasSemRegistro.length
-        const diasPagaveis = Math.max(0, diasNoPeriodo - totalFaltas - diasDeFolgaNoPeriodo)
-        acumuladoDiasTrabalhados = diasPagaveis * valorDia
+        // domingos/sábados de folga esperados (sem registro) e dias sem
+        // período já são excluídos do somatório abaixo.
+        const folgaDatas = new Set(folgasSemRegistro.map((f) => f.data.toISOString().split('T')[0]))
+        let soma = 0
+        const cursorDias = new Date(inicioMes)
+        while (cursorDias <= fimMes) {
+          const chave = cursorDias.toISOString().split('T')[0]
+          if (!faltasDatas.has(chave) && !folgaDatas.has(chave)) {
+            const valorDiaDoDia = valorDiaNaData(cursorDias)
+            if (valorDiaDoDia !== null) soma += valorDiaDoDia
+          }
+          cursorDias.setDate(cursorDias.getDate() + 1)
+        }
+        acumuladoDiasTrabalhados = soma
       } else {
-        acumuladoDiasTrabalhados = salarioBase
+        acumuladoDiasTrabalhados = salarioBaseProporcional
       }
       // No período customizado, a falta já foi excluída dos "dias
       // pagáveis" acima — não desconta de novo aqui (senão descontaria a
@@ -299,11 +451,15 @@ export async function GET(request: NextRequest) {
 
       return {
         funcionario: { id: func.id, name: func.name, role: func.role, pagamentoProporcionalDiario: func.pagamentoProporcionalDiario },
-        estaNaSafra,
-        salarioBase,
-        valorDia: Math.round(valorDia * 100) / 100,
-        valorHoraNormal: Math.round(valorHoraNormal * 100) / 100,
-        valorHoraExtra,
+        regimeSalario,
+        diasSafraNoPeriodo,
+        diasEntressafraNoPeriodo,
+        salarioBase: Math.round(salarioBaseProporcional * 100) / 100,
+        valorDia: Math.round((diasNoPeriodo > 0
+          ? (func.tipoSalario === 'DIARIO' ? salarioBaseProporcional : salarioBaseProporcional / 30)
+          : 0) * 100) / 100,
+        valorHoraNormal: Math.round(valorHoraNormalMedia * 100) / 100,
+        valorHoraExtra: Math.round(valorHoraExtraMedia * 100) / 100,
         diasTrabalhados,
         totalFaltas,
         totalHorasTrabalhadas: Math.round(totalHorasTrabalhadas * 100) / 100,
@@ -326,6 +482,7 @@ export async function GET(request: NextRequest) {
         dataInicio: periodoCustomizado ? inicioMes.toISOString() : null,
         dataFim: periodoCustomizado ? fimMes.toISOString() : null,
         regimeSalario,
+        diasSemPeriodo,
         resumo,
       },
     })

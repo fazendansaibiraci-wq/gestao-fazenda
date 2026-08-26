@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
+import { buscarPeriodosRegimeSalarial, obterRegimeNaData, mensagemPeriodoNaoCadastrado } from '@/lib/regimeSalarial'
 
 export async function GET(
   request: NextRequest,
@@ -130,10 +131,16 @@ export async function PUT(
 
     const dataRegistro = new Date(body.data || registro.data)
 
-    // Regime salarial: botão manual em Configurações Gerais (não mais
-    // baseado na data do registro comparada à Safra ATIVA). Ver comentário
-    // no enum RegimeSalarial (schema.prisma).
-    const estaNaSafra = config?.regimeSalarial === 'SAFRA'
+    // Regime salarial: determinado automaticamente pela data deste
+    // registro, comparada contra os períodos cadastrados em
+    // Configurações → Safra/Entressafra (ver lib/regimeSalarial.ts).
+    // Bloqueia a edição se o dia não cair em nenhum período cadastrado.
+    const periodos = await buscarPeriodosRegimeSalarial()
+    const regimeDoDia = obterRegimeNaData(dataRegistro, periodos)
+    if (!regimeDoDia) {
+      return NextResponse.json({ error: mensagemPeriodoNaoCadastrado(dataRegistro) }, { status: 400 })
+    }
+    const estaNaSafra = regimeDoDia === 'SAFRA'
 
     const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionario, config, false, estaNaSafra)
 

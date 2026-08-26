@@ -45,11 +45,9 @@ enum SafraStatus {
 }
 
 // Regime salarial: independente da entidade Safra (ciclo agronômico, com
-// talhões/insumos/etc — ver model Safra). Este é só o "botão manual" que
-// decide, pra cálculo de salário/hora extra/carga horária, se o sistema
-// deve usar os valores de Safra ou de Entressafra cadastrados. Trocado à
-// mão em Configurações Gerais quando a virada de período acontecer — não
-// tem lógica de data automática.
+// talhões/insumos/etc — ver model Safra). Usado pelo model
+// PeriodoRegimeSalarial (ver abaixo) pra marcar o tipo de cada período
+// cadastrado.
 enum RegimeSalarial {
   SAFRA
   ENTRESSAFRA
@@ -1242,16 +1240,47 @@ model ConfiguracaoGlobal {
   cargaHorariaEntressafraDomingo Float? @default(0)
   inicioSafra             DateTime?
   fimSafra                DateTime?
-  // Botão manual (ver enum RegimeSalarial acima) — substituiu, a partir de
-  // 25/08/2026, o cálculo automático por data que comparava cada dia contra
-  // a Safra ATIVA. A troca agora é sempre manual, feita em Configurações
-  // Gerais.
+  // Campo morto desde 26/08/2026 — não lido por nenhuma lógica de cálculo.
+  // Era o botão manual que decidia Safra/Entressafra pro sistema inteiro;
+  // substituído pelo model PeriodoRegimeSalarial (períodos com início/fim,
+  // comparados dia a dia). Mantido só pra não quebrar o schema com dado
+  // histórico já gravado.
   regimeSalarial          RegimeSalarial @default(ENTRESSAFRA)
   updatedAt               DateTime  @updatedAt
   lembreteTurmasTexto     String?
   lembreteTurmasAtivo     Boolean   @default(false)
 
   @@map("configuracao_global")
+}
+
+// Períodos de Safra/Entressafra pra cálculo de salário/hora extra/carga
+// horária (independente do model Safra, que é a entidade agronômica de
+// ciclo de plantio/colheita usada por talhões/insumos/aplicações — não
+// mexe nesse propósito).
+//
+// Cadastrado em Configurações Gerais: clicar em "Safra" ou "Entressafra"
+// abre um seletor de intervalo (dataInicio + dataFim) pra registrar aquele
+// período. A partir de 26/08/2026 essas datas são a fonte da verdade do
+// cálculo — cada dia de cada Registro de Atividade é comparado contra os
+// períodos aqui cadastrados pra saber qual regime usar naquele dia
+// específico (substituindo o botão manual único de ConfiguracaoGlobal.
+// regimeSalarial, agora um campo morto).
+//
+// Períodos não podem se sobrepor entre si (nem do mesmo tipo, nem entre
+// tipos diferentes) — validado na criação (ver app/api/
+// periodos-regime-salarial/route.ts). Um dia que não cai em NENHUM
+// período cadastrado é tratado como pendência: bloqueia lançamentos novos
+// com aviso, mostra aviso pontual no Resumo Mensal, e gera alerta no cron
+// de falta automática — nunca assume um regime padrão silenciosamente.
+model PeriodoRegimeSalarial {
+  id         String         @id @default(cuid())
+  tipo       RegimeSalarial
+  dataInicio DateTime
+  dataFim    DateTime
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@map("periodo_regime_salarial")
 }
 
 model AplicacaoInsumoItem {

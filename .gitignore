@@ -43,3 +43,5 @@ public/workbox*.js
 *.db
 *.db-shm
 *.db-wal
+
+tsconfig.tsbuildinfo

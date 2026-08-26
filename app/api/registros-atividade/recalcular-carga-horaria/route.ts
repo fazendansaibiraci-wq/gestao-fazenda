@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
+import { buscarPeriodosRegimeSalarial, obterRegimeNaData } from '@/lib/regimeSalarial'
 
 // Recalcula "horasprevistasdia" (carga contratual) e, em cascata,
 // horasExtras/horasDevidas/ehHoraExtra de Registros de Atividade já
@@ -60,10 +61,12 @@ export async function POST(request: NextRequest) {
       prisma.configuracaoGlobal.findFirst(),
     ])
 
-    // Regime salarial: botão manual em Configurações Gerais, aplicado
-    // igual pra todos os registros recalculados nesta chamada (não mais
-    // baseado na data de cada registro comparada à Safra ATIVA).
-    const estaNaSafra = config?.regimeSalarial === 'SAFRA'
+    // Regime salarial: determinado automaticamente pela data de CADA
+    // registro (não mais um botão único pra todos), comparada contra os
+    // períodos cadastrados em Configurações → Safra/Entressafra. Registro
+    // cujo dia não cai em nenhum período cadastrado é pulado (não dá pra
+    // recalcular sem saber o regime) e reportado em `diasSemPeriodo`.
+    const periodos = await buscarPeriodosRegimeSalarial()
 
     const mudancas: {
       id: string
@@ -77,8 +80,16 @@ export async function POST(request: NextRequest) {
       devidasDepois: number
     }[] = []
 
+    const diasSemPeriodo = new Set<string>()
+
     for (const reg of registros) {
       const dataRegistro = new Date(reg.data)
+      const regimeDoDia = obterRegimeNaData(dataRegistro, periodos)
+      if (!regimeDoDia) {
+        diasSemPeriodo.add(reg.data.toISOString().split('T')[0])
+        continue
+      }
+      const estaNaSafra = regimeDoDia === 'SAFRA'
       const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, reg.funcionario, config, false, estaNaSafra)
       const cargaAntes = reg.horasprevistasdia ?? (config?.cargaHorariaEntressafra || 8)
 
@@ -140,6 +151,7 @@ export async function POST(request: NextRequest) {
       totalAlterados: mudancas.length,
       mudancas: mudancas.slice(0, 50), // preview: até 50 linhas de exemplo
       mudancasOmitidas: Math.max(0, mudancas.length - 50),
+      diasSemPeriodo: Array.from(diasSemPeriodo).sort(),
     })
   } catch (error: any) {
     console.error('Erro ao recalcular carga contratual:', error)

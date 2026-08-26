@@ -12,7 +12,7 @@ import { exportarRegistroDiarioPdf, exportarTodosRegistrosDiariosPdf } from '@/l
 
 interface ResumoFuncionario {
   funcionario: { id: string; name: string; role: string; pagamentoProporcionalDiario?: boolean }
-  estaNaSafra: boolean
+  regimeSalario: 'safra' | 'entressafra' | 'misto'
   salarioBase: number
   valorDia: number
   valorHoraNormal: number
@@ -29,9 +29,20 @@ interface ResumoFuncionario {
   registrosDiarios: RegistroDiario[]
 }
 
+function BadgeRegime({ regime }: { regime: 'safra' | 'entressafra' | 'misto' }) {
+  if (regime === 'safra') {
+    return <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">Safra</span>
+  }
+  if (regime === 'entressafra') {
+    return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">Entressafra</span>
+  }
+  return <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">Misto</span>
+}
+
 export default function ResumoMensalPage() {
   const { data: session, status } = useSession()
   const [resumo, setResumo] = useState<ResumoFuncionario[]>([])
+  const [diasSemPeriodo, setDiasSemPeriodo] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [mes, setMes] = useState(new Date().getMonth() + 1)
   const [ano, setAno] = useState(new Date().getFullYear())
@@ -67,6 +78,7 @@ export default function ResumoMensalPage() {
       const res = await fetch(`/api/resumo-mensal?${query}`)
       const data = await res.json()
       setResumo(data.data?.resumo || [])
+      setDiasSemPeriodo(data.data?.diasSemPeriodo || [])
       if (isFuncionario && data.data?.resumo?.length > 0) {
         setExpandidos([data.data.resumo[0].funcionario.id])
       }
@@ -274,6 +286,14 @@ export default function ResumoMensalPage() {
         </div>
       )}
 
+      {diasSemPeriodo.length > 0 && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+          ⚠️ {diasSemPeriodo.length === 1
+            ? `O dia ${new Date(diasSemPeriodo[0] + 'T12:00:00').toLocaleDateString('pt-BR')} deste período não tem Safra nem Entressafra cadastrada.`
+            : `${diasSemPeriodo.length} dias deste período não têm Safra nem Entressafra cadastrada.`} Cadastre o período em Configurações → Safra/Entressafra pra completar o cálculo desses dias.
+        </div>
+      )}
+
       {isFuncionario ? (
         /* Visão do funcionário — inalterada */
         resumo.length === 0 ? (
@@ -290,11 +310,7 @@ export default function ResumoMensalPage() {
                     <h3 className="font-bold text-lg text-primary">{r.funcionario.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-gray-500">{r.funcionario.role}</span>
-                      {r.estaNaSafra ? (
-                        <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">Safra</span>
-                      ) : (
-                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">Entressafra</span>
-                      )}
+                      <BadgeRegime regime={r.regimeSalario} />
                     </div>
                   </div>
                 </div>
@@ -303,7 +319,7 @@ export default function ResumoMensalPage() {
                 <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 text-sm">
-                      {r.estaNaSafra ? 'Salário Safra' : 'Salário Entressafra'}
+                      {r.regimeSalario === 'safra' ? 'Salário Safra' : r.regimeSalario === 'entressafra' ? 'Salário Entressafra' : 'Salário (rateado Safra/Entressafra)'}
                     </span>
                     <span className="font-bold text-lg text-primary">{fmt(r.salarioBase)}</span>
                   </div>
@@ -431,11 +447,7 @@ export default function ResumoMensalPage() {
                         >
                           <td className="px-4 py-3 font-medium">{r.funcionario.name}</td>
                           <td className="px-4 py-3">
-                            {r.estaNaSafra ? (
-                              <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">Safra</span>
-                            ) : (
-                              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">Entressafra</span>
-                            )}
+                            <BadgeRegime regime={r.regimeSalario} />
                           </td>
                           <td className="px-4 py-3 text-gray-600">{r.diasTrabalhados}</td>
                           <td className="px-4 py-3">

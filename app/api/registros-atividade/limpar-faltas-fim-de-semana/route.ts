@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
+import { buscarPeriodosRegimeSalarial, obterRegimeNaData } from '@/lib/regimeSalarial'
 
 // Limpeza pontual: o cron de falta automática (alertas-ausencia) gerou
 // faltas em sábados/domingos ANTES da correção de 25/08/2026 que fez a
@@ -56,7 +57,13 @@ export async function POST(request: NextRequest) {
       prisma.configuracaoGlobal.findFirst(),
     ])
 
-    const estaNaSafra = config?.regimeSalarial === 'SAFRA'
+    // Regime salarial: determinado automaticamente pela data de CADA
+    // registro, comparada contra os períodos cadastrados em
+    // Configurações → Safra/Entressafra. Registro cujo dia não cai em
+    // nenhum período cadastrado é pulado (não dá pra saber se a carga
+    // esperada é 0 sem saber o regime) e reportado em `diasSemPeriodo`.
+    const periodos = await buscarPeriodosRegimeSalarial()
+    const diasSemPeriodo = new Set<string>()
 
     const paraExcluir: { id: string; data: string; funcionarioNome: string; diaSemana: string }[] = []
     const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
@@ -65,6 +72,13 @@ export async function POST(request: NextRequest) {
       const dataRegistro = new Date(reg.data)
       const diaSemana = dataRegistro.getUTCDay()
       if (diaSemana !== 0 && diaSemana !== 6) continue // só sábado/domingo
+
+      const regimeDoDia = obterRegimeNaData(dataRegistro, periodos)
+      if (!regimeDoDia) {
+        diasSemPeriodo.add(reg.data.toISOString().split('T')[0])
+        continue
+      }
+      const estaNaSafra = regimeDoDia === 'SAFRA'
 
       const cargaEsperada = calcularCargaHorariaDia(dataRegistro, reg.funcionario, config, false, estaNaSafra)
       if (cargaEsperada > 0) continue // esse dia realmente tem expectativa de trabalho — não mexe
@@ -90,6 +104,7 @@ export async function POST(request: NextRequest) {
       totalAlterados: paraExcluir.length,
       mudancas: paraExcluir.slice(0, 50),
       mudancasOmitidas: Math.max(0, paraExcluir.length - 50),
+      diasSemPeriodo: Array.from(diasSemPeriodo).sort(),
     })
   } catch (error: any) {
     console.error('Erro ao limpar faltas de fim de semana:', error)

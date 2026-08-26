@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { put, del } from '@vercel/blob'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
+import { buscarPeriodosRegimeSalarial, obterRegimeNaData, mensagemPeriodoNaoCadastrado } from '@/lib/regimeSalarial'
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,9 +54,15 @@ export async function POST(request: NextRequest) {
       prisma.configuracaoGlobal.findFirst(),
     ])
 
-    // Regime salarial: botão manual em Configurações Gerais (não mais
-    // baseado na data do registro comparada à Safra ATIVA).
-    const estaNaSafra = config?.regimeSalarial === 'SAFRA'
+    // Regime salarial: determinado automaticamente pela data deste
+    // registro, comparada contra os períodos cadastrados em
+    // Configurações → Safra/Entressafra (ver lib/regimeSalarial.ts).
+    const periodos = await buscarPeriodosRegimeSalarial()
+    const regimeDoDia = obterRegimeNaData(registro.data, periodos)
+    if (!regimeDoDia) {
+      return NextResponse.json({ error: mensagemPeriodoNaoCadastrado(registro.data) }, { status: 400 })
+    }
+    const estaNaSafra = regimeDoDia === 'SAFRA'
     const cargaHorariaDia = calcularCargaHorariaDia(registro.data, funcionario, config, false, estaNaSafra)
 
     const atualizado = await prisma.registroAtividade.update({

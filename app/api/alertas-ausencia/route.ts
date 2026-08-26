@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
+import { buscarPeriodosRegimeSalarial, obterRegimeNaData } from '@/lib/regimeSalarial'
 
 // O servidor (Vercel) roda em UTC, não no horário de Brasília. Usar
 // new Date().getFullYear()/getMonth()/getDate() direto reflete o dia em UTC,
@@ -58,9 +59,14 @@ export async function GET(request: NextRequest) {
     }
 
     const config = await prisma.configuracaoGlobal.findFirst()
-    // Regime salarial: botão manual em Configurações Gerais (não mais
-    // baseado na data de cada dia comparada à Safra ATIVA).
-    const estaNaSafra = config?.regimeSalarial === 'SAFRA'
+    // Regime salarial: determinado automaticamente pela data de CADA dia
+    // verificado, comparada contra os períodos cadastrados em
+    // Configurações → Safra/Entressafra (ver lib/regimeSalarial.ts). Dia
+    // sem período cadastrado não gera falta automática (não dá pra saber
+    // a carga esperada sem saber o regime) — em vez disso entra em
+    // `diasSemPeriodo`, devolvido como alerta separado pra avisar que
+    // falta cadastrar o período.
+    const periodos = await buscarPeriodosRegimeSalarial()
 
     const whereUser: any = { active: true }
     if (userRole === 'FUNCIONARIO') {
@@ -111,6 +117,20 @@ export async function GET(request: NextRequest) {
 
     const ultimoDia = fimIntervalo.getDate()
 
+    // Regime de cada dia do intervalo, resolvido uma única vez (não muda
+    // por funcionário). Dias sem período cadastrado entram em
+    // `diasSemPeriodo` e são pulados na checagem de falta.
+    const regimePorDia = new Map<number, 'SAFRA' | 'ENTRESSAFRA' | null>()
+    const diasSemPeriodo: string[] = []
+    for (let dia = 1; dia <= ultimoDia; dia++) {
+      const dataDia = new Date(ano, mesNum - 1, dia)
+      const regimeDoDia = obterRegimeNaData(dataDia, periodos)
+      regimePorDia.set(dia, regimeDoDia)
+      if (!regimeDoDia) {
+        diasSemPeriodo.push(`${ano}-${String(mesNum).padStart(2, '0')}-${String(dia).padStart(2, '0')}`)
+      }
+    }
+
     // Primeiro identifica os dias faltantes de cada funcionário (lógica já existente).
     const candidatosPorFuncionario: { func: (typeof funcionarios)[number]; diasFaltantes: string[] }[] = []
 
@@ -119,8 +139,11 @@ export async function GET(request: NextRequest) {
       const diasFaltantes: string[] = []
 
       for (let dia = 1; dia <= ultimoDia; dia++) {
+        const regimeDoDia = regimePorDia.get(dia)
+        if (!regimeDoDia) continue // sem período cadastrado — não dá pra saber a carga esperada
+
         const dataDia = new Date(ano, mesNum - 1, dia)
-        const cargaDia = calcularCargaHorariaDia(dataDia, func, config, true, estaNaSafra)
+        const cargaDia = calcularCargaHorariaDia(dataDia, func, config, true, regimeDoDia === 'SAFRA')
 
         if (cargaDia > 0) {
           const chave = `${ano}-${String(mesNum).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
@@ -136,7 +159,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (candidatosPorFuncionario.length === 0) {
-      return NextResponse.json({ success: true, data: [] })
+      return NextResponse.json({ success: true, data: [], diasSemPeriodo })
     }
 
     // Falta automática não tem talhão real (não é uma atividade feita em
@@ -203,7 +226,7 @@ export async function GET(request: NextRequest) {
       console.error('GET /api/alertas-ausencia: nenhum talhão ativo ou safra encontrada para gerar faltas automáticas')
     }
 
-    return NextResponse.json({ success: true, data: resultado })
+    return NextResponse.json({ success: true, data: resultado, diasSemPeriodo })
   } catch (error) {
     console.error('GET /api/alertas-ausencia:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
