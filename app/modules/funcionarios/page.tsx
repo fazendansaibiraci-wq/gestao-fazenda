@@ -13,9 +13,21 @@ interface Funcionario {
   name: string
   email: string
   role: string
+  perfilExibicao?: string | null
   phone?: string
   active: boolean
   tipoSalario?: string
+}
+
+const ROTULOS_PERFIL: Record<string, string> = {
+  FUNCIONARIO: 'Funcionário',
+  GERENTE: 'Gerente',
+  AGRONOMO: 'Agrônomo',
+  GESTOR: 'Gestor',
+}
+
+function rotuloPerfil(func: Funcionario): string {
+  return func.perfilExibicao || ROTULOS_PERFIL[func.role] || func.role
 }
 
 export default function FuncionariosPage() {
@@ -180,7 +192,7 @@ export default function FuncionariosPage() {
                   <td className="px-4 py-3 text-gray-600">{func.email}</td>
                   <td className="px-4 py-3">
                     <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                      {func.role}
+                      {rotuloPerfil(func)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">

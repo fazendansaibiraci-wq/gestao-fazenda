@@ -89,6 +89,14 @@ model User {
   password String
   name     String
   role     UserRole @default(FUNCIONARIO)
+  // Rótulo mostrado no lugar do nome padrão do `role` (ex: "GERENTE" →
+  // "Gerente") nas telas de Funcionários — não afeta permissão/acesso
+  // nenhum, só o texto exibido. Usado quando o perfil real (que decide o
+  // que a pessoa pode acessar) não reflete como ela deve aparecer pra
+  // quem vê a lista (ex: Lucas Lima é cadastrado como GERENTE — mesmas
+  // permissões de um gerente — mas deve aparecer como "Consultor").
+  // Null = mostra o rótulo padrão do role.
+  perfilExibicao String?
   phone    String?
   active   Boolean  @default(true)
 

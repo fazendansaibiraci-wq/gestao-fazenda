@@ -20,6 +20,7 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     confirmPassword: '',
     phone: initialData?.phone || '',
     role: initialData?.role || UserRole.FUNCIONARIO,
+    perfilExibicao: initialData?.perfilExibicao || '',
     cargaHorariaSafra: initialData?.cargaHorariaSafra || '',
     active: initialData?.active !== undefined ? initialData.active : true,
     pagamentoProporcionalDiario: initialData?.pagamentoProporcionalDiario || false,
@@ -129,6 +130,25 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
                 <option value={UserRole.AGRONOMO}>Agrônomo</option>
                 <option value={UserRole.GESTOR}>Gestor</option>
               </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-group">
+              <label htmlFor="perfilExibicao">Rótulo mostrado nas telas (opcional)</label>
+              <input
+                type="text"
+                id="perfilExibicao"
+                name="perfilExibicao"
+                value={form.perfilExibicao}
+                onChange={handleChange}
+                disabled={loading}
+                placeholder="Ex: Consultor"
+              />
+              <p style={{fontSize:'12px', color:'#6b7280', marginTop:'4px'}}>
+                Deixe em branco pra mostrar o nome padrão do Perfil acima. Não muda nenhuma permissão — só o texto
+                exibido (ex: alguém cadastrado como Gerente mas que é, na prática, um consultor externo).
+              </p>
             </div>
           </div>
 
