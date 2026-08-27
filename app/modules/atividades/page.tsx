@@ -577,21 +577,6 @@ export default function AtividadesPage() {
                 Recálculo aplicado com sucesso.
               </p>
             )}
-            <br />
-            <button
-              onClick={handlePreviaLimpezaFaltas}
-              disabled={!filtroDataInicio || !filtroDataFim || limpandoFaltas}
-              title={!filtroDataInicio || !filtroDataFim ? 'Selecione data início e fim primeiro' : 'Remove faltas automáticas de sábado/domingo geradas antes da correção da carga horária de Entressafra — só mexe em dias que hoje têm carga esperada 0'}
-              className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Trash2 className={`w-4 h-4 ${limpandoFaltas ? 'animate-pulse' : ''}`} />
-              Limpar faltas de fim de semana indevidas (Entressafra) no período filtrado
-            </button>
-            {limpezaFaltasConcluida && (
-              <p className="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 inline-block">
-                Limpeza aplicada com sucesso.
-              </p>
-            )}
           </div>
         )}
       </div>

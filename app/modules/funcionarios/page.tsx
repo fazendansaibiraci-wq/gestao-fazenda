@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { UserPlus, Pencil, Trash2, Eye } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { SalarioPeriodoTable } from '@/components/SalarioPeriodoTable'
-import { MigrarSalarioLegado } from '@/components/MigrarSalarioLegado'
 
 interface Funcionario {
   id: string
@@ -127,10 +126,6 @@ export default function FuncionariosPage() {
           </button>
         ))}
       </div>
-
-      {(abaAtiva === 'safra' || abaAtiva === 'entressafra') && (
-        <MigrarSalarioLegado onConcluido={() => setRefreshKey((k) => k + 1)} />
-      )}
 
       {abaAtiva === 'safra' && <SalarioPeriodoTable key={`safra-${refreshKey}`} tipo="SAFRA" />}
       {abaAtiva === 'entressafra' && <SalarioPeriodoTable key={`entressafra-${refreshKey}`} tipo="ENTRESSAFRA" />}
