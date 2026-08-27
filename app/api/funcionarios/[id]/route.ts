@@ -36,6 +36,7 @@ export async function GET(
         bancoHorasAtivo: true,
         pagamentoProporcionalDiario: true,
         ocultarRegistroAtividades: true,
+        participaFolhaPagamento: true,
       },
     })
 
@@ -110,6 +111,7 @@ export async function PUT(
       bancoHorasAtivo: body.bancoHorasAtivo !== undefined ? body.bancoHorasAtivo : undefined,
       pagamentoProporcionalDiario: body.pagamentoProporcionalDiario !== undefined ? body.pagamentoProporcionalDiario === true : undefined,
       ocultarRegistroAtividades: body.ocultarRegistroAtividades !== undefined ? body.ocultarRegistroAtividades === true : undefined,
+      participaFolhaPagamento: body.participaFolhaPagamento !== undefined ? body.participaFolhaPagamento === true : undefined,
     }
 
     if (body.password) {

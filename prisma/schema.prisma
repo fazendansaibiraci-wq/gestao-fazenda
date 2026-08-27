@@ -100,6 +100,15 @@ model User {
   bancoHorasAtivo           Boolean      @default(false)
   pagamentoProporcionalDiario Boolean    @default(false)
   ocultarRegistroAtividades Boolean @default(false)
+  // Desliga pra quem não deve entrar em nenhum cálculo de folha de
+  // pagamento (ex: consultores externos que não são funcionários da
+  // fazenda, mesmo cadastrados com o mesmo perfil de outros que SÃO —
+  // ver caso do Lucas Lima). Quando false, a pessoa some das abas
+  // Salário Safra/Entressafra, do Resumo Mensal, do Painel Financeiro e
+  // do custo HH/HM. Não depende do campo `role` — pessoas com o mesmo
+  // perfil podem ter valores diferentes aqui (ex: Jair é GERENTE e
+  // participa normalmente; Lucas também é GERENTE mas não participa).
+  participaFolhaPagamento Boolean @default(true)
   cargaHorariaSafra         Float?
   cargaHorariaSegSex        Float?
   cargaHorariaSabado        Float?
@@ -1287,15 +1296,6 @@ model PeriodoRegimeSalarial {
   @@map("periodo_regime_salarial")
 }
 
-// Salário/hora extra de cada funcionário, específico de cada período de
-// Safra/Entressafra cadastrado (ver PeriodoRegimeSalarial acima). Substitui
-// os antigos campos fixos User.salarioSafra/salarioEntressafra/
-// valorHoraExtraSafra/valorHoraExtraEntressafra (mantidos no schema por
-// enquanto, mas em processo de migração pra este model) — cada período
-// (mesmo repetindo o tipo, ex: Safra 2026 e Safra 2027) tem seu próprio
-// valor, permitindo reajustes ano a ano sem sobrescrever o histórico.
-// salarioMensal OU salarioDiaria é preenchido conforme o User.tipoSalario
-// do funcionário (nunca os dois).
 // Salário/hora extra/jornada de cada funcionário, específico de cada
 // período de Safra/Entressafra cadastrado (ver PeriodoRegimeSalarial
 // acima). Substitui os antigos campos fixos User.salarioSafra/

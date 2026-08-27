@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       where: {
         role: 'FUNCIONARIO',
         active: true,
+        participaFolhaPagamento: true,
       },
     })
 

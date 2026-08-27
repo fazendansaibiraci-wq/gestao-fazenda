@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
         horasCalculadas: true,
         horasMaquina: true,
         talhao: { select: { nome: true, area: true } },
+        funcionario: { select: { participaFolhaPagamento: true } },
         maquina: { select: { valor: true, valorResidual: true, vidaUtilHoras: true } },
       },
     })
@@ -173,7 +174,7 @@ export async function GET(request: NextRequest) {
       }
       const acumulado = acumuladorPorTalhao.get(r.talhaoId)!
 
-      if (r.funcionarioId) {
+      if (r.funcionarioId && r.funcionario?.participaFolhaPagamento !== false) {
         const valorHH = calcularValorHH(r.funcionarioId, r.data)
         if (valorHH !== null) {
           acumulado.custoHH += (r.horasCalculadas || 0) * valorHH

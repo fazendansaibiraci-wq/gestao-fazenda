@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
         domingosPorMes: true,
         pagamentoProporcionalDiario: true,
         ocultarRegistroAtividades: true,
+        participaFolhaPagamento: true,
       },
       orderBy: { name: 'asc' },
     })
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
         bancoHorasAtivo: false,
         pagamentoProporcionalDiario: body.pagamentoProporcionalDiario === true,
         ocultarRegistroAtividades: body.ocultarRegistroAtividades === true,
+        participaFolhaPagamento: body.participaFolhaPagamento !== undefined ? body.participaFolhaPagamento === true : true,
       },
     })
 

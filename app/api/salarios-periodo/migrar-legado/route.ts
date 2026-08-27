@@ -23,7 +23,7 @@ import { prisma } from '@/lib/prisma'
 async function calcularMigracao() {
   const periodos = await prisma.periodoRegimeSalarial.findMany()
   const funcionarios = await prisma.user.findMany({
-    where: { role: { in: ['FUNCIONARIO', 'GERENTE', 'AGRONOMO'] }, active: true },
+    where: { role: { in: ['FUNCIONARIO', 'GERENTE', 'AGRONOMO'] }, active: true, participaFolhaPagamento: true },
   })
   const config = await prisma.configuracaoGlobal.findFirst()
   const jaExistentes = await prisma.salarioPeriodo.findMany({

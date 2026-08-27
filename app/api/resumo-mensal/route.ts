@@ -90,6 +90,7 @@ export async function GET(request: NextRequest) {
     const whereUser: any = {
       active: true,
       role: { in: ['FUNCIONARIO', 'AGRONOMO'] },
+      participaFolhaPagamento: true,
     }
 
     if (isFuncionario) {

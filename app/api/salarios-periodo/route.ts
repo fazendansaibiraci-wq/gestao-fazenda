@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       where: {
         role: { in: ['FUNCIONARIO', 'GERENTE', 'AGRONOMO'] },
         active: true,
+        participaFolhaPagamento: true,
       },
       select: {
         id: true,

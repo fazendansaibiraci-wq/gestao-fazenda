@@ -24,6 +24,7 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
     active: initialData?.active !== undefined ? initialData.active : true,
     pagamentoProporcionalDiario: initialData?.pagamentoProporcionalDiario || false,
     ocultarRegistroAtividades: initialData?.ocultarRegistroAtividades || false,
+    participaFolhaPagamento: initialData?.participaFolhaPagamento !== undefined ? initialData.participaFolhaPagamento : true,
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -157,6 +158,11 @@ export function FuncionarioForm({ id, initialData }: FuncionarioFormProps) {
           <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
             <input type="checkbox" id="ocultarRegistroAtividades" name="ocultarRegistroAtividades" checked={form.ocultarRegistroAtividades} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
             <label htmlFor="ocultarRegistroAtividades" style={{fontSize:'14px', fontWeight:500, cursor:'pointer', margin:0}}>Ocultar aba "Registro de Atividades" pra esse usuário</label>
+          </div>
+
+          <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+            <input type="checkbox" id="participaFolhaPagamento" name="participaFolhaPagamento" checked={form.participaFolhaPagamento} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
+            <label htmlFor="participaFolhaPagamento" style={{fontSize:'14px', fontWeight:500, cursor:'pointer', margin:0}}>Participa da folha de pagamento (aparece nas abas Salário Safra/Entressafra, Resumo Mensal e Painel Financeiro — desmarque pra consultores externos)</label>
           </div>
         </div>
       </div>
