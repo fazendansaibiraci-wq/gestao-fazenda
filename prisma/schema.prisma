@@ -275,6 +275,7 @@ model Maquina {
   ultimaAtualizacao DateTime      @updatedAt
 
   registrosAtividade RegistroAtividade[]
+  registrosAtividadeMaquinaExtra RegistroAtividadeMaquina[]
   abastecimentos     AbastecimentoTrator[] @relation("AbastecimentoTrator")
   ajustesHorimetro   AjusteHorimetro[]
 
@@ -547,6 +548,13 @@ model RegistroAtividade {
   horimetroFinal      Float?
   horasMaquina        Float?
   implementoUtilizado String?
+  // Máquinas ADICIONAIS usadas na mesma atividade/dia, além da máquina
+  // principal acima — pra quando o funcionário troca de máquina durante
+  // o dia (ex: trator A de manhã, trator B à tarde). Cada uma com seu
+  // próprio horímetro. Etapa 1 (27/08/2026): só cadastro — os cálculos de
+  // combustível/custo por hora-máquina/painéis ainda consideram só a
+  // máquina principal, não estas.
+  maquinasAdicionais  RegistroAtividadeMaquina[]
   // "Horas Não Identificadas": registro criado pela tela de reconciliação de
   // Combustível (não pelo funcionário) pra fechar um buraco de horímetro sem
   // atividade lançada. NÃO confundir com o model AjusteHorimetro (esse aqui
@@ -573,6 +581,31 @@ model RegistroAtividade {
   @@index([data])
   @@index([status])
   @@map("registros_atividade")
+}
+
+// Máquina adicional usada na mesma atividade/dia (ver comentário em
+// RegistroAtividade.maquinasAdicionais acima). Uma linha por máquina
+// extra, cada uma com seu próprio horímetro — a mesma validação de
+// sequência (nunca retroceder em relação ao último horímetro conhecido
+// dessa máquina) vale aqui também, considerando tanto RegistroAtividade.
+// maquinaId (máquina principal de qualquer registro) quanto esta tabela
+// (ver lib/registroAtividadeMaquinas.ts).
+model RegistroAtividadeMaquina {
+  id                  String            @id @default(cuid())
+  registroAtividade   RegistroAtividade @relation(fields: [registroAtividadeId], references: [id], onDelete: Cascade)
+  registroAtividadeId String
+  maquina             Maquina           @relation(fields: [maquinaId], references: [id], onDelete: Cascade)
+  maquinaId           String
+  horimetroInicial    Float
+  horimetroFinal      Float
+  horasMaquina        Float?
+  implementoUtilizado String?
+  ordem               Int               @default(0)
+  dataCriacao         DateTime          @default(now())
+
+  @@index([maquinaId])
+  @@index([registroAtividadeId])
+  @@map("registro_atividade_maquinas")
 }
 
 model Turma {

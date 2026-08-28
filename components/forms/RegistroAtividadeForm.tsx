@@ -73,6 +73,64 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     funcionarioId: initialData?.funcionarioId || '',
   })
 
+  // Máquinas ADICIONAIS usadas na mesma atividade/dia — pra quando o
+  // funcionário troca de máquina durante o dia (ex: trator A de manhã,
+  // trator B à tarde). Cada linha independente da máquina principal
+  // acima. Etapa 1: só cadastro, sem entrar nos cálculos de combustível/
+  // custo por hora-máquina ainda.
+  const [maquinasAdicionais, setMaquinasAdicionais] = useState<{
+    maquinaId: string
+    horimetroInicial: string
+    horimetroFinal: string
+    implementoUtilizado: string
+  }[]>(
+    (initialData?.maquinasAdicionais || []).map((m: any) => ({
+      maquinaId: m.maquinaId || '',
+      horimetroInicial: m.horimetroInicial != null ? String(m.horimetroInicial) : '',
+      horimetroFinal: m.horimetroFinal != null ? String(m.horimetroFinal) : '',
+      implementoUtilizado: m.implementoUtilizado || '',
+    }))
+  )
+
+  const handleAdicionarMaquina = () => {
+    setMaquinasAdicionais(prev => [...prev, { maquinaId: '', horimetroInicial: '', horimetroFinal: '', implementoUtilizado: '' }])
+  }
+
+  const handleRemoverMaquina = (index: number) => {
+    setMaquinasAdicionais(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleMaquinaAdicionalChange = (index: number, campo: 'maquinaId' | 'horimetroInicial' | 'horimetroFinal' | 'implementoUtilizado', valor: string) => {
+    setMaquinasAdicionais(prev => prev.map((m, i) => {
+      if (i !== index) return m
+      if (campo === 'maquinaId') {
+        const maquinaSelecionada: any = maquinas.find((mq: any) => mq.id === valor)
+        return {
+          ...m,
+          maquinaId: valor,
+          // Mesma sugestão automática da máquina principal: último
+          // horímetro conhecido dessa máquina.
+          horimetroInicial: valor && maquinaSelecionada ? String(maquinaSelecionada.ultimoHorimetroAtividade ?? 0) : '',
+        }
+      }
+      return { ...m, [campo]: valor }
+    }))
+  }
+
+  const validarMaquinasAdicionaisNoCliente = () => {
+    for (const m of maquinasAdicionais) {
+      if (!m.maquinaId || !m.horimetroInicial || !m.horimetroFinal) {
+        setError('Preencha máquina, horímetro inicial e final em todas as máquinas adicionais (ou remova a linha que não for usar).')
+        return false
+      }
+      if (parseFloat(m.horimetroFinal) <= parseFloat(m.horimetroInicial)) {
+        setError('Horímetro final deve ser maior que inicial em todas as máquinas adicionais.')
+        return false
+      }
+    }
+    return true
+  }
+
   // Funcionário padrão do ajuste: usuário placeholder "Não Identificado" —
   // só preenche se ainda estiver vazio (não sobrescreve escolha do gestor) e
   // só depois que /api/funcionarios carregar. Continua editável normalmente.
@@ -208,6 +266,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     e.preventDefault()
     setError('')
     if (!validateHorimetro()) return
+    if (!validarMaquinasAdicionaisNoCliente()) return
     setLoading(true)
     try {
       if (!form.isFalta && !form.isAjusteHorimetro && (!form.data || !form.horaEntrada || !form.horaSaida || !form.talhaoId || !form.safraId)) {
@@ -263,6 +322,12 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         quantidadeCorretivo: form.quantidadeCorretivo ? parseFloat(form.quantidadeCorretivo) : null,
         horimetroInicial, horimetroFinal, horasMaquina,
         passouDiretoAlmoco: estaNaSafra ? form.passouDiretoAlmoco : false,
+        maquinasAdicionais: maquinasAdicionais.filter(m => m.maquinaId).map(m => ({
+          maquinaId: m.maquinaId,
+          horimetroInicial: parseFloat(m.horimetroInicial),
+          horimetroFinal: parseFloat(m.horimetroFinal),
+          implementoUtilizado: m.implementoUtilizado || null,
+        })),
       }
       const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const responseData = await response.json()
@@ -607,6 +672,79 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   )}
                 </>
               )}
+
+              {maquinasAdicionais.map((m, index) => (
+                <div key={index} className="p-3 border border-gray-200 rounded-lg space-y-3 bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">Máquina adicional {index + 1}</label>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoverMaquina(index)}
+                      disabled={loading}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                  <div className="form-group">
+                    <select
+                      value={m.maquinaId}
+                      onChange={(e) => handleMaquinaAdicionalChange(index, 'maquinaId', e.target.value)}
+                      disabled={loading}
+                    >
+                      <option value="">Selecione a máquina</option>
+                      {maquinas.map((mq: any) => <option key={mq.id} value={mq.id}>{mq.nome} ({mq.tipo})</option>)}
+                    </select>
+                  </div>
+                  {m.maquinaId && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="form-group">
+                        <label>Horímetro Inicial (h)</label>
+                        <input
+                          type="number"
+                          value={m.horimetroInicial}
+                          onChange={(e) => handleMaquinaAdicionalChange(index, 'horimetroInicial', e.target.value)}
+                          disabled={loading}
+                          step="0.1"
+                          placeholder="0,0"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Horímetro Final (h)</label>
+                        <input
+                          type="number"
+                          value={m.horimetroFinal}
+                          onChange={(e) => handleMaquinaAdicionalChange(index, 'horimetroFinal', e.target.value)}
+                          disabled={loading}
+                          step="0.1"
+                          placeholder="0,0"
+                        />
+                      </div>
+                      <div className="form-group md:col-span-2">
+                        <label>Implemento Utilizado</label>
+                        <select
+                          value={m.implementoUtilizado}
+                          onChange={(e) => handleMaquinaAdicionalChange(index, 'implementoUtilizado', e.target.value)}
+                          disabled={loading}
+                        >
+                          <option value="">Sem implemento</option>
+                          {implementos.map((imp: any) => <option key={imp.id} value={imp.nome}>{imp.nome}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={handleAdicionarMaquina}
+                disabled={loading}
+                className="text-sm text-primary hover:underline"
+              >
+                + Adicionar outra máquina (trocou de máquina no mesmo dia)
+              </button>
+
               <div className="form-group">
                 <label>Implemento Utilizado</label>
                 <select name="implementoUtilizado" value={form.implementoUtilizado} onChange={handleChange} disabled={loading}>

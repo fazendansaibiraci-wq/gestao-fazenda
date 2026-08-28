@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 import { buscarPeriodosRegimeSalarial, obterRegimeNaData, mensagemPeriodoNaoCadastrado } from '@/lib/regimeSalarial'
 import { buscarPeriodosComId, obterPeriodoNaData, buscarSalarioPeriodoFuncionario, mensagemSalarioNaoCadastrado, shimsParaCargaHoraria } from '@/lib/salarioPeriodo'
+import { validarMaquinasAdicionais, atualizarUltimoHorimetroMaquinasAdicionais, MaquinaAdicionalInput } from '@/lib/registroAtividadeMaquinas'
 
 export async function GET(
   request: NextRequest,
@@ -21,6 +22,7 @@ export async function GET(
         safra: true,
         funcionario: { select: { name: true, email: true } },
         maquina: true,
+        maquinasAdicionais: { include: { maquina: true }, orderBy: { ordem: 'asc' } },
       },
     })
 
@@ -111,6 +113,31 @@ export async function PUT(
             { status: 400 }
           )
         }
+      }
+    }
+
+    // Máquinas ADICIONAIS (troca de máquina no mesmo dia — ver
+    // lib/registroAtividadeMaquinas.ts): sempre revalida na edição
+    // (diferente da máquina principal, aqui não dá pra comparar "mudou
+    // ou não" de forma simples já que é uma lista inteira sendo
+    // substituída) — só roda se o body de fato mandar o campo.
+    const maquinasAdicionaisRecebidas: MaquinaAdicionalInput[] | undefined = Array.isArray(body.maquinasAdicionais)
+      ? body.maquinasAdicionais.map((m: any) => ({
+          maquinaId: m.maquinaId,
+          horimetroInicial: parseFloat(m.horimetroInicial),
+          horimetroFinal: parseFloat(m.horimetroFinal),
+          implementoUtilizado: m.implementoUtilizado || null,
+        }))
+      : undefined
+    if (maquinasAdicionaisRecebidas && maquinasAdicionaisRecebidas.length > 0) {
+      const isAjusteHorimetroFinalParaAdicionais = body.isAjusteHorimetro !== undefined ? body.isAjusteHorimetro : registro.isAjusteHorimetro
+      const erroMaquinasAdicionais = await validarMaquinasAdicionais(
+        maquinasAdicionaisRecebidas,
+        !!isAjusteHorimetroFinalParaAdicionais,
+        params.id
+      )
+      if (erroMaquinasAdicionais) {
+        return NextResponse.json({ error: erroMaquinasAdicionais }, { status: 400 })
       }
     }
 
@@ -245,12 +272,32 @@ export async function PUT(
         passouDiretoAlmoco: body.passouDiretoAlmoco !== undefined ? body.passouDiretoAlmoco : undefined,
         ehHoraExtra,
         statusAprovacao: ehHoraExtra ? 'pendente' : 'aprovado',
+        ...(maquinasAdicionaisRecebidas !== undefined
+          ? {
+              maquinasAdicionais: {
+                deleteMany: {},
+                create: maquinasAdicionaisRecebidas.map((m, i) => ({
+                  maquinaId: m.maquinaId,
+                  horimetroInicial: m.horimetroInicial,
+                  horimetroFinal: m.horimetroFinal,
+                  horasMaquina: parseFloat((m.horimetroFinal - m.horimetroInicial).toFixed(2)),
+                  implementoUtilizado: m.implementoUtilizado || null,
+                  ordem: i + 1,
+                })),
+              },
+            }
+          : {}),
       },
       include: {
         talhao: { select: { nome: true } },
         safra: { select: { nome: true } },
+        maquinasAdicionais: { include: { maquina: { select: { nome: true } } } },
       },
     })
+
+    if (maquinasAdicionaisRecebidas && maquinasAdicionaisRecebidas.length > 0) {
+      await atualizarUltimoHorimetroMaquinasAdicionais(maquinasAdicionaisRecebidas)
+    }
 
     if (body.maquinaId && body.horimetroFinal) {
       const maquinaAtual = await prisma.maquina.findUnique({ where: { id: body.maquinaId } })
