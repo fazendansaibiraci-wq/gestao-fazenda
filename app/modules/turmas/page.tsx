@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { Plus, Trash2, FileSpreadsheet, FileText, MessageSquare, Fuel, Pencil, Save, X } from 'lucide-react'
@@ -32,6 +32,8 @@ export default function TurmasPage() {
     const [turmas, setTurmas] = useState([])
     const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
     const [loading, setLoading] = useState(true)
+    const [carregandoFiltro, setCarregandoFiltro] = useState(false)
+    const primeiraCargaFeita = useRef(false)
     const [filtroDataInicio, setFiltroDataInicio] = useState('')
     const [filtroDataFim, setFiltroDataFim] = useState('')
     const [filtroTalhao, setFiltroTalhao] = useState('')
@@ -142,12 +144,18 @@ export default function TurmasPage() {
                 console.error(err)
         } finally {
                 setLoading(false)
+                setCarregandoFiltro(false)
+                primeiraCargaFeita.current = true
         }
   }
 
   useEffect(() => {
         if (status === 'authenticated') {
-                setLoading(true)
+                if (primeiraCargaFeita.current) {
+                        setCarregandoFiltro(true)
+                } else {
+                        setLoading(true)
+                }
                 load()
         }
   }, [filtroDataInicio, filtroDataFim, filtroTalhao, filtroTurma, filtroTipoAtividade])
@@ -436,11 +444,16 @@ export default function TurmasPage() {
                                 </div>
                         </div>
 
-                        <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
+                        <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden relative">
                                 <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
                                         <p className="text-sm font-semibold text-white">Diárias</p>
                                         <p className="text-xs text-green-100">{diarias.length} registro{diarias.length === 1 ? '' : 's'}</p>
                                 </div>
+                                {carregandoFiltro && (
+                                        <div className="absolute inset-0 top-[49px] bg-white/60 flex items-start justify-center pt-8 z-10">
+                                                <div className="spinner"></div>
+                                        </div>
+                                )}
                                 <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                           <thead>
