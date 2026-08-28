@@ -30,11 +30,13 @@ export default function TurmasPage() {
     const [diarias, setDiarias] = useState<DiariaTurma[]>([])
     const [talhoes, setTalhoes] = useState([])
     const [turmas, setTurmas] = useState([])
+    const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
     const [loading, setLoading] = useState(true)
     const [filtroDataInicio, setFiltroDataInicio] = useState('')
     const [filtroDataFim, setFiltroDataFim] = useState('')
     const [filtroTalhao, setFiltroTalhao] = useState('')
     const [filtroTurma, setFiltroTurma] = useState('')
+    const [filtroTipoAtividade, setFiltroTipoAtividade] = useState('')
     const [exportando, setExportando] = useState(false)
 
     const [config, setConfig] = useState<ConfiguracaoLembrete | null>(null)
@@ -52,6 +54,7 @@ export default function TurmasPage() {
         if (status === 'authenticated') {
                 loadTalhoes()
                 loadTurmas()
+                loadTiposAtividade()
                 loadConfig()
                 load()
         }
@@ -114,6 +117,13 @@ export default function TurmasPage() {
         } catch (err) { console.error(err) }
   }
 
+  const loadTiposAtividade = async () => {
+        try {
+                const res = await fetch('/api/tipos-atividade?ativo=true')
+                if (res.ok) setTiposAtividade(await res.json())
+        } catch (err) { console.error(err) }
+  }
+
   const load = async () => {
         try {
                 let url = '/api/diarias-turma'
@@ -122,6 +132,7 @@ export default function TurmasPage() {
                 if (filtroDataFim) params.append('dataFim', filtroDataFim)
                 if (filtroTalhao) params.append('talhaoId', filtroTalhao)
                 if (filtroTurma) params.append('turmaId', filtroTurma)
+                if (filtroTipoAtividade) params.append('tipoAtividade', filtroTipoAtividade)
                 if (params.toString()) url += '?' + params.toString()
                 const response = await fetch(url)
                 if (!response.ok) throw new Error('Erro')
@@ -139,7 +150,7 @@ export default function TurmasPage() {
                 setLoading(true)
                 load()
         }
-  }, [filtroDataInicio, filtroDataFim, filtroTalhao, filtroTurma])
+  }, [filtroDataInicio, filtroDataFim, filtroTalhao, filtroTurma, filtroTipoAtividade])
 
   const handleDelete = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir esta diaria de turma?')) return
@@ -401,7 +412,7 @@ export default function TurmasPage() {
 
                         <div className="card space-y-3">
                                 <h3 className="font-semibold text-primary">Filtros</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                                           <div>
                                                       <label className="block text-xs text-gray-500 mb-1">Data Inicial</label>
                                                       <input type="date" value={filtroDataInicio} onChange={(e) => setFiltroDataInicio(e.target.value)} className="border rounded-lg px-3 py-2 text-sm w-full" />
@@ -417,6 +428,10 @@ export default function TurmasPage() {
                                           <select value={filtroTurma} onChange={(e) => setFiltroTurma(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
                                                       <option value="">Todas as Turmas</option>
                                             {turmas.map((t: any) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                                          </select>
+                                          <select value={filtroTipoAtividade} onChange={(e) => setFiltroTipoAtividade(e.target.value)} className="border rounded-lg px-3 py-2 text-sm">
+                                                      <option value="">Todas as Atividades</option>
+                                            {tiposAtividade.map((t: any) => <option key={t.id} value={t.nome}>{t.nome}</option>)}
                                           </select>
                                 </div>
                         </div>
