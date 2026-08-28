@@ -296,6 +296,10 @@ export async function POST(request: NextRequest) {
         quantidadeAdubo: body.quantidadeAdubo || null,
         tipoCorretivo: body.tipoCorretivo || null,
         quantidadeCorretivo: body.quantidadeCorretivo || null,
+        // Só Gestor pode informar a área feita no dia (checado no
+        // servidor também, não só escondido na tela) — outro perfil que
+        // mandar esse campo no body é ignorado.
+        areaHectares: session.user?.role === 'GESTOR' && body.areaHectares ? parseFloat(body.areaHectares) : null,
         maquinaId: body.maquinaId || null,
         horimetroInicial: body.horimetroInicial || null,
         horimetroFinal: body.horimetroFinal || null,

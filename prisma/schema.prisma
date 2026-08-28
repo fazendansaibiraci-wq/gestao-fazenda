@@ -541,6 +541,11 @@ model RegistroAtividade {
   quantidadeAdubo     Float?
   tipoCorretivo       String?
   quantidadeCorretivo Float?
+  // Área feita naquele dia, em hectares — informativo, preenchido só
+  // pelo Gestor (opcional). Independente da área total do talhão
+  // (Talhao.area) — esse campo é o quanto foi de fato trabalhado
+  // naquele registro específico.
+  areaHectares        Float?
 
   maquina             Maquina? @relation(fields: [maquinaId], references: [id], onDelete: SetNull)
   maquinaId           String?

@@ -260,6 +260,13 @@ export async function PUT(
         quantidadeAdubo: body.quantidadeAdubo ?? null,
         tipoCorretivo: body.tipoCorretivo ?? null,
         quantidadeCorretivo: body.quantidadeCorretivo ?? null,
+        // Só Gestor pode alterar a área feita no dia (checado no servidor
+        // também). Quem não é Gestor edita o registro normalmente sem
+        // mexer nesse campo — o valor que já estava salvo é preservado
+        // (`undefined` faz o Prisma não tocar no campo).
+        areaHectares: session.user?.role === 'GESTOR'
+          ? (body.areaHectares ? parseFloat(body.areaHectares) : null)
+          : undefined,
         maquinaId: body.maquinaId || null,
         horimetroInicial: body.horimetroInicial ?? null,
         horimetroFinal: body.horimetroFinal ?? null,
