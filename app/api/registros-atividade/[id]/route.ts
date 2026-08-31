@@ -189,11 +189,7 @@ export async function PUT(
       const horasBrutas = (saida - entrada) / 60
       const isAjusteHorimetroCalc = body.isAjusteHorimetro !== undefined ? body.isAjusteHorimetro : registro.isAjusteHorimetro
       if (!body.isFalta && !isAjusteHorimetroCalc) {
-        if (!estaNaSafra) {
-          horasCalculadas = Math.max(0, horasBrutas - 1)
-        } else {
-          horasCalculadas = body.passouDiretoAlmoco ? horasBrutas : Math.max(0, horasBrutas - 1)
-        }
+        horasCalculadas = body.passouDiretoAlmoco ? horasBrutas : Math.max(0, horasBrutas - 1)
       }
       ehHoraExtra = horasCalculadas !== null && horasCalculadas > cargaHorariaDia
     }

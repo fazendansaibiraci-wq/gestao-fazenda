@@ -218,20 +218,18 @@ export async function POST(request: NextRequest) {
       horasBrutas = (saida - entrada) / 60
     }
 
-    // Desconto de almoço
+    // Desconto de almoço — vale tanto na Safra quanto na Entressafra;
+    // "passou direto no almoço" evita o desconto de 1h e conta essa hora
+    // como extra, independente do regime do dia.
     let horasCalculadas = horasBrutas
     let horaAlmocoComoExtra = false
 
     if (horasBrutas !== null && !body.isFalta && !body.isAjusteHorimetro) {
-      if (!estaNaSafra) {
-        horasCalculadas = Math.max(0, horasBrutas - 1)
+      if (body.passouDiretoAlmoco) {
+        horasCalculadas = horasBrutas
+        horaAlmocoComoExtra = true
       } else {
-        if (body.passouDiretoAlmoco) {
-          horasCalculadas = horasBrutas
-          horaAlmocoComoExtra = true
-        } else {
-          horasCalculadas = Math.max(0, horasBrutas - 1)
-        }
+        horasCalculadas = Math.max(0, horasBrutas - 1)
       }
     }
 

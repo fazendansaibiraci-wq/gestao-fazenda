@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 import { TIPO_ATIVIDADE_AJUSTE_HORIMETRO, NAO_IDENTIFICADO_EMAIL } from '@/lib/ajusteHorimetro'
+import { obterRegimeNaData, type PeriodoRegimeSalarialSimples } from '@/lib/regimeSalarialClient'
 
 interface RegistroAtividadeFormProps {
   id?: string
@@ -28,7 +29,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const [maquinas, setMaquinas] = useState([])
   const [implementos, setImplementos] = useState([])
   const [funcionarios, setFuncionarios] = useState([])
-  const [estaNaSafra, setEstaNaSafra] = useState(false)
+  const [periodosRegime, setPeriodosRegime] = useState<PeriodoRegimeSalarialSimples[]>([])
   const [config, setConfig] = useState<any>(null)
   const [produtos, setProdutos] = useState([])
   const [tiposAtividade, setTiposAtividade] = useState<{id: number, nome: string}[]>([])
@@ -161,28 +162,25 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
 
   useEffect(() => { loadData() }, [])
 
-  useEffect(() => {
-    // Fonte da verdade: Safra ATIVA (já carregada em `safras`), não mais
-    // ConfiguracaoGlobal.inicioSafra/fimSafra (campo duplicado, mantido no
-    // schema mas não é mais lido aqui).
-    const safraAtiva = (safras as any[]).find((s) => s.status === 'ATIVA')
-    if (safraAtiva?.dataInicio && form.data) {
-      const d = new Date(form.data)
-      setEstaNaSafra(
-        d >= new Date(safraAtiva.dataInicio) &&
-        (!safraAtiva.dataFim || d <= new Date(safraAtiva.dataFim))
-      )
-    } else {
-      setEstaNaSafra(false)
-    }
-  }, [form.data, safras])
+  // Regime salarial (Safra/Entressafra) do dia selecionado no formulário.
+  // Fonte da verdade: PeriodoRegimeSalarial (Configurações → Safra/
+  // Entressafra) — a MESMA usada no backend (app/api/registros-atividade)
+  // pra decidir jornada, salário e desconto de almoço. Não confundir com
+  // `safras` acima, que é o cadastro de Safra AGRÍCOLA (ex: "Safra 25/26",
+  // pro dropdown de talhão/colheita) — outro conceito, com seu próprio
+  // período, sem relação com o regime salarial do dia.
+  const regimeDoDia = useMemo(() => {
+    if (!form.data || periodosRegime.length === 0) return null
+    return obterRegimeNaData(new Date(form.data + 'T12:00:00'), periodosRegime)
+  }, [form.data, periodosRegime])
 
   const loadData = async () => {
     try {
-      const [r1,r2,r3,r4,r5,r6,r7,r8] = await Promise.all([
+      const [r1,r2,r3,r4,r5,r6,r7,r8,r9] = await Promise.all([
         fetch('/api/safras'), fetch('/api/talhoes'), fetch('/api/maquinas'),
         fetch('/api/implementos'), fetch('/api/funcionarios'),
         fetch('/api/configuracoes'), fetch('/api/tipos-atividade?ativo=true'), fetch('/api/produtos'),
+        fetch('/api/periodos-regime-salarial'),
       ])
       if (r1.ok) setSafras((await r1.json()).data)
       if (r2.ok) setTalhoes((await r2.json()).data)
@@ -192,6 +190,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
       if (r6.ok) setConfig((await r6.json()).data)
       if (r7.ok) setTiposAtividade(await r7.json())
       if (r8.ok) setProdutos((await r8.json()).data)
+      if (r9.ok) setPeriodosRegime((await r9.json()).data)
     } catch (err) { console.error(err) }
   }
 
@@ -324,7 +323,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         quantidadeCorretivo: form.quantidadeCorretivo ? parseFloat(form.quantidadeCorretivo) : null,
         areaHectares: form.areaHectares ? parseFloat(form.areaHectares) : null,
         horimetroInicial, horimetroFinal, horasMaquina,
-        passouDiretoAlmoco: estaNaSafra ? form.passouDiretoAlmoco : false,
+        passouDiretoAlmoco: regimeDoDia ? form.passouDiretoAlmoco : false,
         maquinasAdicionais: maquinasAdicionais.filter(m => m.maquinaId).map(m => ({
           maquinaId: m.maquinaId,
           horimetroInicial: parseFloat(m.horimetroInicial),
@@ -369,7 +368,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     if (!funcionarioReferencia) return null
 
     const horasBrutas = calcularHorasBrutas(form.horaEntrada, form.horaSaida)
-    const horasCalculadas = estaNaSafra && form.passouDiretoAlmoco
+    const horasCalculadas = form.passouDiretoAlmoco
       ? horasBrutas
       : Math.max(0, horasBrutas - 1)
 
@@ -379,7 +378,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     const horasDevidas = horasCalculadas < cargaDia ? cargaDia - horasCalculadas : 0
 
     return { horasCalculadas, cargaDia, horasExtras, horasDevidas }
-  }, [form.data, form.horaEntrada, form.horaSaida, form.passouDiretoAlmoco, form.funcionarioId, funcionarios, config, estaNaSafra, session])
+  }, [form.data, form.horaEntrada, form.horaSaida, form.passouDiretoAlmoco, form.funcionarioId, funcionarios, config, session])
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
       {error && <div ref={erroRef} className="p-4 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600 text-sm">{error}</p></div>}
@@ -572,7 +571,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   <input type="time" id="horaSaida" name="horaSaida" value={form.horaSaida} onChange={handleChange} required disabled={loading} />
                 </div>
               </div>
-              {estaNaSafra && (
+              {regimeDoDia && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <div style={{display:'flex', flexDirection:'row', alignItems:'center', gap:'12px', width:'100%'}}>
                     <input type="checkbox" id="passouDiretoAlmoco" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />

@@ -1,37 +1,17 @@
 import { prisma } from './prisma'
+import type { PeriodoRegimeSalarialSimples } from './regimeSalarialClient'
 
 // Compara uma data (dia) contra os períodos de Safra/Entressafra
 // cadastrados em PeriodoRegimeSalarial (ver comentário no schema.prisma)
 // e devolve o tipo do período em que ela cai — ou null se nenhum período
 // cobre esse dia.
 //
-// Comparação é por DIA (zera horas/minutos/segundos dos dois lados), pra
-// não depender de qual horário exato cada data carrega internamente.
-
-export interface PeriodoRegimeSalarialSimples {
-  tipo: 'SAFRA' | 'ENTRESSAFRA'
-  dataInicio: Date
-  dataFim: Date
-}
-
-function inicioDoDia(data: Date): number {
-  const d = new Date(data)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
-}
-
-export function obterRegimeNaData(
-  data: Date,
-  periodos: PeriodoRegimeSalarialSimples[]
-): 'SAFRA' | 'ENTRESSAFRA' | null {
-  const alvo = inicioDoDia(data)
-  for (const periodo of periodos) {
-    if (alvo >= inicioDoDia(periodo.dataInicio) && alvo <= inicioDoDia(periodo.dataFim)) {
-      return periodo.tipo
-    }
-  }
-  return null
-}
+// A função de comparação em si (obterRegimeNaData) mora em
+// regimeSalarialClient.ts (sem import de prisma) pra poder ser reusada
+// também no frontend — aqui só reexportamos, pra manter uma única
+// implementação servindo servidor e cliente.
+export type { PeriodoRegimeSalarialSimples }
+export { obterRegimeNaData } from './regimeSalarialClient'
 
 // Busca todos os períodos cadastrados (usado pelas rotas que precisam
 // resolver o regime de uma ou mais datas). Sem cache — o volume de
