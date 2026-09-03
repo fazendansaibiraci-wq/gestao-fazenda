@@ -64,6 +64,7 @@ export function Sidebar() {
     { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR|GERENTE' },
     { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
     { label: 'Locais', href: '/modules/locais', icon: MapPin, excludeRoles: 'FUNCIONARIO' },
+    { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
   ].filter(item => show(item.role, item.excludeRoles))
 
   const configuracoesItem = { label: 'Configurações/Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' }
@@ -76,7 +77,6 @@ export function Sidebar() {
   const operacionalItems = [
     { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Registro de Atividades', href: '/modules/atividades', icon: ClipboardList, excludeRoles: 'AGRONOMO' },
-    { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
     { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Turmas', href: '/modules/turmas', icon: UserPlus, role: 'GESTOR|GERENTE' },
     { label: 'Aplicação de Insumos', href: '/modules/aplicacao-insumos', icon: Droplet, role: 'GESTOR|GERENTE' },
