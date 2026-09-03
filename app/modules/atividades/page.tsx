@@ -34,6 +34,7 @@ interface Atividade {
   horimetroInicial?: number | null
   horimetroFinal?: number | null
   implementoUtilizado?: string | null
+  areaHectares?: number | null
   totalBombas?: number | null
   tipoAdubo?: string | null
   quantidadeAdubo?: number | null
@@ -105,6 +106,10 @@ export default function AtividadesPage() {
 
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
+  const isGestorEstrito = userRole === 'GESTOR'
+  const [areaEditando, setAreaEditando] = useState<Record<string, string>>({})
+  const [areaSalvando, setAreaSalvando] = useState<string | null>(null)
+  const [areaErro, setAreaErro] = useState<Record<string, string>>({})
   const userId = (session?.user as any)?.id
 
   useEffect(() => {
@@ -355,6 +360,31 @@ export default function AtividadesPage() {
       if (res.ok) await load()
     } catch {
       alert('Erro ao remover atestado')
+    }
+  }
+
+  const handleSalvarArea = async (id: string) => {
+    const valor = areaEditando[id] ?? ''
+    setAreaSalvando(id)
+    setAreaErro((prev) => ({ ...prev, [id]: '' }))
+    try {
+      const res = await fetch(`/api/registros-atividade/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ areaHectares: valor }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar')
+      setAtividades((prev) => prev.map((a) => (a.id === id ? { ...a, areaHectares: data.data.areaHectares } : a)))
+      setAreaEditando((prev) => {
+        const copia = { ...prev }
+        delete copia[id]
+        return copia
+      })
+    } catch (err) {
+      setAreaErro((prev) => ({ ...prev, [id]: err instanceof Error ? err.message : 'Erro ao salvar' }))
+    } finally {
+      setAreaSalvando(null)
     }
   }
 
@@ -808,6 +838,32 @@ export default function AtividadesPage() {
                                 <div>
                                   <span className="block text-gray-400">Implemento</span>
                                   <span className="font-medium text-gray-700">{a.implementoUtilizado}</span>
+                                </div>
+                              )}
+                              {isGestorEstrito && (
+                                <div>
+                                  <span className="block text-gray-400">Área feita no dia (ha)</span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      placeholder="Opcional"
+                                      className="w-20 !text-xs !py-1 !px-1.5"
+                                      value={areaEditando[a.id] ?? (a.areaHectares != null ? String(a.areaHectares) : '')}
+                                      onChange={(e) => setAreaEditando((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                                      disabled={areaSalvando === a.id}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSalvarArea(a.id)}
+                                      disabled={areaSalvando === a.id}
+                                      className="text-xs font-medium text-green-700 hover:text-green-800 disabled:opacity-50"
+                                    >
+                                      {areaSalvando === a.id ? 'Salvando…' : 'Salvar'}
+                                    </button>
+                                  </div>
+                                  {areaErro[a.id] && <span className="block text-red-600 text-xs mt-0.5">{areaErro[a.id]}</span>}
                                 </div>
                               )}
                               {a.totalBombas != null && (

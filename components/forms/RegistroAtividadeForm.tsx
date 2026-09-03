@@ -36,7 +36,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   const userRole = (session?.user as any)?.role || ''
   const podeEditarHorimetroInicial = userRole === 'GESTOR' || userRole === 'GERENTE'
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
-  const isGestorEstrito = userRole === 'GESTOR'
   const [atestadoFile, setAtestadoFile] = useState<File | null>(null)
   const [atestadoUploading, setAtestadoUploading] = useState(false)
   const [atestadoError, setAtestadoError] = useState('')
@@ -544,23 +543,6 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   {tiposAtividade.map((t) => <option key={t.id} value={t.nome}>{t.nome}</option>)}
                 </select>
               </div>
-              {isGestorEstrito && (
-                <div className="form-group">
-                  <label htmlFor="areaHectares">Área feita no dia (ha)</label>
-                  <input
-                    type="number"
-                    id="areaHectares"
-                    name="areaHectares"
-                    value={form.areaHectares}
-                    onChange={handleChange}
-                    disabled={loading}
-                    step="0.01"
-                    min="0"
-                    placeholder="Opcional"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Visível só pra Gestor. Deixe em branco se não for informar.</p>
-                </div>
-              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label htmlFor="horaEntrada">Hora Entrada *</label>

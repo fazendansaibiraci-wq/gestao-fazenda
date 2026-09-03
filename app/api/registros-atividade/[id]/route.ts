@@ -336,6 +336,51 @@ export async function PUT(
   }
 }
 
+// Edição isolada da "Área feita no dia" — separado do PUT genérico de
+// propósito porque o PUT acima espera receber o registro inteiro de volta
+// (vários campos usam `?? null`, então mandar só areaHectares nele
+// apagaria horário, máquina, observação etc. sem querer). Este PATCH toca
+// só nesse campo. Mesma regra de permissão do campo original no
+// formulário: só Gestor.
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    if (session.user?.role !== 'GESTOR') {
+      return NextResponse.json({ error: 'Apenas o Gestor pode editar a área feita no dia' }, { status: 403 })
+    }
+
+    const registro = await prisma.registroAtividade.findUnique({ where: { id: params.id } })
+    if (!registro) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
+
+    const body = await request.json()
+    const areaHectares =
+      body.areaHectares === '' || body.areaHectares === null || body.areaHectares === undefined
+        ? null
+        : parseFloat(body.areaHectares)
+
+    if (areaHectares !== null && (!Number.isFinite(areaHectares) || areaHectares < 0)) {
+      return NextResponse.json({ error: 'Área inválida' }, { status: 400 })
+    }
+
+    const updated = await prisma.registroAtividade.update({
+      where: { id: params.id },
+      data: { areaHectares },
+      select: { id: true, areaHectares: true },
+    })
+
+    return NextResponse.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('PATCH /api/registros-atividade/[id]:', error instanceof Error ? error.message : error)
+    console.error(error instanceof Error ? error.stack : 'Sem stack disponível')
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
