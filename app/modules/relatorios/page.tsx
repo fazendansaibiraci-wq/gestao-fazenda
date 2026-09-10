@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3, Package, ChevronDown, Wrench } from 'lucide-react'
+import { DollarSign, ClipboardList, TrendingUp, Filter, FileSpreadsheet, FileText, Fuel, AlertCircle, BarChart3, Package, ChevronDown, Wrench, X } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -25,6 +25,8 @@ export default function RelatoriosPage() {
   const [talhoes, setTalhoes] = useState<any[]>([])
   const [safras, setSafras] = useState<any[]>([])
   const [tiposAtividade, setTiposAtividade] = useState<{ id: string; nome: string }[]>([])
+  const [funcionarios, setFuncionarios] = useState<{ id: string; name: string }[]>([])
+  const [maquinas, setMaquinas] = useState<{ id: string; nome: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [exportando, setExportando] = useState(false)
   const [abastecimentos, setAbastecimentos] = useState<any[]>([])
@@ -34,16 +36,37 @@ export default function RelatoriosPage() {
     movimentacoes: { data: string; tipo: 'entrada' | 'saida' | 'ajuste'; produto: string; unidade: string; quantidade: number; talhao: string | null; safra: string | null; registradoPor: string | null; observacao: string | null; local: string }[]
   }>({ resumoPorProduto: [], movimentacoes: [] })
 
-  const [filtros, setFiltros] = useState({
-    safraId: '',
-    talhaoId: '',
-    dataInicio: '',
-    dataFim: '',
-    tipoAtividade: '',
+  // Cada relatório tem seu próprio conjunto de filtros, configurado numa
+  // telinha (modal) que abre ao clicar no relatório — igual ao fluxo do
+  // Ideagri. Nem todo campo se aplica a todo relatório (ver CAMPOS_FILTRO
+  // logo abaixo); os campos que não aparecem na modal de um relatório ficam
+  // sempre vazios pra ele.
+  type FiltrosRelatorio = {
+    safraId: string
+    talhaoId: string
+    tipoAtividade: string
+    funcionarioId: string
+    maquinaId: string
+    dataInicio: string
+    dataFim: string
+  }
+  const FILTROS_VAZIOS: FiltrosRelatorio = {
+    safraId: '', talhaoId: '', tipoAtividade: '', funcionarioId: '', maquinaId: '', dataInicio: '', dataFim: '',
+  }
+  const [filtrosPorRelatorio, setFiltrosPorRelatorio] = useState<Record<string, FiltrosRelatorio>>({
+    historico: { ...FILTROS_VAZIOS },
+    operacional: { ...FILTROS_VAZIOS },
+    custos: { ...FILTROS_VAZIOS },
+    combustivel: { ...FILTROS_VAZIOS },
+    'comparativo-hh-hm': { ...FILTROS_VAZIOS },
+    estoque: { ...FILTROS_VAZIOS },
   })
+  // Modal de filtro: id do relatório sendo configurado (null = fechada) e os
+  // valores em edição (só viram os filtros de verdade do relatório quando o
+  // usuário clica em "Filtrar" — Cancelar descarta sem aplicar).
+  const [modalAberta, setModalAberta] = useState<string | null>(null)
+  const [filtrosTemp, setFiltrosTemp] = useState<FiltrosRelatorio>(FILTROS_VAZIOS)
 
-  const [filtroDataInicioComb, setFiltroDataInicioComb] = useState('')
-  const [filtroDataFimComb, setFiltroDataFimComb] = useState('')
   const [maquinaExpandidaCombustivel, setMaquinaExpandidaCombustivel] = useState<string | null>(null)
 
   useEffect(() => {
@@ -53,18 +76,22 @@ export default function RelatoriosPage() {
   const loadDados = async () => {
     try {
       setLoading(true)
-      const [regRes, talRes, safRes, tipRes, abaRes] = await Promise.all([
+      const [regRes, talRes, safRes, tipRes, abaRes, funcRes, maqRes] = await Promise.all([
         fetch('/api/registros-atividade'),
         fetch('/api/talhoes'),
         fetch('/api/safras'),
         fetch('/api/tipos-atividade?ativo=true'),
         fetch('/api/abastecimentos'),
+        fetch('/api/funcionarios'),
+        fetch('/api/maquinas'),
       ])
       if (regRes.ok) setRegistros((await regRes.json()).data || [])
       if (talRes.ok) setTalhoes((await talRes.json()).data || [])
       if (safRes.ok) setSafras((await safRes.json()).data || [])
       if (tipRes.ok) setTiposAtividade(await tipRes.json())
       if (abaRes.ok) setAbastecimentos((await abaRes.json()).data || [])
+      if (funcRes.ok) setFuncionarios((await funcRes.json()).data || [])
+      if (maqRes.ok) setMaquinas((await maqRes.json()).data || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -74,13 +101,16 @@ export default function RelatoriosPage() {
 
   // Custo HH/ha e Custo HM/ha por talhão: calculados inteiramente no servidor
   // (envolve salário individual de cada funcionário), só os totais agregados
-  // por talhão chegam aqui. Buscado sempre que a aba Custos está ativa ou
-  // quando os filtros de data mudam.
-  const loadCustoHHHM = async () => {
+  // por talhão chegam aqui. Recebe os filtros da modal do relatório de Custos
+  // (funcionário/máquina/data — não tem safra/talhão/tipo, pois a tabela já
+  // agrupa por talhão e por safra).
+  const loadCustoHHHM = async (f: FiltrosRelatorio) => {
     try {
       const params = new URLSearchParams()
-      if (filtros.dataInicio) params.set('dataInicio', filtros.dataInicio)
-      if (filtros.dataFim) params.set('dataFim', filtros.dataFim)
+      if (f.dataInicio) params.set('dataInicio', f.dataInicio)
+      if (f.dataFim) params.set('dataFim', f.dataFim)
+      if (f.funcionarioId) params.set('funcionarioId', f.funcionarioId)
+      if (f.maquinaId) params.set('maquinaId', f.maquinaId)
       const res = await fetch(`/api/relatorios/custo-hh-hm?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
@@ -91,11 +121,11 @@ export default function RelatoriosPage() {
     }
   }
 
-  const loadEstoqueRelatorio = async () => {
+  const loadEstoqueRelatorio = async (f: FiltrosRelatorio) => {
     try {
       const params = new URLSearchParams()
-      if (filtros.dataInicio) params.set('dataInicio', filtros.dataInicio)
-      if (filtros.dataFim) params.set('dataFim', filtros.dataFim)
+      if (f.dataInicio) params.set('dataInicio', f.dataInicio)
+      if (f.dataFim) params.set('dataFim', f.dataFim)
       const res = await fetch(`/api/relatorios/estoque?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
@@ -106,33 +136,54 @@ export default function RelatoriosPage() {
     }
   }
 
-  useEffect(() => {
-    if (aba === 'custos') {
-      loadCustoHHHM()
-    }
-    if (aba === 'estoque') {
-      loadEstoqueRelatorio()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aba, filtros.dataInicio, filtros.dataFim])
+  // Abre a modal de filtro de um relatório, pré-preenchida com os filtros já
+  // aplicados a ele (se houver).
+  const abrirModalFiltro = (id: string) => {
+    setFiltrosTemp({ ...filtrosPorRelatorio[id] })
+    setModalAberta(id)
+  }
+
+  // Aplica os filtros em edição na modal: vira o filtro de verdade do
+  // relatório, busca dados server-side se for Custos/Estoque, fecha a modal
+  // e expande o relatório mostrando o resultado.
+  const aplicarFiltro = () => {
+    if (!modalAberta) return
+    const id = modalAberta
+    setFiltrosPorRelatorio(prev => ({ ...prev, [id]: filtrosTemp }))
+    if (id === 'custos') loadCustoHHHM(filtrosTemp)
+    if (id === 'estoque') loadEstoqueRelatorio(filtrosTemp)
+    setAba(id)
+    setModalAberta(null)
+  }
 
   const getCustoHHHMPorTalhao = (talhaoId: string) => custoHHHM.find(c => c.talhaoId === talhaoId)
 
   const formatarCustoPorHa = (valor: number | null | undefined) =>
     valor != null ? `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/ha` : '—'
 
-  const registrosFiltrados = registros.filter(r => {
-    if (filtros.safraId && r.safraId !== filtros.safraId) return false
-    if (filtros.talhaoId && r.talhaoId !== filtros.talhaoId) return false
-    if (filtros.tipoAtividade && r.tipoAtividade !== filtros.tipoAtividade) return false
-    if (filtros.dataInicio && new Date(r.data) < new Date(filtros.dataInicio)) return false
-    if (filtros.dataFim && new Date(r.data) > new Date(filtros.dataFim)) return false
+  // Filtra os registros de atividade pelos filtros de UM relatório
+  // específico — cada relatório (Histórico, Indicadores, Custos,
+  // Comparativo HH/HM) tem seus próprios filtros aplicados, independentes
+  // dos outros.
+  const filtrarRegistros = (f: FiltrosRelatorio) => registros.filter(r => {
+    if (f.safraId && r.safraId !== f.safraId) return false
+    if (f.talhaoId && r.talhaoId !== f.talhaoId) return false
+    if (f.tipoAtividade && r.tipoAtividade !== f.tipoAtividade) return false
+    if (f.funcionarioId && r.funcionarioId !== f.funcionarioId) return false
+    if (f.maquinaId && r.maquinaId !== f.maquinaId) return false
+    if (f.dataInicio && new Date(r.data) < new Date(f.dataInicio)) return false
+    if (f.dataFim && new Date(r.data) > new Date(f.dataFim)) return false
     return true
   })
 
-  const agruparPor = (campo: string) => {
+  const registrosHistorico = filtrarRegistros(filtrosPorRelatorio.historico)
+  const registrosOperacional = filtrarRegistros(filtrosPorRelatorio.operacional)
+  const registrosCustos = filtrarRegistros(filtrosPorRelatorio.custos)
+  const registrosComparativo = filtrarRegistros(filtrosPorRelatorio['comparativo-hh-hm'])
+
+  const agruparPor = (regs: any[], campo: string) => {
     const grupos: Record<string, any[]> = {}
-    registrosFiltrados.forEach(r => {
+    regs.forEach(r => {
       const chave = r[campo] || 'Não informado'
       if (!grupos[chave]) grupos[chave] = []
       grupos[chave].push(r)
@@ -156,7 +207,9 @@ export default function RelatoriosPage() {
   // ─── Comparativo de combustível por máquina ──────────────────────────────
 
   const getResumoCombustivelPorMaquina = () => {
-    return calcularCombustivelPorMaquina(abastecimentos, registros, filtroDataInicioComb, filtroDataFimComb)
+    const f = filtrosPorRelatorio.combustivel
+    const resumo = calcularCombustivelPorMaquina(abastecimentos, registros, f.dataInicio, f.dataFim)
+    return f.maquinaId ? resumo.filter(m => m.maquinaId === f.maquinaId) : resumo
   }
 
   // ─── "Horas Não Identificadas": reconciliação de horímetro por máquina ───
@@ -179,8 +232,8 @@ export default function RelatoriosPage() {
     const abastecimentosMaquina = abastecimentos
       .filter((a: any) => a.maquinaId === maquinaId)
       .filter((a: any) => {
-        if (filtroDataInicioComb && new Date(a.data) < new Date(filtroDataInicioComb)) return false
-        if (filtroDataFimComb && new Date(a.data) > new Date(filtroDataFimComb)) return false
+        if (filtrosPorRelatorio.combustivel.dataInicio && new Date(a.data) < new Date(filtrosPorRelatorio.combustivel.dataInicio)) return false
+        if (filtrosPorRelatorio.combustivel.dataFim && new Date(a.data) > new Date(filtrosPorRelatorio.combustivel.dataFim)) return false
         return true
       })
       .sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime())
@@ -285,8 +338,8 @@ export default function RelatoriosPage() {
   // Reaproveita o mesmo agrupamento por operador usado na tabela "Desempenho
   // por Operador" (aba Indicadores Operacionais), evitando duplicar a lógica.
 
-  const agruparPorOperador = () => {
-    return registrosFiltrados.reduce((acc: Record<string, any[]>, r) => {
+  const agruparPorOperador = (regs: any[]) => {
+    return regs.reduce((acc: Record<string, any[]>, r) => {
       const nome = r.funcionario?.name || 'Desconhecido'
       if (!acc[nome]) acc[nome] = []
       acc[nome].push(r)
@@ -294,11 +347,11 @@ export default function RelatoriosPage() {
     }, {} as Record<string, any[]>)
   }
 
-  const getDadosComparativoHHHM = () => {
-    return Object.entries(agruparPorOperador())
-      .map(([nome, regs]) => {
-        const horasHomem = parseFloat(calcularHoras(regs))
-        const horasMaquina = parseFloat(calcularHorasMaquina(regs))
+  const getDadosComparativoHHHM = (regs: any[]) => {
+    return Object.entries(agruparPorOperador(regs))
+      .map(([nome, grupo]) => {
+        const horasHomem = parseFloat(calcularHoras(grupo))
+        const horasMaquina = parseFloat(calcularHorasMaquina(grupo))
         return { operador: nome, horasHomem, horasMaquina }
       })
       .sort((a, b) => b.horasHomem - a.horasHomem)
@@ -313,10 +366,28 @@ export default function RelatoriosPage() {
     { id: 'estoque', label: 'Estoque', icon: Package },
   ]
 
+  // Quais campos aparecem na modal de filtro de cada relatório — nem todo
+  // campo se aplica a todo relatório (Combustível não tem funcionário
+  // vinculado ao abastecimento; Custos e Comparativo HH/HM não fazem
+  // sentido filtrar por talhão/safra pois já agrupam por eles; Estoque não
+  // tem máquina nem funcionário).
+  const CAMPOS_FILTRO: Record<string, (keyof FiltrosRelatorio)[]> = {
+    historico: ['safraId', 'talhaoId', 'tipoAtividade', 'funcionarioId', 'maquinaId', 'dataInicio', 'dataFim'],
+    operacional: ['safraId', 'talhaoId', 'tipoAtividade', 'funcionarioId', 'maquinaId', 'dataInicio', 'dataFim'],
+    custos: ['funcionarioId', 'maquinaId', 'dataInicio', 'dataFim'],
+    combustivel: ['maquinaId', 'dataInicio', 'dataFim'],
+    'comparativo-hh-hm': ['safraId', 'talhaoId', 'tipoAtividade', 'funcionarioId', 'maquinaId', 'dataInicio', 'dataFim'],
+    estoque: ['dataInicio', 'dataFim'],
+  }
+  const LABELS_FILTRO: Record<keyof FiltrosRelatorio, string> = {
+    safraId: 'Safra', talhaoId: 'Talhão', tipoAtividade: 'Tipo de Atividade',
+    funcionarioId: 'Funcionário', maquinaId: 'Máquina', dataInicio: 'Data Início', dataFim: 'Data Fim',
+  }
+
   const getNomeAba = () => abas.find(a => a.id === aba)?.label || aba
 
   const resumoCombustivel = getResumoCombustivelPorMaquina()
-  const dadosComparativoHHHM = getDadosComparativoHHHM()
+  const dadosComparativoHHHM = getDadosComparativoHHHM(registrosComparativo)
 
   // ─── Dados por aba para exportação ───────────────────────────────────────
 
@@ -328,7 +399,7 @@ export default function RelatoriosPage() {
             {
               nome: 'Histórico de Atividades',
               colunas: ['Data', 'Talhão', 'Safra', 'Atividade', 'Responsável', 'Máquina', 'Hora Máquina', 'Bombas', 'Horas Homem', 'Área (ha)', 'Implemento'],
-              linhas: registrosFiltrados.map(r => [
+              linhas: registrosHistorico.map(r => [
                 new Date(r.data).toLocaleDateString('pt-BR'),
                 r.talhao?.nome || '-',
                 r.safra?.nome || '-',
@@ -350,7 +421,7 @@ export default function RelatoriosPage() {
             {
               nome: 'Desempenho por Operador',
               colunas: ['Operador', 'Atividades', 'Horas Homem', 'Hora Máquina', 'Hora Extra', 'Faltas'],
-              linhas: Object.entries(agruparPorOperador()).map(([nome, regs]: any) => [
+              linhas: Object.entries(agruparPorOperador(registrosOperacional)).map(([nome, regs]: any) => [
                 nome,
                 regs.length,
                 `${calcularHoras(regs)}h`,
@@ -363,7 +434,7 @@ export default function RelatoriosPage() {
               nome: 'Desempenho por Equipamento',
               colunas: ['Máquina', 'Usos', 'Hora Máquina'],
               linhas: Object.entries(
-                registrosFiltrados
+                registrosOperacional
                   .filter((r: any) => r.maquinaId)
                   .reduce((acc: any, r: any) => {
                     const nome = r.maquina?.nome || r.maquinaId
@@ -383,7 +454,7 @@ export default function RelatoriosPage() {
             {
               nome: 'Custos por Talhão',
               colunas: ['Talhão', 'Atividades', 'Horas Homem', 'Horas Máquina', 'Custo HH/ha', 'Custo HM/ha'],
-              linhas: Object.entries(agruparPor('talhaoId')).map(([id, regs]) => [
+              linhas: Object.entries(agruparPor(registrosCustos, 'talhaoId')).map(([id, regs]) => [
                 getTalhaoNome(id),
                 regs.length,
                 `${calcularHoras(regs)}h`,
@@ -395,7 +466,7 @@ export default function RelatoriosPage() {
             {
               nome: 'Resumo por Safra',
               colunas: ['Safra', 'Total Atividades', 'Horas Homem', 'Horas Máquina'],
-              linhas: Object.entries(agruparPor('safraId')).map(([id, regs]) => [
+              linhas: Object.entries(agruparPor(registrosCustos, 'safraId')).map(([id, regs]) => [
                 getSafraNome(id),
                 regs.length,
                 `${calcularHoras(regs)}h`,
@@ -615,85 +686,94 @@ export default function RelatoriosPage() {
         <p className="text-gray-600 mt-1">Análises e indicadores da fazenda</p>
       </div>
 
-      {/* Filtros */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-primary">Filtros</h3>
-        </div>
-        <div className={`grid grid-cols-1 gap-4 ${aba === 'combustivel' ? 'md:grid-cols-2' : 'md:grid-cols-3 lg:grid-cols-5'}`}>
-          {aba === 'combustivel' ? (
-            <>
-              <div className="form-group">
-                <label>Data Início</label>
-                <input type="date" value={filtroDataInicioComb} onChange={e => setFiltroDataInicioComb(e.target.value)} />
+      {/* Modal de filtro do relatório */}
+      {modalAberta && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setModalAberta(null)}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <h3 className="font-semibold text-primary flex items-center gap-2">
+                <Filter className="w-5 h-5" />
+                Filtrar — {abas.find(a => a.id === modalAberta)?.label}
+              </h3>
+              <button onClick={() => setModalAberta(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {CAMPOS_FILTRO[modalAberta].map(campo => (
+                <div className="form-group" key={campo}>
+                  <label>{LABELS_FILTRO[campo]}</label>
+                  {campo === 'dataInicio' || campo === 'dataFim' ? (
+                    <input
+                      type="date"
+                      value={filtrosTemp[campo]}
+                      onChange={e => setFiltrosTemp(p => ({ ...p, [campo]: e.target.value }))}
+                    />
+                  ) : campo === 'safraId' ? (
+                    <select value={filtrosTemp.safraId} onChange={e => setFiltrosTemp(p => ({ ...p, safraId: e.target.value }))}>
+                      <option value="">Todas</option>
+                      {safras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                    </select>
+                  ) : campo === 'talhaoId' ? (
+                    <select value={filtrosTemp.talhaoId} onChange={e => setFiltrosTemp(p => ({ ...p, talhaoId: e.target.value }))}>
+                      <option value="">Todos</option>
+                      {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                    </select>
+                  ) : campo === 'tipoAtividade' ? (
+                    <select value={filtrosTemp.tipoAtividade} onChange={e => setFiltrosTemp(p => ({ ...p, tipoAtividade: e.target.value }))}>
+                      <option value="">Todos</option>
+                      {tiposAtividade.map(t => <option key={t.id} value={t.nome}>{t.nome}</option>)}
+                    </select>
+                  ) : campo === 'funcionarioId' ? (
+                    <select value={filtrosTemp.funcionarioId} onChange={e => setFiltrosTemp(p => ({ ...p, funcionarioId: e.target.value }))}>
+                      <option value="">Todos</option>
+                      {funcionarios.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                    </select>
+                  ) : campo === 'maquinaId' ? (
+                    <select value={filtrosTemp.maquinaId} onChange={e => setFiltrosTemp(p => ({ ...p, maquinaId: e.target.value }))}>
+                      <option value="">Todas</option>
+                      {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                    </select>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between items-center px-5 py-4 border-t border-gray-200">
+              <button
+                onClick={() => setFiltrosTemp({ ...FILTROS_VAZIOS })}
+                className="btn btn-outline btn-sm"
+              >
+                Limpar Filtros
+              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setModalAberta(null)} className="btn btn-outline btn-sm">
+                  Cancelar
+                </button>
+                <button onClick={aplicarFiltro} className="btn btn-primary btn-sm">
+                  Filtrar
+                </button>
               </div>
-              <div className="form-group">
-                <label>Data Fim</label>
-                <input type="date" value={filtroDataFimComb} onChange={e => setFiltroDataFimComb(e.target.value)} />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="form-group">
-                <label>Safra</label>
-                <select value={filtros.safraId} onChange={e => setFiltros(p => ({ ...p, safraId: e.target.value }))}>
-                  <option value="">Todas</option>
-                  {safras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Talhão</label>
-                <select value={filtros.talhaoId} onChange={e => setFiltros(p => ({ ...p, talhaoId: e.target.value }))}>
-                  <option value="">Todos</option>
-                  {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Tipo de Atividade</label>
-                <select value={filtros.tipoAtividade} onChange={e => setFiltros(p => ({ ...p, tipoAtividade: e.target.value }))}>
-                  <option value="">Todos</option>
-                  {tiposAtividade.map(t => <option key={t.id} value={t.nome}>{t.nome}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Data Início</label>
-                <input type="date" value={filtros.dataInicio} onChange={e => setFiltros(p => ({ ...p, dataInicio: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label>Data Fim</label>
-                <input type="date" value={filtros.dataFim} onChange={e => setFiltros(p => ({ ...p, dataFim: e.target.value }))} />
-              </div>
-            </>
-          )}
-        </div>
-       <div className="flex justify-between items-center mt-2">
-          <p className="text-sm text-gray-500">{registrosFiltrados.length} registros encontrados</p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFiltros({ safraId: '', talhaoId: '', dataInicio: '', dataFim: '', tipoAtividade: '' })}
-              className="btn btn-outline btn-sm"
-            >
-              Limpar Filtros
-            </button>
-            <button
-              onClick={loadDados}
-              className="btn btn-primary btn-sm"
-            >
-              Filtrar
-            </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Acordeão de relatórios */}
       <div className="space-y-3">
         {abas.map(a => {
-          const vazio = a.id === 'combustivel' ? resumoCombustivel.length === 0 : a.id === 'estoque' ? estoqueRelatorio.resumoPorProduto.length === 0 : registrosFiltrados.length === 0
+          const dadosPorRelatorio: Record<string, any[]> = {
+            historico: registrosHistorico,
+            operacional: registrosOperacional,
+            custos: registrosCustos,
+            combustivel: resumoCombustivel,
+            'comparativo-hh-hm': registrosComparativo,
+            estoque: estoqueRelatorio.resumoPorProduto,
+          }
+          const vazio = dadosPorRelatorio[a.id].length === 0
           return (
             <div key={a.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
               <button
-                onClick={() => setAba(aba === a.id ? '' : a.id)}
+                onClick={() => (aba === a.id ? setAba('') : abrirModalFiltro(a.id))}
                 className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
               >
                 <span className="flex items-center gap-2 font-medium text-gray-700">
@@ -706,6 +786,13 @@ export default function RelatoriosPage() {
               {aba === a.id && (
                 <div className="border-t border-gray-200 px-4 py-4 space-y-4">
                   <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => abrirModalFiltro(a.id)}
+                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      <Filter className="w-4 h-4" />
+                      Filtros
+                    </button>
                     <button
                       onClick={exportarExcel}
                       disabled={exportando || vazio}
@@ -734,7 +821,7 @@ export default function RelatoriosPage() {
             <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
               <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Histórico de Atividades</h3>
-                <p className="text-xs text-green-100">{registrosFiltrados.length} registro{registrosFiltrados.length === 1 ? '' : 's'}</p>
+                <p className="text-xs text-green-100">{registrosHistorico.length} registro{registrosHistorico.length === 1 ? '' : 's'}</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -754,7 +841,7 @@ export default function RelatoriosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {registrosFiltrados.map((r, i) => (
+                    {registrosHistorico.map((r, i) => (
                       <tr key={r.id} className={'border-b border-gray-100 last:border-0 transition-colors hover:bg-green-50 ' + (i % 2 === 1 ? 'bg-gray-50' : '')}>
                         <td className="py-2.5 px-4 text-gray-600">{new Date(r.data).toLocaleDateString('pt-BR')}</td>
                         <td className="py-2.5 px-4 font-medium text-gray-800">{r.talhao?.nome || '-'}</td>
@@ -793,7 +880,7 @@ export default function RelatoriosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(agruparPorOperador()).map(([nome, regs]: any) => (
+                    {Object.entries(agruparPorOperador(registrosOperacional)).map(([nome, regs]: any) => (
                       <tr key={nome} className="border-b hover:bg-gray-50">
                         <td className="py-2 px-3 font-medium">{nome}</td>
                         <td className="py-2 px-3">{regs.length}</td>
@@ -818,7 +905,7 @@ export default function RelatoriosPage() {
                   </thead>
                   <tbody>
                     {Object.entries(
-                      registrosFiltrados
+                      registrosOperacional
                         .filter((r: any) => r.maquinaId)
                         .reduce((acc: any, r: any) => {
                           const nome = r.maquina?.nome || r.maquinaId
@@ -862,7 +949,7 @@ export default function RelatoriosPage() {
                   <tbody>
                     {(() => {
                       const gruposAtividadeSemFalta: Record<string, any[]> = {}
-                      Object.entries(agruparPor('talhaoId')).forEach(([talhaoId, regs]) => {
+                      Object.entries(agruparPor(registrosCustos, 'talhaoId')).forEach(([talhaoId, regs]) => {
                         const semFalta = (regs as any[]).filter(r => !r.isFalta)
                         if (semFalta.length > 0) gruposAtividadeSemFalta[talhaoId] = semFalta
                       })
@@ -908,7 +995,7 @@ export default function RelatoriosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(agruparPor('safraId')).map(([safraId, regs]) => (
+                    {Object.entries(agruparPor(registrosCustos, 'safraId')).map(([safraId, regs]) => (
                       <tr key={safraId} className="border-b hover:bg-gray-50">
                         <td className="py-2 px-3 font-medium">{getSafraNome(safraId)}</td>
                         <td className="py-2 px-3">{regs.length}</td>

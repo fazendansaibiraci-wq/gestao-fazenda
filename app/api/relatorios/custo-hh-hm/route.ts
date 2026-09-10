@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const dataInicio = searchParams.get('dataInicio')
     const dataFim = searchParams.get('dataFim')
+    const funcionarioIdFiltro = searchParams.get('funcionarioId')
+    const maquinaIdFiltro = searchParams.get('maquinaId')
 
     const dataFilter: any = {}
     if (dataInicio) dataFilter.gte = new Date(dataInicio)
@@ -29,11 +31,20 @@ export async function GET(request: NextRequest) {
 
     // Registros do período (não-falta), com os dados necessários do
     // funcionário e da máquina envolvidos, e o talhão (nome + área).
+    // Filtro de máquina: casa tanto na máquina principal quanto numa
+    // máquina extra do registro (maquinasAdicionais) — o registro entra se
+    // a máquina filtrada apareceu nele de qualquer forma; a contribuição
+    // de custo/horas abaixo, porém, só soma a PARTE daquela máquina
+    // específica (ver loop de acumulação).
     const registros = await prisma.registroAtividade.findMany({
       where: {
         isFalta: false,
         isAjusteHorimetro: false,
         ...(Object.keys(dataFilter).length > 0 ? { data: dataFilter } : {}),
+        ...(funcionarioIdFiltro ? { funcionarioId: funcionarioIdFiltro } : {}),
+        ...(maquinaIdFiltro
+          ? { OR: [{ maquinaId: maquinaIdFiltro }, { maquinasAdicionais: { some: { maquinaId: maquinaIdFiltro } } }] }
+          : {}),
       },
       select: {
         talhaoId: true,
@@ -214,7 +225,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      if (r.maquinaId) {
+      if (r.maquinaId && (!maquinaIdFiltro || r.maquinaId === maquinaIdFiltro)) {
         const valorHM = valorHMPorMaquina.get(r.maquinaId) || 0
         acumulado.custoHM += (r.horasMaquina || 0) * valorHM
         acumulado.horasHM += r.horasMaquina || 0
@@ -226,6 +237,7 @@ export async function GET(request: NextRequest) {
       // principal.
       for (const m of r.maquinasAdicionais) {
         if (!m.maquinaId) continue
+        if (maquinaIdFiltro && m.maquinaId !== maquinaIdFiltro) continue
         const horas = m.horasMaquina != null
           ? m.horasMaquina
           : (m.horimetroFinal != null && m.horimetroInicial != null ? m.horimetroFinal - m.horimetroInicial : 0)
