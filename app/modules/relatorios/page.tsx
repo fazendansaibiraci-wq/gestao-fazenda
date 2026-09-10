@@ -327,7 +327,7 @@ export default function RelatoriosPage() {
           sheets: [
             {
               nome: 'Histórico de Atividades',
-              colunas: ['Data', 'Talhão', 'Safra', 'Atividade', 'Responsável', 'Máquina', 'Hora Máquina', 'Bombas', 'Horas Homem', 'Implemento'],
+              colunas: ['Data', 'Talhão', 'Safra', 'Atividade', 'Responsável', 'Máquina', 'Hora Máquina', 'Bombas', 'Horas Homem', 'Área (ha)', 'Implemento'],
               linhas: registrosFiltrados.map(r => [
                 new Date(r.data).toLocaleDateString('pt-BR'),
                 r.talhao?.nome || '-',
@@ -338,6 +338,7 @@ export default function RelatoriosPage() {
                 r.horasMaquina ? `${r.horasMaquina.toFixed(1)}h` : '-',
                 r.totalBombas || '-',
                 r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-',
+                r.areaHectares != null ? r.areaHectares.toFixed(2) : '-',
                 r.implementoUtilizado || '-',
               ]),
             },
@@ -748,6 +749,7 @@ export default function RelatoriosPage() {
                       <th className="py-3 px-4 font-semibold text-right">Hora Máquina</th>
                       <th className="py-3 px-4 font-semibold text-right">Bombas</th>
                       <th className="py-3 px-4 font-semibold text-right">Horas Homem</th>
+                      <th className="py-3 px-4 font-semibold text-right">Área (ha)</th>
                       <th className="py-3 px-4 font-semibold">Implemento</th>
                     </tr>
                   </thead>
@@ -765,6 +767,7 @@ export default function RelatoriosPage() {
                         <td className="py-2.5 px-4 text-right text-gray-600">{r.horasMaquina ? `${r.horasMaquina.toFixed(1)}h` : '-'}</td>
                         <td className="py-2.5 px-4 text-right text-gray-600">{r.totalBombas || '-'}</td>
                         <td className="py-2.5 px-4 text-right font-semibold text-green-800">{r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-'}</td>
+                        <td className="py-2.5 px-4 text-right text-gray-600">{r.areaHectares != null ? `${r.areaHectares.toFixed(2)} ha` : '-'}</td>
                         <td className="py-2.5 px-4 text-gray-600">{r.implementoUtilizado || '-'}</td>
                       </tr>
                     ))}
