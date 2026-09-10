@@ -110,6 +110,10 @@ export default function AtividadesPage() {
   const [areaEditando, setAreaEditando] = useState<Record<string, string>>({})
   const [areaSalvando, setAreaSalvando] = useState<string | null>(null)
   const [areaErro, setAreaErro] = useState<Record<string, string>>({})
+  // Controla se o campo Área feita no dia está em modo de edição pra cada
+  // registro — depois de salvo, volta a mostrar só o valor (texto), não o
+  // input aberto. Só entra em edição se ela clicar em "Editar".
+  const [areaEmEdicao, setAreaEmEdicao] = useState<Record<string, boolean>>({})
   const userId = (session?.user as any)?.id
 
   useEffect(() => {
@@ -381,6 +385,7 @@ export default function AtividadesPage() {
         delete copia[id]
         return copia
       })
+      setAreaEmEdicao((prev) => ({ ...prev, [id]: false }))
     } catch (err) {
       setAreaErro((prev) => ({ ...prev, [id]: err instanceof Error ? err.message : 'Erro ao salvar' }))
     } finally {
@@ -843,27 +848,60 @@ export default function AtividadesPage() {
                               {isGestorEstrito && (
                                 <div>
                                   <span className="block text-gray-400">Área feita no dia (ha)</span>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      placeholder="Opcional"
-                                      className="w-20 !text-xs !py-1 !px-1.5"
-                                      value={areaEditando[a.id] ?? (a.areaHectares != null ? String(a.areaHectares) : '')}
-                                      onChange={(e) => setAreaEditando((prev) => ({ ...prev, [a.id]: e.target.value }))}
-                                      disabled={areaSalvando === a.id}
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSalvarArea(a.id)}
-                                      disabled={areaSalvando === a.id}
-                                      className="text-xs font-medium text-green-700 hover:text-green-800 disabled:opacity-50"
-                                    >
-                                      {areaSalvando === a.id ? 'Salvando…' : 'Salvar'}
-                                    </button>
-                                  </div>
-                                  {areaErro[a.id] && <span className="block text-red-600 text-xs mt-0.5">{areaErro[a.id]}</span>}
+                                  {areaEmEdicao[a.id] || a.areaHectares == null ? (
+                                    <>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          placeholder="Opcional"
+                                          className="w-20 !text-xs !py-1 !px-1.5"
+                                          value={areaEditando[a.id] ?? (a.areaHectares != null ? String(a.areaHectares) : '')}
+                                          onChange={(e) => setAreaEditando((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                                          disabled={areaSalvando === a.id}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSalvarArea(a.id)}
+                                          disabled={areaSalvando === a.id}
+                                          className="text-xs font-medium text-green-700 hover:text-green-800 disabled:opacity-50"
+                                        >
+                                          {areaSalvando === a.id ? 'Salvando…' : 'Salvar'}
+                                        </button>
+                                        {a.areaHectares != null && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setAreaEmEdicao((prev) => ({ ...prev, [a.id]: false }))
+                                              setAreaEditando((prev) => {
+                                                const copia = { ...prev }
+                                                delete copia[a.id]
+                                                return copia
+                                              })
+                                              setAreaErro((prev) => ({ ...prev, [a.id]: '' }))
+                                            }}
+                                            disabled={areaSalvando === a.id}
+                                            className="text-xs font-medium text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                                          >
+                                            Cancelar
+                                          </button>
+                                        )}
+                                      </div>
+                                      {areaErro[a.id] && <span className="block text-red-600 text-xs mt-0.5">{areaErro[a.id]}</span>}
+                                    </>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="font-medium text-gray-700">{a.areaHectares.toFixed(2)} ha</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setAreaEmEdicao((prev) => ({ ...prev, [a.id]: true }))}
+                                        className="text-xs font-medium text-green-700 hover:text-green-800"
+                                      >
+                                        Editar
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               {a.totalBombas != null && (
