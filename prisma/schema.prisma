@@ -556,9 +556,10 @@ model RegistroAtividade {
   // Máquinas ADICIONAIS usadas na mesma atividade/dia, além da máquina
   // principal acima — pra quando o funcionário troca de máquina durante
   // o dia (ex: trator A de manhã, trator B à tarde). Cada uma com seu
-  // próprio horímetro. Etapa 1 (27/08/2026): só cadastro — os cálculos de
-  // combustível/custo por hora-máquina/painéis ainda consideram só a
-  // máquina principal, não estas.
+  // próprio horímetro. Etapa 1 (27/08/2026): cadastro. Etapa 2
+  // (10/09/2026): cálculos de combustível (lib/calculoCombustivelPorMaquina.ts)
+  // e custo por hora-máquina (custo-hh-hm) já somam estas também, cada
+  // uma contribuindo pra sua própria máquina/mesmo talhão do registro.
   maquinasAdicionais  RegistroAtividadeMaquina[]
   // "Horas Não Identificadas": registro criado pela tela de reconciliação de
   // Combustível (não pelo funcionário) pra fechar um buraco de horímetro sem

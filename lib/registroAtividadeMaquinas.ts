@@ -4,8 +4,10 @@ import { prisma } from './prisma'
 // model RegistroAtividadeMaquina, schema.prisma) — pra quando o
 // funcionário troca de máquina durante o dia. Etapa 1 (27/08/2026): só
 // cadastro, com a mesma validação de sequência de horímetro que a
-// máquina principal já tinha. Os cálculos de combustível/custo por
-// hora-máquina/painéis ainda NÃO somam essas máquinas extras.
+// máquina principal já tinha. Etapa 2 (10/09/2026): os cálculos de
+// combustível (lib/calculoCombustivelPorMaquina.ts) e custo por
+// hora-máquina (custo-hh-hm) já somam essas máquinas extras também —
+// ver comentários nesses dois arquivos.
 
 export interface MaquinaAdicionalInput {
   maquinaId: string

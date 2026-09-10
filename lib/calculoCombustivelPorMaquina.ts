@@ -8,12 +8,24 @@ interface AbastecimentoParaCalculo {
   maquina?: { nome?: string } | null
 }
 
+interface MaquinaAdicionalParaCalculo {
+  maquinaId?: string | null
+  horasMaquina?: number | null
+  horimetroInicial?: number | null
+  horimetroFinal?: number | null
+}
+
 interface RegistroMaquinaParaCalculo {
   maquinaId?: string | null
   data: Date | string
   horasMaquina?: number | null
   horimetroInicial?: number | null
   horimetroFinal?: number | null
+  // Máquinas extras do mesmo registro (troca de máquina no mesmo dia/
+  // atividade — RegistroAtividadeMaquina). Cada uma entra na conferência
+  // cruzada da SUA PRÓPRIA máquina, não da máquina principal do registro.
+  // Não têm data própria: herdam a data do registro pai pro filtro.
+  maquinasAdicionais?: MaquinaAdicionalParaCalculo[] | null
 }
 
 export interface ResumoCombustivelMaquina {
@@ -49,11 +61,27 @@ export function calcularCombustivelPorMaquina(
     return true
   })
 
-  const registrosMaquinaFiltrados = registros.filter((r: any) => {
-    if (!r.maquinaId) return false
-    if (filtroDataInicio && new Date(r.data) < new Date(filtroDataInicio)) return false
-    if (filtroDataFim && new Date(r.data) > new Date(filtroDataFim)) return false
-    return true
+  const registrosMaquinaFiltrados: MaquinaAdicionalParaCalculo[] = []
+  registros.forEach((r: any) => {
+    if (filtroDataInicio && new Date(r.data) < new Date(filtroDataInicio)) return
+    if (filtroDataFim && new Date(r.data) > new Date(filtroDataFim)) return
+    if (r.maquinaId) {
+      registrosMaquinaFiltrados.push({
+        maquinaId: r.maquinaId,
+        horasMaquina: r.horasMaquina,
+        horimetroInicial: r.horimetroInicial,
+        horimetroFinal: r.horimetroFinal,
+      })
+    }
+    ;(r.maquinasAdicionais || []).forEach((m: any) => {
+      if (!m.maquinaId) return
+      registrosMaquinaFiltrados.push({
+        maquinaId: m.maquinaId,
+        horasMaquina: m.horasMaquina,
+        horimetroInicial: m.horimetroInicial,
+        horimetroFinal: m.horimetroFinal,
+      })
+    })
   })
 
   const gruposPorMaquina: Record<string, any[]> = {}

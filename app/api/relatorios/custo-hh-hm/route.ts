@@ -45,6 +45,18 @@ export async function GET(request: NextRequest) {
         talhao: { select: { nome: true, area: true } },
         funcionario: { select: { participaFolhaPagamento: true } },
         maquina: { select: { valor: true, valorResidual: true, vidaUtilHoras: true } },
+        // Máquinas extras do mesmo registro (troca de máquina no mesmo dia/
+        // atividade) — cada uma soma custo/horas de HM pro MESMO talhão do
+        // registro, usando o Valor HM da própria máquina extra.
+        maquinasAdicionais: {
+          select: {
+            maquinaId: true,
+            horasMaquina: true,
+            horimetroInicial: true,
+            horimetroFinal: true,
+            maquina: { select: { valor: true, valorResidual: true, vidaUtilHoras: true } },
+          },
+        },
       },
     })
 
@@ -116,8 +128,29 @@ export async function GET(request: NextRequest) {
     // só do período filtrado), reaproveitando a função já usada no relatório
     // de Combustível.
     const maquinaIds = Array.from(
-      new Set(registros.map((r) => r.maquinaId).filter((id): id is string => !!id))
+      new Set(
+        registros.flatMap((r) => [
+          r.maquinaId,
+          ...r.maquinasAdicionais.map((m) => m.maquinaId),
+        ]).filter((id): id is string => !!id)
+      )
     )
+
+    // Dados de valor/depreciação por máquina (principal OU extra, de
+    // qualquer registro) — usado no cálculo de Valor HM abaixo, já que uma
+    // máquina que só aparece como extra não tem registro onde é a
+    // `maquinaId` principal.
+    const dadosMaquinaPorId = new Map<string, { valor: number | null; valorResidual: number | null; vidaUtilHoras: number | null }>()
+    for (const r of registros) {
+      if (r.maquinaId && r.maquina && !dadosMaquinaPorId.has(r.maquinaId)) {
+        dadosMaquinaPorId.set(r.maquinaId, r.maquina)
+      }
+      for (const m of r.maquinasAdicionais) {
+        if (m.maquinaId && m.maquina && !dadosMaquinaPorId.has(m.maquinaId)) {
+          dadosMaquinaPorId.set(m.maquinaId, m.maquina)
+        }
+      }
+    }
 
     const abastecimentos = maquinaIds.length > 0
       ? await prisma.abastecimentoTrator.findMany({
@@ -141,8 +174,7 @@ export async function GET(request: NextRequest) {
     // por litro histórico).
     const valorHMPorMaquina = new Map<string, number>()
     for (const maquinaId of maquinaIds) {
-      const registroComMaquina = registros.find((r) => r.maquinaId === maquinaId)
-      const maquina = registroComMaquina?.maquina
+      const maquina = dadosMaquinaPorId.get(maquinaId)
       const resumoCombustivel = combustivelPorMaquina.get(maquinaId)
 
       const depreciacaoPorHora =
@@ -186,6 +218,20 @@ export async function GET(request: NextRequest) {
         const valorHM = valorHMPorMaquina.get(r.maquinaId) || 0
         acumulado.custoHM += (r.horasMaquina || 0) * valorHM
         acumulado.horasHM += r.horasMaquina || 0
+      }
+
+      // Máquinas extras do mesmo registro: mesmo talhão, Valor HM da
+      // própria máquina extra. Mesmo fallback de horímetro (final-inicial)
+      // usado quando horasMaquina não foi preenchido, igual à máquina
+      // principal.
+      for (const m of r.maquinasAdicionais) {
+        if (!m.maquinaId) continue
+        const horas = m.horasMaquina != null
+          ? m.horasMaquina
+          : (m.horimetroFinal != null && m.horimetroInicial != null ? m.horimetroFinal - m.horimetroInicial : 0)
+        const valorHM = valorHMPorMaquina.get(m.maquinaId) || 0
+        acumulado.custoHM += horas * valorHM
+        acumulado.horasHM += horas
       }
     }
 
