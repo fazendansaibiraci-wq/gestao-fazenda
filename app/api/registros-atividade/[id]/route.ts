@@ -185,7 +185,17 @@ export async function PUT(
     // (não falta) que cai num feriado zera a carga horária esperada pro
     // cálculo de hora extra, então todas as horas trabalhadas contam como
     // extra.
-    const feriadoNaData = await prisma.feriado.findUnique({ where: { data: dataRegistro } })
+    // Comparação por INTERVALO do dia (não igualdade exata de data/hora) —
+    // mesmo motivo do POST (ver comentário lá): Feriado.data é meia-noite
+    // UTC exata, dataRegistro carrega um horário.
+    const feriadoNaData = await prisma.feriado.findFirst({
+      where: {
+        data: {
+          gte: new Date(Date.UTC(dataRegistro.getUTCFullYear(), dataRegistro.getUTCMonth(), dataRegistro.getUTCDate())),
+          lt: new Date(Date.UTC(dataRegistro.getUTCFullYear(), dataRegistro.getUTCMonth(), dataRegistro.getUTCDate() + 1)),
+        },
+      },
+    })
     const ehDiaFeriado = !!feriadoNaData
     const isCompensacaoFeriado = !!isFaltaFinal && motivoFaltaFinal === 'feriado'
     const cargaHorariaDia = (ehDiaFeriado && !isFaltaFinal) ? 0 : cargaHorariaDiaBase
