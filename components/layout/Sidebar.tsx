@@ -27,6 +27,7 @@ import {
   Droplet,
   MapPin,
   ArrowLeft,
+  CalendarDays,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -65,6 +66,7 @@ export function Sidebar() {
     { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
     { label: 'Locais', href: '/modules/locais', icon: MapPin, excludeRoles: 'FUNCIONARIO' },
     { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
+    { label: 'Feriados', href: '/modules/feriados', icon: CalendarDays, role: 'GESTOR|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
 
   const configuracoesItem = { label: 'Configurações/Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' }

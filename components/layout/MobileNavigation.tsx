@@ -22,6 +22,7 @@ import {
   Droplet,
   MapPin,
   ArrowLeft,
+  CalendarDays,
 } from 'lucide-react'
 
 const menuItems = [
@@ -41,6 +42,7 @@ const menuItems = [
   { label: 'Funcionários', href: '/modules/funcionarios', icon: Users, role: 'GESTOR|GERENTE' },
   { label: 'Safras', href: '/modules/safras', icon: Calendar, excludeRoles: 'FUNCIONARIO' },
   { label: 'Locais', href: '/modules/locais', icon: MapPin, excludeRoles: 'FUNCIONARIO' },
+  { label: 'Feriados', href: '/modules/feriados', icon: CalendarDays, role: 'GESTOR|GERENTE' },
   { label: 'Relatórios', href: '/modules/relatorios', icon: BarChart3, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Meus Relatórios', href: '/modules/meus-relatorios', icon: BarChart3, role: 'FUNCIONARIO' },
   { label: 'Resumo Mensal', href: '/modules/resumo-mensal', icon: DollarSign, excludeRoles: 'AGRONOMO' },
