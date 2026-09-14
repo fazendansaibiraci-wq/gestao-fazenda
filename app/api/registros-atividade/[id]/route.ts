@@ -173,7 +173,22 @@ export async function PUT(
     }
     const { funcionarioShim, configShim } = shimsParaCargaHoraria(dadosSalario)
 
-    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
+    const cargaHorariaDiaBase = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
+
+    // Estado final de falta/motivo depois desta edição (não necessariamente
+    // igual ao que veio no body, se o campo não foi enviado nesta edição).
+    const isFaltaFinal = body.isFalta !== undefined ? body.isFalta : registro.isFalta
+    const motivoFaltaFinal = body.motivoFalta ?? null
+
+    // Feriado cadastrado (Configurações → Feriados) na data deste registro
+    // — mesma lógica do POST (ver comentário lá): dia de trabalho normal
+    // (não falta) que cai num feriado zera a carga horária esperada pro
+    // cálculo de hora extra, então todas as horas trabalhadas contam como
+    // extra.
+    const feriadoNaData = await prisma.feriado.findUnique({ where: { data: dataRegistro } })
+    const ehDiaFeriado = !!feriadoNaData
+    const isCompensacaoFeriado = !!isFaltaFinal && motivoFaltaFinal === 'feriado'
+    const cargaHorariaDia = (ehDiaFeriado && !isFaltaFinal) ? 0 : cargaHorariaDiaBase
 
     let horasCalculadas = registro.horasCalculadas
     let ehHoraExtra = registro.ehHoraExtra
@@ -199,8 +214,6 @@ export async function PUT(
     // volta ou debitar apenas na transição — e não fazer nada se o motivo da
     // falta não mudou.
     const eraCompensacaoBancoHoras = registro.motivoFalta === 'banco_horas' && registro.tipoAtividade === 'BANCO_HORAS'
-    const isFaltaFinal = body.isFalta !== undefined ? body.isFalta : registro.isFalta
-    const motivoFaltaFinal = body.motivoFalta ?? null
     const seraCompensacaoBancoHoras = !!isFaltaFinal && motivoFaltaFinal === 'banco_horas'
 
     if (eraCompensacaoBancoHoras && !seraCompensacaoBancoHoras) {
@@ -216,10 +229,10 @@ export async function PUT(
       // Passou a ser compensação agora: verifica saldo e debita.
       const bancoHorasFuncionario = await prisma.bancoHoras.findUnique({ where: { funcionarioId } })
       const saldoDisponivel = bancoHorasFuncionario?.saldoHoras || 0
-      if (saldoDisponivel < cargaHorariaDia) {
+      if (saldoDisponivel < cargaHorariaDiaBase) {
         return NextResponse.json(
           {
-            error: `Saldo insuficiente no Banco de Horas para compensar esta falta. Saldo atual: ${saldoDisponivel}h. Necessário: ${cargaHorariaDia}h.`,
+            error: `Saldo insuficiente no Banco de Horas para compensar esta falta. Saldo atual: ${saldoDisponivel}h. Necessário: ${cargaHorariaDiaBase}h.`,
           },
           { status: 400 }
         )
@@ -227,14 +240,17 @@ export async function PUT(
       await prisma.bancoHoras.update({
         where: { funcionarioId },
         data: {
-          saldoHoras: { decrement: cargaHorariaDia },
-          horasAbatidas: { increment: cargaHorariaDia },
+          saldoHoras: { decrement: cargaHorariaDiaBase },
+          horasAbatidas: { increment: cargaHorariaDiaBase },
         },
       })
     }
 
     if (seraCompensacaoBancoHoras) {
-      horasCalculadas = cargaHorariaDia
+      horasCalculadas = cargaHorariaDiaBase
+    }
+    if (isCompensacaoFeriado) {
+      horasCalculadas = cargaHorariaDiaBase
     }
 
     const updated = await prisma.registroAtividade.update({
@@ -245,9 +261,9 @@ export async function PUT(
         horaSaida: body.horaSaida ?? null,
         horasCalculadas,
         horasprevistasdia: cargaHorariaDia,
-        talhaoId: seraCompensacaoBancoHoras ? null : (body.talhaoId || undefined),
+        talhaoId: (seraCompensacaoBancoHoras || isCompensacaoFeriado) ? null : (body.talhaoId || undefined),
         safraId: body.safraId || undefined,
-        tipoAtividade: seraCompensacaoBancoHoras ? 'BANCO_HORAS' : (body.tipoAtividade || undefined),
+        tipoAtividade: seraCompensacaoBancoHoras ? 'BANCO_HORAS' : isCompensacaoFeriado ? 'FERIADO' : (body.tipoAtividade || undefined),
         status: body.status || undefined,
         observacao: body.observacao ?? null,
         fotoEvidencia: body.fotoEvidencia ?? null,
@@ -268,7 +284,7 @@ export async function PUT(
         horimetroFinal: body.horimetroFinal ?? null,
         horasMaquina: body.horasMaquina ?? null,
         implementoUtilizado: body.implementoUtilizado ?? null,
-        isFalta: seraCompensacaoBancoHoras ? false : (body.isFalta !== undefined ? body.isFalta : undefined),
+        isFalta: (seraCompensacaoBancoHoras || isCompensacaoFeriado) ? false : (body.isFalta !== undefined ? body.isFalta : undefined),
         isAjusteHorimetro: body.isAjusteHorimetro !== undefined ? body.isAjusteHorimetro : undefined,
         motivoFalta: body.motivoFalta ?? null,
         periodoFalta: body.periodoFalta ?? null,

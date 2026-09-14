@@ -236,7 +236,24 @@ export async function POST(request: NextRequest) {
     // Carga horária por dia da semana
     const dataRegistro = new Date(body.data)
     const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 6=Sab
-    const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
+    const cargaHorariaDiaBase = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
+
+    // Feriado cadastrado (Configurações → Feriados) na data deste registro.
+    // Usado em dois lugares abaixo: (1) quando isFalta+motivoFalta="feriado",
+    // paga o dia cheio (cargaHorariaDiaBase) sem descontar, como se tivesse
+    // trabalhado normalmente; (2) quando é um dia de trabalho normal (não
+    // falta) que cai num feriado, zera a carga horária esperada do dia pro
+    // cálculo de hora extra — assim TODAS as horas trabalhadas nesse dia
+    // contam como hora extra, não só o que passar da jornada normal.
+    const feriadoNaData = await prisma.feriado.findUnique({ where: { data: dataRegistro } })
+    const ehDiaFeriado = !!feriadoNaData
+
+    // Compensação de Feriado: se o motivo da falta for "feriado", o dia deixa
+    // de contar como falta (não desconta) e passa a ser um dia cheio pago,
+    // igual a como se tivesse trabalhado a jornada normal daquele dia.
+    const isCompensacaoFeriado = !!body.isFalta && body.motivoFalta === 'feriado'
+
+    const cargaHorariaDia = (ehDiaFeriado && !body.isFalta) ? 0 : cargaHorariaDiaBase
 
     // Compensação de falta via Banco de Horas: se o motivo da falta for
     // "banco_horas" e o funcionário tiver saldo suficiente, o dia deixa de
@@ -248,15 +265,19 @@ export async function POST(request: NextRequest) {
     if (isCompensacaoBancoHoras) {
       bancoHorasFuncionario = await prisma.bancoHoras.findUnique({ where: { funcionarioId } })
       const saldoDisponivel = bancoHorasFuncionario?.saldoHoras || 0
-      if (saldoDisponivel < cargaHorariaDia) {
+      if (saldoDisponivel < cargaHorariaDiaBase) {
         return NextResponse.json(
           {
-            error: `Saldo insuficiente no Banco de Horas para compensar esta falta. Saldo atual: ${saldoDisponivel}h. Necessário: ${cargaHorariaDia}h.`,
+            error: `Saldo insuficiente no Banco de Horas para compensar esta falta. Saldo atual: ${saldoDisponivel}h. Necessário: ${cargaHorariaDiaBase}h.`,
           },
           { status: 400 }
         )
       }
-      horasCalculadas = cargaHorariaDia
+      horasCalculadas = cargaHorariaDiaBase
+    }
+
+    if (isCompensacaoFeriado) {
+      horasCalculadas = cargaHorariaDiaBase
     }
 
     // Horas extras e devidas
@@ -283,9 +304,9 @@ export async function POST(request: NextRequest) {
         horaSaida: body.horaSaida || null,
         horasCalculadas,
         horasprevistasdia: cargaHorariaDia,
-        talhaoId: isCompensacaoBancoHoras ? null : body.talhaoId,
+        talhaoId: (isCompensacaoBancoHoras || isCompensacaoFeriado) ? null : body.talhaoId,
         safraId: body.safraId,
-        tipoAtividade: isCompensacaoBancoHoras ? 'BANCO_HORAS' : body.tipoAtividade,
+        tipoAtividade: isCompensacaoBancoHoras ? 'BANCO_HORAS' : isCompensacaoFeriado ? 'FERIADO' : body.tipoAtividade,
         status: body.status || 'CONCLUIDO',
         observacao: body.observacao || null,
         fotoEvidencia: body.fotoEvidencia || null,
@@ -303,7 +324,7 @@ export async function POST(request: NextRequest) {
         horimetroFinal: body.horimetroFinal || null,
         horasMaquina: body.horasMaquina || null,
         implementoUtilizado: body.implementoUtilizado || null,
-        isFalta: isCompensacaoBancoHoras ? false : (body.isFalta || false),
+        isFalta: (isCompensacaoBancoHoras || isCompensacaoFeriado) ? false : (body.isFalta || false),
         isAjusteHorimetro: body.isAjusteHorimetro || false,
         motivoFalta: body.motivoFalta || null,
         periodoFalta: body.periodoFalta || null,

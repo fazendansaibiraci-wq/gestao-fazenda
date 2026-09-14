@@ -59,6 +59,16 @@ export async function POST(request: NextRequest) {
     const periodosComId = await buscarPeriodosComId()
     const todosSalarios = await buscarTodosSalariosPeriodo()
 
+    // Feriados cadastrados no intervalo — mesma lógica do POST/PUT de
+    // registros-atividade: dia de feriado zera a carga horária esperada,
+    // então quem trabalhou nesse dia tem TODAS as horas recalculadas como
+    // hora extra (não passa pela regra normal de jornada).
+    const feriadosNoIntervalo = await prisma.feriado.findMany({
+      where: { data: { gte: inicio, lte: fim } },
+      select: { data: true },
+    })
+    const feriadosSet = new Set(feriadosNoIntervalo.map(f => f.data.toISOString().split('T')[0]))
+
     const mudancas: {
       id: string
       data: string
@@ -88,7 +98,10 @@ export async function POST(request: NextRequest) {
       }
       const estaNaSafra = periodoDoDia.tipo === 'SAFRA'
       const { funcionarioShim, configShim } = shimsParaCargaHoraria(dadosSalario)
-      const cargaHorariaDia = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
+      const chaveData = reg.data.toISOString().split('T')[0]
+      const cargaHorariaDia = feriadosSet.has(chaveData)
+        ? 0
+        : calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
       const cargaAntes = reg.horasprevistasdia ?? 8
 
       if (Math.abs(cargaHorariaDia - cargaAntes) < 0.01) continue // sem mudança real

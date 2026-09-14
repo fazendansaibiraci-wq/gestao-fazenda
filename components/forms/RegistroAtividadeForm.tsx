@@ -469,6 +469,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                 <option value="">Selecionar motivo</option>
                 <option value="atestado_medico">Atestado Médico</option>
                 <option value="banco_horas">Compensação (Banco de Horas)</option>
+                <option value="feriado">Feriado</option>
                 <option value="pessoal">Pessoal</option>
                 <option value="outro">Outro</option>
               </select>

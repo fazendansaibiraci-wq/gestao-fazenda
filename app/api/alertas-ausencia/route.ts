@@ -128,6 +128,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Feriados cadastrados dentro do mês verificado — dia de feriado nunca
+    // gera falta automática (ninguém era esperado a trabalhar), mesmo que a
+    // jornada normal do funcionário naquele dia da semana seja > 0.
+    const feriadosDoMes = await prisma.feriado.findMany({
+      where: { data: { gte: inicioMes, lte: new Date(ano, mesNum - 1, ultimoDia) } },
+      select: { data: true },
+    })
+    const feriadosSet = new Set(feriadosDoMes.map(f => f.data.toISOString().split('T')[0]))
+
     // Primeiro identifica os dias faltantes de cada funcionário (lógica já existente).
     const candidatosPorFuncionario: { func: (typeof funcionarios)[number]; diasFaltantes: string[] }[] = []
     const funcionariosSemSalario = new Set<string>()
@@ -152,7 +161,7 @@ export async function GET(request: NextRequest) {
 
         if (cargaDia > 0) {
           const chave = `${ano}-${String(mesNum).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
-          if (!datasRegistradas.has(chave)) {
+          if (!datasRegistradas.has(chave) && !feriadosSet.has(chave)) {
             diasFaltantes.push(chave)
           }
         }
