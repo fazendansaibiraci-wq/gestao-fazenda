@@ -317,7 +317,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         observacao: form.observacao,
       } : {
         ...form, data: new Date(form.data + 'T12:00:00'),
-        totalBombas: form.totalBombas ? parseInt(form.totalBombas) : null,
+        totalBombas: form.totalBombas ? parseFloat(form.totalBombas) : null,
         quantidadeAdubo: form.quantidadeAdubo ? parseFloat(form.quantidadeAdubo) : null,
         quantidadeCorretivo: form.quantidadeCorretivo ? parseFloat(form.quantidadeCorretivo) : null,
         areaHectares: form.areaHectares ? parseFloat(form.areaHectares) : null,
@@ -633,7 +633,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
               <h3 className="text-lg font-semibold text-primary mb-4">Aplicação</h3>
               <div className="form-group">
                 <label>Quantidade de Bombas</label>
-                <input type="number" name="totalBombas" value={form.totalBombas} onChange={handleChange} disabled={loading} min="0" step="1" placeholder="0" />
+                <input type="number" name="totalBombas" value={form.totalBombas} onChange={handleChange} disabled={loading} min="0" step="0.5" placeholder="0" />
               </div>
             </div>
           )}

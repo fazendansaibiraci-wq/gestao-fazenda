@@ -536,7 +536,7 @@ model RegistroAtividade {
   receitaAplicacao   ReceitaAplicacao? @relation(fields: [receitaAplicacaoId], references: [id], onDelete: SetNull)
   receitaAplicacaoId String?
 
-  totalBombas         Int?
+  totalBombas         Float?
   tipoAdubo           String?
   quantidadeAdubo     Float?
   tipoCorretivo       String?
