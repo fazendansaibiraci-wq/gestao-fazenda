@@ -49,6 +49,7 @@ export default function ResumoMensalPage() {
   const [ano, setAno] = useState(new Date().getFullYear())
   const [expandidos, setExpandidos] = useState<string[]>([])
   const [buscaFuncionario, setBuscaFuncionario] = useState('')
+  const [selecionados, setSelecionados] = useState<string[]>([])
 
   // Período customizado (ex: "de ontem até dia 15") — alternativa ao
   // seletor de mês/ano. Só é aplicado quando o usuário clica em "Aplicar",
@@ -134,6 +135,37 @@ export default function ResumoMensalPage() {
         registrosDiarios: r.registrosDiarios,
       })),
     })
+  }
+
+  // Exporta só os funcionários marcados nos checkboxes da tabela — mesmo
+  // formato de PDF do "Exportar todos", só que restrito à seleção.
+  const handleExportarSelecionadosPdf = () => {
+    exportarTodosRegistrosDiariosPdf({
+      mesLabel: periodoLabel,
+      ano: periodoCustomizadoAtivo ? undefined as any : ano,
+      funcionarios: resumoFiltrado
+        .filter((r) => selecionados.includes(r.funcionario.id))
+        .map((r) => ({
+          nomeFuncionario: r.funcionario.name,
+          registrosDiarios: r.registrosDiarios,
+        })),
+    })
+  }
+
+  const toggleSelecionado = (id: string) => {
+    setSelecionados(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+  }
+
+  // Marca/desmarca todos os funcionários atualmente visíveis (já filtrados
+  // pela busca) de uma vez, via checkbox no cabeçalho da tabela.
+  const todosVisiveisSelecionados = resumoFiltrado.length > 0 && resumoFiltrado.every(r => selecionados.includes(r.funcionario.id))
+  const toggleTodosVisiveis = () => {
+    if (todosVisiveisSelecionados) {
+      const idsVisiveis = new Set(resumoFiltrado.map(r => r.funcionario.id))
+      setSelecionados(prev => prev.filter(id => !idsVisiveis.has(id)))
+    } else {
+      setSelecionados(prev => Array.from(new Set([...prev, ...resumoFiltrado.map(r => r.funcionario.id)])))
+    }
   }
 
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -276,15 +308,27 @@ export default function ResumoMensalPage() {
             placeholder="Buscar funcionário..."
             className="border rounded-lg px-3 py-2 text-sm w-full sm:w-80"
           />
-          <button
-            onClick={handleExportarTodosPdf}
-            disabled={resumoFiltrado.length === 0}
-            className="flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed sm:ml-auto"
-            title="Exportar PDF de todos os funcionários listados (um por página)"
-          >
-            <FileDown className="w-4 h-4" />
-            Exportar todos ({resumoFiltrado.length})
-          </button>
+          <div className="flex items-center gap-2 sm:ml-auto">
+            {selecionados.length > 0 && (
+              <button
+                onClick={handleExportarSelecionadosPdf}
+                className="flex items-center justify-center gap-2 px-3 py-2 text-sm border border-primary rounded-lg text-primary hover:bg-primary/5 transition-colors"
+                title="Exportar PDF só dos funcionários marcados (um por página)"
+              >
+                <FileDown className="w-4 h-4" />
+                Exportar selecionados ({selecionados.length})
+              </button>
+            )}
+            <button
+              onClick={handleExportarTodosPdf}
+              disabled={resumoFiltrado.length === 0}
+              className="flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Exportar PDF de todos os funcionários listados (um por página)"
+            >
+              <FileDown className="w-4 h-4" />
+              Exportar todos ({resumoFiltrado.length})
+            </button>
+          </div>
         </div>
       )}
 
@@ -427,6 +471,15 @@ export default function ResumoMensalPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50">
+                  <th className="px-4 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={todosVisiveisSelecionados}
+                      onChange={toggleTodosVisiveis}
+                      title="Marcar todos os funcionários listados"
+                      className="rounded border-gray-300"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left font-semibold">Funcionário</th>
                   <th className="px-4 py-3 text-left font-semibold">Regime</th>
                   <th className="px-4 py-3 text-left font-semibold">Dias trabalhados</th>
@@ -441,7 +494,7 @@ export default function ResumoMensalPage() {
               <tbody>
                 {resumoFiltrado.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                       Nenhum funcionário encontrado
                     </td>
                   </tr>
@@ -454,6 +507,14 @@ export default function ResumoMensalPage() {
                           onClick={() => toggleExpandir(r.funcionario.id)}
                           className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
                         >
+                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selecionados.includes(r.funcionario.id)}
+                              onChange={() => toggleSelecionado(r.funcionario.id)}
+                              className="rounded border-gray-300"
+                            />
+                          </td>
                           <td className="px-4 py-3 font-medium">{r.funcionario.name}</td>
                           <td className="px-4 py-3">
                             <BadgeRegime regime={r.regimeSalario} />
@@ -497,7 +558,7 @@ export default function ResumoMensalPage() {
                         {/* Registros diários — reaproveitado exatamente como na visão anterior */}
                         {expandido && (
                           <tr className="border-b bg-gray-50/50">
-                            <td colSpan={7} className="px-4 py-4">
+                            <td colSpan={8} className="px-4 py-4">
                               <div className="space-y-2">
                                 {r.registrosDiarios.length === 0 ? (
                                   <p className="text-center text-gray-400 text-sm py-4">Nenhum registro neste período</p>
