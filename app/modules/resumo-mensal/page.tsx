@@ -156,18 +156,6 @@ export default function ResumoMensalPage() {
     setSelecionados(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
   }
 
-  // Marca/desmarca todos os funcionários atualmente visíveis (já filtrados
-  // pela busca) de uma vez, via checkbox no cabeçalho da tabela.
-  const todosVisiveisSelecionados = resumoFiltrado.length > 0 && resumoFiltrado.every(r => selecionados.includes(r.funcionario.id))
-  const toggleTodosVisiveis = () => {
-    if (todosVisiveisSelecionados) {
-      const idsVisiveis = new Set(resumoFiltrado.map(r => r.funcionario.id))
-      setSelecionados(prev => prev.filter(id => !idsVisiveis.has(id)))
-    } else {
-      setSelecionados(prev => Array.from(new Set([...prev, ...resumoFiltrado.map(r => r.funcionario.id)])))
-    }
-  }
-
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   const fmtH = (h: number) => {
     const horas = Math.floor(h)
@@ -181,6 +169,21 @@ export default function ResumoMensalPage() {
   const resumoFiltrado = resumo.filter((r) =>
     r.funcionario.name.toLowerCase().includes(buscaFuncionario.toLowerCase())
   )
+
+  // Marca/desmarca todos os funcionários atualmente visíveis (já filtrados
+  // pela busca) de uma vez, via checkbox no cabeçalho da tabela. Precisa
+  // vir DEPOIS de resumoFiltrado ser declarado acima (referencia ele
+  // direto, não dentro de uma função adiada — colocar antes quebra o
+  // build minificado com "Cannot access before initialization").
+  const todosVisiveisSelecionados = resumoFiltrado.length > 0 && resumoFiltrado.every(r => selecionados.includes(r.funcionario.id))
+  const toggleTodosVisiveis = () => {
+    if (todosVisiveisSelecionados) {
+      const idsVisiveis = new Set(resumoFiltrado.map(r => r.funcionario.id))
+      setSelecionados(prev => prev.filter(id => !idsVisiveis.has(id)))
+    } else {
+      setSelecionados(prev => Array.from(new Set([...prev, ...resumoFiltrado.map(r => r.funcionario.id)])))
+    }
+  }
 
   const totalAcumuladoGeral = resumoFiltrado.reduce((acc, r) => acc + r.totalAcumulado, 0)
   const totalHorasExtrasGeral = resumoFiltrado.reduce((acc, r) => acc + r.totalHorasExtras, 0)
