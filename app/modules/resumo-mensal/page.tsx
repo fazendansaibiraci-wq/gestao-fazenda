@@ -13,6 +13,7 @@ import { exportarRegistroDiarioPdf, exportarTodosRegistrosDiariosPdf } from '@/l
 interface ResumoFuncionario {
   funcionario: { id: string; name: string; role: string; pagamentoProporcionalDiario?: boolean }
   regimeSalario: 'safra' | 'entressafra' | 'misto'
+  tipoSalario?: 'MENSAL' | 'DIARIO' | null
   salarioBase: number
   valorDia: number
   valorHoraNormal: number
@@ -430,7 +431,9 @@ export default function ResumoMensalPage() {
                 <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 text-sm">
-                      {r.regimeSalario === 'safra' ? 'Salário Safra' : r.regimeSalario === 'entressafra' ? 'Salário Entressafra' : 'Salário (rateado Safra/Entressafra)'}
+                      {r.tipoSalario === 'DIARIO'
+                        ? 'Horas trabalhadas (diária)'
+                        : r.regimeSalario === 'safra' ? 'Salário Safra' : r.regimeSalario === 'entressafra' ? 'Salário Entressafra' : 'Salário (rateado Safra/Entressafra)'}
                     </span>
                     <span className="font-bold text-lg text-primary">{fmt(r.salarioBase)}</span>
                   </div>
@@ -589,10 +592,14 @@ export default function ResumoMensalPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className="flex items-center gap-1 font-medium text-orange-600">
-                              {r.totalHorasDevidas > 0 && <TrendingDown className="w-4 h-4" />}
-                              {fmtH(r.totalHorasDevidas)}
-                            </span>
+                            {r.tipoSalario === 'DIARIO' ? (
+                              <span className="text-gray-400" title="Diarista recebe pelas horas trabalhadas — não tem desconto de horas devidas">—</span>
+                            ) : (
+                              <span className="flex items-center gap-1 font-medium text-orange-600">
+                                {r.totalHorasDevidas > 0 && <TrendingDown className="w-4 h-4" />}
+                                {fmtH(r.totalHorasDevidas)}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <span className="font-bold text-lg text-primary">{fmt(r.totalAcumulado)}</span>

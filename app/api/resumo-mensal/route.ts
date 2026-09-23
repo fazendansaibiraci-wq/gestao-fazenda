@@ -234,8 +234,64 @@ export async function GET(request: NextRequest) {
       const faltasDatas = new Set<string>()
       let acumuladoProporcional = 0
 
-      const { totalHorasExtras, totalHorasDevidas, totalHorasTrabalhadas, diasTrabalhados, agregadosPorData } =
-        calcularTotaisHoras(registrosFuncionario, 8)
+      const {
+        totalHorasExtras: totalHorasExtrasBruto,
+        totalHorasDevidas: totalHorasDevidasBruto,
+        totalHorasTrabalhadas,
+        diasTrabalhados,
+        agregadosPorData,
+      } = calcularTotaisHoras(registrosFuncionario, 8)
+
+      // ─── Diaristas (tipoSalario DIARIO no período do dia) ───────────────
+      // Regra definida em 23/09/2026:
+      // - Valor da hora = diária ÷ jornada contratual (ex: 120 ÷ 8 = 15,00).
+      // - Segunda a sexta com jornada: recebe as horas trabalhadas até a
+      //   jornada (horas × valor da hora); o que passar da jornada é hora
+      //   extra (na tarifa de hora extra do período).
+      // - Sábado, domingo e feriado (dia sem jornada): recebe só horas
+      //   trabalhadas × valor da hora, SEM hora extra, mesmo passando de 8h.
+      // - Nunca desconta horas devidas (diarista só recebe o que trabalhou).
+      const diaristaPorData = new Map<string, { base: number; horasExtras: number; valorExtras: number }>()
+      for (const [chaveData, agregado] of agregadosPorData) {
+        const [yD, mD, dD] = chaveData.split('-').map(Number)
+        const dataDoDia = new Date(yD, mD - 1, dD)
+        const dados = dadosSalarioNaData(dataDoDia)
+        if (dados?.tipoSalario !== 'DIARIO') continue
+        const diaria = dados.salarioDiaria || 0
+        const periodoDoDia = periodoNaData(dataDoDia)
+        const jornadaReferencia =
+          (periodoDoDia?.tipo === 'SAFRA' ? dados.cargaHorariaSegSex : dados.cargaHorariaSegQui) || 8
+        const diaSemana = dataDoDia.getDay()
+        const semHoraExtra = diaSemana === 0 || diaSemana === 6 || agregado.cargaDia <= 0
+        const jornadaDoDia = semHoraExtra ? jornadaReferencia : agregado.cargaDia
+        const valorHora = jornadaDoDia > 0 ? diaria / jornadaDoDia : 0
+        const horas = agregado.somaHorasDia
+        const horasExtras = semHoraExtra ? 0 : Math.max(0, horas - jornadaDoDia)
+        const horasNormais = horas - horasExtras
+        const tarifaExtra = dados.valorHoraExtra || 0
+        diaristaPorData.set(chaveData, {
+          base: horasNormais * valorHora,
+          horasExtras,
+          valorExtras: horasExtras * tarifaExtra,
+        })
+      }
+      // Totais de horas exibidos: nos dias de diarista, extra só conta na
+      // regra acima e nunca há hora devida.
+      let totalHorasExtras = 0
+      let totalHorasDevidas = 0
+      for (const [chaveData, agregado] of agregadosPorData) {
+        const diarista = diaristaPorData.get(chaveData)
+        if (diarista) {
+          totalHorasExtras += diarista.horasExtras
+        } else {
+          totalHorasExtras += agregado.horasExtrasDia
+          totalHorasDevidas += agregado.horasDevidasDia
+        }
+      }
+      if (diaristaPorData.size === 0) {
+        totalHorasExtras = totalHorasExtrasBruto
+        totalHorasDevidas = totalHorasDevidasBruto
+      }
 
       // Valor de horas extras e desconto de horas devidas: soma dia a dia,
       // cada um na tarifa do seu próprio dia (em vez de multiplicar o
@@ -247,6 +303,12 @@ export async function GET(request: NextRequest) {
       let valorHorasExtras = 0
       let descontoHorasDevidas = 0
       for (const [chaveData, agregado] of agregadosPorData) {
+        const diaristaDoDia = diaristaPorData.get(chaveData)
+        if (diaristaDoDia) {
+          // Diarista: extra só pela regra de diarista, sem desconto.
+          valorHorasExtras += diaristaDoDia.valorExtras
+          continue
+        }
         const [yD, mD, dD] = chaveData.split('-').map(Number)
         const dataDoDia = new Date(yD, mD - 1, dD)
 
@@ -277,6 +339,11 @@ export async function GET(request: NextRequest) {
       // completado).
       if (func.pagamentoProporcionalDiario) {
         for (const [chaveData, { somaHorasDia, cargaDia }] of agregadosPorData) {
+          const diaristaDoDia = diaristaPorData.get(chaveData)
+          if (diaristaDoDia) {
+            acumuladoProporcional += diaristaDoDia.base + diaristaDoDia.valorExtras
+            continue
+          }
           const [yD, mD, dD] = chaveData.split('-').map(Number)
           const dataDoDia = new Date(yD, mD - 1, dD)
           const valorDiaDoDia = valorDiaNaData(dataDoDia)
@@ -331,8 +398,9 @@ export async function GET(request: NextRequest) {
         // Só o último registro do dia carrega horasExtras/horasDevidas do
         // grupo, pra não exibir "devidas"/"extras" duplicado em cada turno.
         const ehUltimoRegistroDoDia = reg.id === agregado.ultimoRegistroId
-        const horasExtras = ehUltimoRegistroDoDia ? agregado.horasExtrasDia : 0
-        const horasDevidas = ehUltimoRegistroDoDia ? agregado.horasDevidasDia : 0
+        const diaristaDoDia = diaristaPorData.get(chaveData)
+        const horasExtras = ehUltimoRegistroDoDia ? (diaristaDoDia ? diaristaDoDia.horasExtras : agregado.horasExtrasDia) : 0
+        const horasDevidas = ehUltimoRegistroDoDia && !diaristaDoDia ? agregado.horasDevidasDia : 0
 
         return {
           data: reg.data,
@@ -460,12 +528,11 @@ export async function GET(request: NextRequest) {
       //   cadastrado) — diarista só recebe pelos dias que trabalhou.
       let acumuladoDiasTrabalhados: number
       if (tipoSalarioFunc === 'DIARIO') {
+        // Horas normais × valor da hora, dia a dia (regra de diarista acima).
+        // As horas extras entram em valorHorasExtras. Dia de diarista sem
+        // período/salário cadastrado não soma (não entra em diaristaPorData).
         acumuladoDiasTrabalhados = 0
-        for (const chaveData of agregadosPorData.keys()) {
-          const [yD, mD, dD] = chaveData.split('-').map(Number)
-          const valorDiaDoDia = valorDiaNaData(new Date(yD, mD - 1, dD))
-          if (valorDiaDoDia !== null) acumuladoDiasTrabalhados += valorDiaDoDia
-        }
+        for (const { base } of diaristaPorData.values()) acumuladoDiasTrabalhados += base
       } else if (periodoCustomizado) {
         // domingos/sábados de folga esperados (sem registro) e dias sem
         // período/salário já são excluídos do somatório abaixo.
@@ -502,11 +569,17 @@ export async function GET(request: NextRequest) {
       return {
         funcionario: { id: func.id, name: func.name, role: func.role, pagamentoProporcionalDiario: func.pagamentoProporcionalDiario },
         regimeSalario,
+        tipoSalario: tipoSalarioFunc,
         diasSafraNoPeriodo,
         diasEntressafraNoPeriodo,
-        salarioBase: Math.round(salarioBaseProporcional * 100) / 100,
+        // Diarista: "salário base" exibido = valor das horas normais
+        // trabalhadas no período (sem as extras); valorDia = diária média
+        // ponderada Safra/Entressafra.
+        salarioBase: Math.round((tipoSalarioFunc === 'DIARIO' ? acumuladoDiasTrabalhados : salarioBaseProporcional) * 100) / 100,
         valorDia: Math.round((diasNoPeriodo > 0
-          ? (tipoSalarioFunc === 'DIARIO' ? salarioBaseProporcional : salarioBaseProporcional / 30)
+          ? (tipoSalarioFunc === 'DIARIO'
+            ? (diasSafraNoPeriodo / diasNoPeriodo) * (repSafra?.salarioDiaria || 0) + (diasEntressafraNoPeriodo / diasNoPeriodo) * (repEntressafra?.salarioDiaria || 0)
+            : salarioBaseProporcional / 30)
           : 0) * 100) / 100,
         valorHoraNormal: Math.round(valorHoraNormalMedia * 100) / 100,
         valorHoraExtra: Math.round(valorHoraExtraMedia * 100) / 100,
