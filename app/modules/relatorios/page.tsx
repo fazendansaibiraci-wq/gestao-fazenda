@@ -165,12 +165,65 @@ export default function RelatoriosPage() {
   // específico — cada relatório (Histórico, Indicadores, Custos,
   // Comparativo HH/HM) tem seus próprios filtros aplicados, independentes
   // dos outros.
+  // ─── Usos de máquina de um registro (principal + máquinas extras) ─────────
+  // Um registro pode ter a máquina principal (r.maquinaId) e várias máquinas
+  // extras (r.maquinasAdicionais — troca de máquina durante o dia). Todos os
+  // relatórios desta tela passam por aqui pra enxergar TODAS as máquinas do
+  // registro, cada uma com as próprias horas, horímetro e implemento — mesma
+  // lógica de lib/calculoCombustivelPorMaquina.ts e do custo-hh-hm.
+  type UsoMaquina = {
+    maquinaId: string
+    nome: string
+    principal: boolean
+    horasMaquina: number | null
+    horimetroInicial: number | null
+    horimetroFinal: number | null
+    implemento: string | null
+  }
+  const usosMaquinaDoRegistro = (r: any): UsoMaquina[] => {
+    const usos: UsoMaquina[] = []
+    if (r.maquinaId) {
+      usos.push({
+        maquinaId: r.maquinaId,
+        nome: r.maquina?.nome || r.maquinaId,
+        principal: true,
+        horasMaquina: r.horasMaquina ?? null,
+        horimetroInicial: r.horimetroInicial ?? null,
+        horimetroFinal: r.horimetroFinal ?? null,
+        implemento: r.implementoUtilizado || null,
+      })
+    }
+    for (const m of (r.maquinasAdicionais || [])) {
+      if (!m.maquinaId) continue
+      usos.push({
+        maquinaId: m.maquinaId,
+        nome: m.maquina?.nome || m.maquinaId,
+        principal: false,
+        horasMaquina: m.horasMaquina ?? null,
+        horimetroInicial: m.horimetroInicial ?? null,
+        horimetroFinal: m.horimetroFinal ?? null,
+        implemento: m.implementoUtilizado || null,
+      })
+    }
+    return usos
+  }
+  // Horas de um uso com fallback pro horímetro (final - inicial) quando
+  // horasMaquina não foi preenchido.
+  const horasUsoComFallback = (u: UsoMaquina) => {
+    if (u.horasMaquina != null) return u.horasMaquina
+    if (u.horimetroFinal != null && u.horimetroInicial != null) return u.horimetroFinal - u.horimetroInicial
+    return 0
+  }
+  // Horas de um uso nos relatórios de horas/custos: igual ao custo-hh-hm
+  // (principal usa só horasMaquina; extra usa fallback de horímetro).
+  const horasUsoRelatorio = (u: UsoMaquina) => (u.principal ? (u.horasMaquina || 0) : horasUsoComFallback(u))
+
   const filtrarRegistros = (f: FiltrosRelatorio) => registros.filter(r => {
     if (f.safraId && r.safraId !== f.safraId) return false
     if (f.talhaoId && r.talhaoId !== f.talhaoId) return false
     if (f.tipoAtividade && r.tipoAtividade !== f.tipoAtividade) return false
     if (f.funcionarioId && r.funcionarioId !== f.funcionarioId) return false
-    if (f.maquinaId && r.maquinaId !== f.maquinaId) return false
+    if (f.maquinaId && !usosMaquinaDoRegistro(r).some(u => u.maquinaId === f.maquinaId)) return false
     if (f.dataInicio && new Date(r.data) < new Date(f.dataInicio)) return false
     if (f.dataFim && new Date(r.data) > new Date(f.dataFim)) return false
     return true
@@ -194,8 +247,47 @@ export default function RelatoriosPage() {
   const calcularHoras = (regs: any[]) =>
     regs.reduce((acc, r) => acc + (r.horasCalculadas || 0), 0).toFixed(1)
 
-  const calcularHorasMaquina = (regs: any[]) =>
-    regs.reduce((acc, r) => acc + (r.horasMaquina || 0), 0).toFixed(1)
+  // Soma as horas de TODAS as máquinas dos registros (principal + extras).
+  // Com filtro de máquina ativo, soma só a contribuição da máquina filtrada
+  // (mesmo comportamento do custo-hh-hm).
+  const calcularHorasMaquina = (regs: any[], maquinaIdFiltro?: string) =>
+    regs.reduce((acc, r) => acc + usosMaquinaDoRegistro(r)
+      .filter(u => !maquinaIdFiltro || u.maquinaId === maquinaIdFiltro)
+      .reduce((s, u) => s + horasUsoRelatorio(u), 0), 0).toFixed(1)
+
+  // "Desempenho por Equipamento": cada máquina conta os próprios usos e
+  // horas — um registro com 2 máquinas conta 1 uso pra cada uma.
+  const agruparPorEquipamento = (regs: any[], maquinaIdFiltro?: string) => {
+    const grupos: Record<string, { usos: number; horas: number }> = {}
+    regs.forEach(r => {
+      usosMaquinaDoRegistro(r)
+        .filter(u => !maquinaIdFiltro || u.maquinaId === maquinaIdFiltro)
+        .forEach(u => {
+          if (!grupos[u.nome]) grupos[u.nome] = { usos: 0, horas: 0 }
+          grupos[u.nome].usos += 1
+          grupos[u.nome].horas += horasUsoRelatorio(u)
+        })
+    })
+    return Object.entries(grupos)
+  }
+
+  // Histórico de Atividades: uma linha por máquina. Horas Homem, Área e
+  // Bombas só na PRIMEIRA linha de cada registro (nas linhas das máquinas
+  // extras ficam vazias), pra soma no Excel não sair em dobro. Registro sem
+  // máquina continua com uma linha só, como antes.
+  const linhasHistorico = (regs: any[], maquinaIdFiltro?: string) =>
+    regs.flatMap((r: any) => {
+      const usos = usosMaquinaDoRegistro(r).filter(u => !maquinaIdFiltro || u.maquinaId === maquinaIdFiltro)
+      const lista: (UsoMaquina | null)[] = usos.length > 0 ? usos : [null]
+      return lista.map((u, idx) => ({
+        chave: `${r.id}-${idx}`,
+        registro: r,
+        primeiraLinha: idx === 0,
+        maquinaNome: u ? u.nome : null,
+        horasMaquina: u ? (u.principal ? (u.horasMaquina || null) : horasUsoComFallback(u) || null) : null,
+        implemento: u ? u.implemento : (r.implementoUtilizado || null),
+      }))
+    })
 
   const calcularHorasExtras = (regs: any[]) =>
     calcularTotaisHoras(regs).totalHorasExtras.toFixed(1)
@@ -238,8 +330,18 @@ export default function RelatoriosPage() {
       })
       .sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime())
 
+    // Todos os usos DESTA máquina, seja ela a principal ou uma extra do
+    // registro — cada um com as próprias horas e o próprio horímetro.
     const registrosMaquina = registros
-      .filter((r: any) => r.maquinaId === maquinaId)
+      .flatMap((r: any) => usosMaquinaDoRegistro(r)
+        .filter(u => u.maquinaId === maquinaId)
+        .map(u => ({
+          data: r.data,
+          isAjusteHorimetro: r.isAjusteHorimetro,
+          horasMaquina: u.horasMaquina,
+          horimetroInicial: u.horimetroInicial,
+          horimetroFinal: u.horimetroFinal,
+        })))
       .sort((a: any, b: any) => new Date(a.data).getTime() - new Date(b.data).getTime())
 
     const intervalos: {
@@ -351,7 +453,7 @@ export default function RelatoriosPage() {
     return Object.entries(agruparPorOperador(regs))
       .map(([nome, grupo]) => {
         const horasHomem = parseFloat(calcularHoras(grupo))
-        const horasMaquina = parseFloat(calcularHorasMaquina(grupo))
+        const horasMaquina = parseFloat(calcularHorasMaquina(grupo, filtrosPorRelatorio['comparativo-hh-hm'].maquinaId))
         return { operador: nome, horasHomem, horasMaquina }
       })
       .sort((a, b) => b.horasHomem - a.horasHomem)
@@ -399,18 +501,18 @@ export default function RelatoriosPage() {
             {
               nome: 'Histórico de Atividades',
               colunas: ['Data', 'Talhão', 'Safra', 'Atividade', 'Responsável', 'Máquina', 'Hora Máquina', 'Bombas', 'Horas Homem', 'Área (ha)', 'Implemento'],
-              linhas: registrosHistorico.map(r => [
+              linhas: linhasHistorico(registrosHistorico, filtrosPorRelatorio.historico.maquinaId).map(({ registro: r, primeiraLinha, maquinaNome, horasMaquina, implemento }) => [
                 new Date(r.data).toLocaleDateString('pt-BR'),
                 r.talhao?.nome || '-',
                 r.safra?.nome || '-',
                 getTipoLabel(r.tipoAtividade),
                 r.funcionario?.name || '-',
-                r.maquina?.nome || '-',
-                r.horasMaquina ? `${r.horasMaquina.toFixed(1)}h` : '-',
-                r.totalBombas || '-',
-                r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-',
-                r.areaHectares != null ? r.areaHectares.toFixed(2) : '-',
-                r.implementoUtilizado || '-',
+                maquinaNome || '-',
+                horasMaquina ? `${horasMaquina.toFixed(1)}h` : '-',
+                primeiraLinha ? (r.totalBombas || '-') : '',
+                primeiraLinha ? (r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-') : '',
+                primeiraLinha ? (r.areaHectares != null ? r.areaHectares.toFixed(2) : '-') : '',
+                implemento || '-',
               ]),
             },
           ],
@@ -425,7 +527,7 @@ export default function RelatoriosPage() {
                 nome,
                 regs.length,
                 `${calcularHoras(regs)}h`,
-                `${calcularHorasMaquina(regs)}h`,
+                `${calcularHorasMaquina(regs, filtrosPorRelatorio.operacional.maquinaId)}h`,
                 `${calcularHorasExtras(regs)}h`,
                 regs.filter((r: any) => r.isFalta).length,
               ]),
@@ -433,18 +535,8 @@ export default function RelatoriosPage() {
             {
               nome: 'Desempenho por Equipamento',
               colunas: ['Máquina', 'Usos', 'Hora Máquina'],
-              linhas: Object.entries(
-                registrosOperacional
-                  .filter((r: any) => r.maquinaId)
-                  .reduce((acc: any, r: any) => {
-                    const nome = r.maquina?.nome || r.maquinaId
-                    if (!acc[nome]) acc[nome] = []
-                    acc[nome].push(r)
-                    return acc
-                  }, {})
-              ).map(([nome, regs]: any) => {
-                return [nome, regs.length, `${calcularHorasMaquina(regs)}h`]
-              }),
+              linhas: agruparPorEquipamento(registrosOperacional, filtrosPorRelatorio.operacional.maquinaId)
+                .map(([nome, g]) => [nome, g.usos, `${g.horas.toFixed(1)}h`]),
             },
           ],
         }
@@ -458,7 +550,7 @@ export default function RelatoriosPage() {
                 getTalhaoNome(id),
                 regs.length,
                 `${calcularHoras(regs)}h`,
-                `${calcularHorasMaquina(regs)}h`,
+                `${calcularHorasMaquina(regs, filtrosPorRelatorio.custos.maquinaId)}h`,
                 formatarCustoPorHa(getCustoHHHMPorTalhao(id)?.custoHHPorHa),
                 formatarCustoPorHa(getCustoHHHMPorTalhao(id)?.custoHMPorHa),
               ]),
@@ -470,7 +562,7 @@ export default function RelatoriosPage() {
                 getSafraNome(id),
                 regs.length,
                 `${calcularHoras(regs)}h`,
-                `${calcularHorasMaquina(regs)}h`,
+                `${calcularHorasMaquina(regs, filtrosPorRelatorio.custos.maquinaId)}h`,
               ]),
             },
           ],
@@ -841,8 +933,8 @@ export default function RelatoriosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {registrosHistorico.map((r, i) => (
-                      <tr key={r.id} className={'border-b border-gray-100 last:border-0 transition-colors hover:bg-green-50 ' + (i % 2 === 1 ? 'bg-gray-50' : '')}>
+                    {linhasHistorico(registrosHistorico, filtrosPorRelatorio.historico.maquinaId).map(({ chave, registro: r, primeiraLinha, maquinaNome, horasMaquina, implemento }, i) => (
+                      <tr key={chave} className={'border-b border-gray-100 last:border-0 transition-colors hover:bg-green-50 ' + (i % 2 === 1 ? 'bg-gray-50' : '')}>
                         <td className="py-2.5 px-4 text-gray-600">{new Date(r.data).toLocaleDateString('pt-BR')}</td>
                         <td className="py-2.5 px-4 font-medium text-gray-800">{r.talhao?.nome || '-'}</td>
                         <td className="py-2.5 px-4 text-gray-600">{r.safra?.nome || '-'}</td>
@@ -850,12 +942,12 @@ export default function RelatoriosPage() {
                           <span className="inline-block text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700">{getTipoLabel(r.tipoAtividade)}</span>
                         </td>
                         <td className="py-2.5 px-4 text-gray-700">{r.funcionario?.name || '-'}</td>
-                        <td className="py-2.5 px-4 text-gray-600">{r.maquina?.nome || '-'}</td>
-                        <td className="py-2.5 px-4 text-right text-gray-600">{r.horasMaquina ? `${r.horasMaquina.toFixed(1)}h` : '-'}</td>
-                        <td className="py-2.5 px-4 text-right text-gray-600">{r.totalBombas || '-'}</td>
-                        <td className="py-2.5 px-4 text-right font-semibold text-green-800">{r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-'}</td>
-                        <td className="py-2.5 px-4 text-right text-gray-600">{r.areaHectares != null ? `${r.areaHectares.toFixed(2)} ha` : '-'}</td>
-                        <td className="py-2.5 px-4 text-gray-600">{r.implementoUtilizado || '-'}</td>
+                        <td className="py-2.5 px-4 text-gray-600">{maquinaNome || '-'}</td>
+                        <td className="py-2.5 px-4 text-right text-gray-600">{horasMaquina ? `${horasMaquina.toFixed(1)}h` : '-'}</td>
+                        <td className="py-2.5 px-4 text-right text-gray-600">{primeiraLinha ? (r.totalBombas || '-') : ''}</td>
+                        <td className="py-2.5 px-4 text-right font-semibold text-green-800">{primeiraLinha ? (r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-') : ''}</td>
+                        <td className="py-2.5 px-4 text-right text-gray-600">{primeiraLinha ? (r.areaHectares != null ? `${r.areaHectares.toFixed(2)} ha` : '-') : ''}</td>
+                        <td className="py-2.5 px-4 text-gray-600">{implemento || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -885,7 +977,7 @@ export default function RelatoriosPage() {
                         <td className="py-2 px-3 font-medium">{nome}</td>
                         <td className="py-2 px-3">{regs.length}</td>
                         <td className="py-2 px-3">{calcularHoras(regs)}h</td>
-                        <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
+                        <td className="py-2 px-3">{calcularHorasMaquina(regs, filtrosPorRelatorio.operacional.maquinaId)}h</td>
                         <td className="py-2 px-3">{calcularHorasExtras(regs)}h</td>
                         <td className="py-2 px-3">{regs.filter((r: any) => r.isFalta).length}</td>
                       </tr>
@@ -904,21 +996,12 @@ export default function RelatoriosPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(
-                      registrosOperacional
-                        .filter((r: any) => r.maquinaId)
-                        .reduce((acc: any, r: any) => {
-                          const nome = r.maquina?.nome || r.maquinaId
-                          if (!acc[nome]) acc[nome] = []
-                          acc[nome].push(r)
-                          return acc
-                        }, {})
-                    ).map(([nome, regs]: any) => {
+                    {agruparPorEquipamento(registrosOperacional, filtrosPorRelatorio.operacional.maquinaId).map(([nome, g]) => {
                       return (
                         <tr key={nome} className="border-b hover:bg-gray-50">
                           <td className="py-2 px-3 font-medium">{nome}</td>
-                          <td className="py-2 px-3">{regs.length}</td>
-                          <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
+                          <td className="py-2 px-3">{g.usos}</td>
+                          <td className="py-2 px-3">{g.horas.toFixed(1)}h</td>
                         </tr>
                       )
                     })}
@@ -968,7 +1051,7 @@ export default function RelatoriosPage() {
                             <td className="py-2 px-3 font-medium">{getTalhaoNome(talhaoId)}</td>
                             <td className="py-2 px-3">{regs.length}</td>
                             <td className="py-2 px-3">{calcularHoras(regs)}h</td>
-                            <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
+                            <td className="py-2 px-3">{calcularHorasMaquina(regs, filtrosPorRelatorio.custos.maquinaId)}h</td>
                             <td className="py-2 px-3">{formatarCustoPorHa(custo?.custoHHPorHa)}</td>
                             <td className="py-2 px-3">{formatarCustoPorHa(custo?.custoHMPorHa)}</td>
                             <td className="py-2 px-3">{custo?.horasTurma ? `${custo.horasTurma.toFixed(1)}h` : '—'}</td>
@@ -1000,7 +1083,7 @@ export default function RelatoriosPage() {
                         <td className="py-2 px-3 font-medium">{getSafraNome(safraId)}</td>
                         <td className="py-2 px-3">{regs.length}</td>
                         <td className="py-2 px-3">{calcularHoras(regs)}h</td>
-                        <td className="py-2 px-3">{calcularHorasMaquina(regs)}h</td>
+                        <td className="py-2 px-3">{calcularHorasMaquina(regs, filtrosPorRelatorio.custos.maquinaId)}h</td>
                       </tr>
                     ))}
                   </tbody>
