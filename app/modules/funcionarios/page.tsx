@@ -21,7 +21,7 @@ interface Funcionario {
 
 const ROTULOS_PERFIL: Record<string, string> = {
   FUNCIONARIO: 'Funcionário',
-  GERENTE: 'Gerente',
+  GERENTE: 'Consultor',
   AGRONOMO: 'Agrônomo',
   GESTOR: 'Gestor',
 }
