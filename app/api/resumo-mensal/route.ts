@@ -126,12 +126,43 @@ export async function GET(request: NextRequest) {
         motivoFalta: true,
         ehHoraExtra: true,
         passouDiretoAlmoco: true,
+        tipoAtividade: true,
       },
       orderBy: [{ data: 'asc' }, { horaEntrada: 'asc' }],
     })
 
+    // Feriados cadastrados no intervalo (Cadastros → Feriados). Regras
+    // definidas em 23/09/2026:
+    // - Feriado nunca é falta: qualquer falta num dia de feriado é
+    //   ignorada (não desconta nem aparece), inclusive faltas automáticas
+    //   geradas antes do feriado ser cadastrado.
+    // - Mensalista que trabalha no feriado: todas as horas do dia contam
+    //   como hora extra (jornada do dia = 0), além do salário normal.
+    // - Diarista que trabalha no feriado: horas × valor da hora, sem extra
+    //   (ver regra de diarista mais abaixo).
+    const feriadosNoIntervalo = await prisma.feriado.findMany({
+      where: {
+        data: {
+          gte: new Date(inicioMes.getTime() - 24 * 60 * 60 * 1000),
+          lte: new Date(fimMes.getTime() + 24 * 60 * 60 * 1000),
+        },
+      },
+      select: { data: true },
+    })
+    const datasFeriado = new Set(feriadosNoIntervalo.map((f) => f.data.toISOString().split('T')[0]))
+
     const resumo = funcionarios.map((func) => {
-      const registrosFuncionario = registros.filter(r => r.funcionarioId === func.id)
+      const registrosFuncionario = registros.filter(
+        r => r.funcionarioId === func.id && !(r.isFalta && datasFeriado.has(r.data.toISOString().split('T')[0]))
+      )
+      // Dias de feriado em que o funcionário TRABALHOU de verdade (tem
+      // registro que não é falta nem a folga paga "Feriado"/tipo FERIADO).
+      const feriadosTrabalhados = new Set(
+        registrosFuncionario
+          .filter(r => !r.isFalta && r.tipoAtividade !== 'FERIADO')
+          .map(r => r.data.toISOString().split('T')[0])
+          .filter(chave => datasFeriado.has(chave))
+      )
 
       // Dados de salário/hora extra/jornada do funcionário NUM DIA
       // específico: acha o período do dia, depois o SalarioPeriodo desse
@@ -262,7 +293,7 @@ export async function GET(request: NextRequest) {
         const jornadaReferencia =
           (periodoDoDia?.tipo === 'SAFRA' ? dados.cargaHorariaSegSex : dados.cargaHorariaSegQui) || 8
         const diaSemana = dataDoDia.getDay()
-        const semHoraExtra = diaSemana === 0 || diaSemana === 6 || agregado.cargaDia <= 0
+        const semHoraExtra = diaSemana === 0 || diaSemana === 6 || agregado.cargaDia <= 0 || datasFeriado.has(chaveData)
         const jornadaDoDia = semHoraExtra ? jornadaReferencia : agregado.cargaDia
         const valorHora = jornadaDoDia > 0 ? diaria / jornadaDoDia : 0
         const horas = agregado.somaHorasDia
@@ -283,12 +314,17 @@ export async function GET(request: NextRequest) {
         const diarista = diaristaPorData.get(chaveData)
         if (diarista) {
           totalHorasExtras += diarista.horasExtras
+        } else if (datasFeriado.has(chaveData)) {
+          // Mensalista no feriado: todas as horas trabalhadas são extra,
+          // nunca há hora devida.
+          if (feriadosTrabalhados.has(chaveData)) totalHorasExtras += agregado.somaHorasDia
+          continue
         } else {
           totalHorasExtras += agregado.horasExtrasDia
           totalHorasDevidas += agregado.horasDevidasDia
         }
       }
-      if (diaristaPorData.size === 0) {
+      if (diaristaPorData.size === 0 && datasFeriado.size === 0) {
         totalHorasExtras = totalHorasExtrasBruto
         totalHorasDevidas = totalHorasDevidasBruto
       }
@@ -311,6 +347,15 @@ export async function GET(request: NextRequest) {
         }
         const [yD, mD, dD] = chaveData.split('-').map(Number)
         const dataDoDia = new Date(yD, mD - 1, dD)
+        if (datasFeriado.has(chaveData)) {
+          // Mensalista no feriado: todas as horas trabalhadas viram hora
+          // extra (a folga paga tipo FERIADO não conta como trabalho).
+          if (feriadosTrabalhados.has(chaveData)) {
+            const tarifaExtraFeriado = valorHoraExtraNaData(dataDoDia)
+            if (tarifaExtraFeriado !== null) valorHorasExtras += agregado.somaHorasDia * tarifaExtraFeriado
+          }
+          continue
+        }
 
         const tarifaExtra = valorHoraExtraNaData(dataDoDia)
         if (tarifaExtra !== null) valorHorasExtras += agregado.horasExtrasDia * tarifaExtra
@@ -348,6 +393,12 @@ export async function GET(request: NextRequest) {
           const dataDoDia = new Date(yD, mD - 1, dD)
           const valorDiaDoDia = valorDiaNaData(dataDoDia)
           const valorHoraExtraDoDia = valorHoraExtraNaData(dataDoDia)
+          if (datasFeriado.has(chaveData)) {
+            // Feriado: dia pago normal + todas as horas trabalhadas como extra.
+            if (valorDiaDoDia !== null) acumuladoProporcional += valorDiaDoDia
+            if (valorHoraExtraDoDia !== null && feriadosTrabalhados.has(chaveData)) acumuladoProporcional += somaHorasDia * valorHoraExtraDoDia
+            continue
+          }
           if (valorDiaDoDia === null || valorHoraExtraDoDia === null || cargaDia <= 0) continue
           const valorHoraDoDia = valorDiaDoDia / cargaDia
           const pagamentoDoDia = somaHorasDia < cargaDia
@@ -377,6 +428,7 @@ export async function GET(request: NextRequest) {
             horasDevidas: 0,
             isFalta: true,
             isFolga: false,
+            isFeriado: false,
             isSemPeriodo: false,
             motivoFalta: reg.motivoFalta,
             passouDiretoAlmoco: false,
@@ -399,8 +451,15 @@ export async function GET(request: NextRequest) {
         // grupo, pra não exibir "devidas"/"extras" duplicado em cada turno.
         const ehUltimoRegistroDoDia = reg.id === agregado.ultimoRegistroId
         const diaristaDoDia = diaristaPorData.get(chaveData)
-        const horasExtras = ehUltimoRegistroDoDia ? (diaristaDoDia ? diaristaDoDia.horasExtras : agregado.horasExtrasDia) : 0
-        const horasDevidas = ehUltimoRegistroDoDia && !diaristaDoDia ? agregado.horasDevidasDia : 0
+        const ehFeriado = datasFeriado.has(chaveData)
+        const horasExtras = !ehUltimoRegistroDoDia
+          ? 0
+          : diaristaDoDia
+          ? diaristaDoDia.horasExtras
+          : ehFeriado
+          ? (feriadosTrabalhados.has(chaveData) ? agregado.somaHorasDia : 0)
+          : agregado.horasExtrasDia
+        const horasDevidas = ehUltimoRegistroDoDia && !diaristaDoDia && !ehFeriado ? agregado.horasDevidasDia : 0
 
         return {
           data: reg.data,
@@ -414,6 +473,7 @@ export async function GET(request: NextRequest) {
           horasDevidas: Math.round(horasDevidas * 100) / 100,
           isFalta: false,
           isFolga: false,
+          isFeriado: ehFeriado,
           isSemPeriodo: !dadosSalarioNaData(reg.data),
           motivoFalta: null,
           passouDiretoAlmoco: reg.passouDiretoAlmoco,
@@ -460,6 +520,7 @@ export async function GET(request: NextRequest) {
                 horasDevidas: 0,
                 isFalta: false,
                 isFolga: false,
+                isFeriado: false,
                 isSemPeriodo: true,
                 motivoFalta: null,
                 passouDiretoAlmoco: false,
@@ -470,9 +531,10 @@ export async function GET(request: NextRequest) {
               const diaSemana = cursor.getDay()
               const ehSabado = diaSemana === 6
               const ehDomingo = diaSemana === 0
-              const deveSerFolga = periodo.tipo === 'SAFRA'
+              // Feriado sem registro também aparece como folga (não é falta).
+              const deveSerFolga = datasFeriado.has(chave) || (periodo.tipo === 'SAFRA'
                 ? (ehDomingo && domingosPorMes < 4)
-                : (ehSabado || ehDomingo)
+                : (ehSabado || ehDomingo))
               if (deveSerFolga) {
                 folgasSemRegistro.push({
                   // Meio-dia UTC evita que a conversão pro fuso do
@@ -489,6 +551,7 @@ export async function GET(request: NextRequest) {
                   horasDevidas: 0,
                   isFalta: false,
                   isFolga: true,
+                  isFeriado: datasFeriado.has(chave),
                   isSemPeriodo: false,
                   motivoFalta: null,
                   passouDiretoAlmoco: false,
@@ -541,7 +604,8 @@ export async function GET(request: NextRequest) {
         const cursorDias = new Date(inicioMes)
         while (cursorDias <= fimMes) {
           const chave = cursorDias.toISOString().split('T')[0]
-          if (!faltasDatas.has(chave) && !folgaDatas.has(chave)) {
+          // Feriado não trabalhado é dia pago normal pro mensalista.
+          if (!faltasDatas.has(chave) && (!folgaDatas.has(chave) || datasFeriado.has(chave))) {
             const valorDiaDoDia = valorDiaNaData(cursorDias)
             if (valorDiaDoDia !== null) soma += valorDiaDoDia
           }
