@@ -74,7 +74,7 @@ function desenharPaginaFuncionario(
       return [fmtData(dia.data), '—', '—', 'FALTA', fmtH(dia.cargaContratual), '—', '—']
     }
     if (dia.isFolga) {
-      return [fmtData(dia.data), '—', '—', dia.isFeriado ? 'FERIADO' : 'FOLGA', '—', '—', '—']
+      return [fmtData(dia.data), '—', '—', dia.isFerias ? 'FÉRIAS' : dia.isFeriado ? 'FERIADO' : 'FOLGA', '—', '—', '—']
     }
     return [
       fmtData(dia.data),

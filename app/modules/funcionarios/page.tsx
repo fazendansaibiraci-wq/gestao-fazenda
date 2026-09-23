@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { UserPlus, Pencil, Trash2, Eye } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { SalarioPeriodoTable } from '@/components/SalarioPeriodoTable'
+import { FeriasFuncionarios } from '@/components/FeriasFuncionarios'
 
 interface Funcionario {
   id: string
@@ -35,7 +36,7 @@ export default function FuncionariosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('ATIVO')
-  const [abaAtiva, setAbaAtiva] = useState<'lista' | 'safra' | 'entressafra'>('lista')
+  const [abaAtiva, setAbaAtiva] = useState<'lista' | 'safra' | 'entressafra' | 'ferias'>('lista')
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
@@ -112,6 +113,7 @@ export default function FuncionariosPage() {
           { key: 'lista', label: 'Lista' },
           { key: 'safra', label: 'Salário Safra' },
           { key: 'entressafra', label: 'Salário Entressafra' },
+          { key: 'ferias', label: 'Férias' },
         ] as const).map(({ key, label }) => (
           <button
             key={key}
@@ -129,6 +131,7 @@ export default function FuncionariosPage() {
 
       {abaAtiva === 'safra' && <SalarioPeriodoTable key={`safra-${refreshKey}`} tipo="SAFRA" />}
       {abaAtiva === 'entressafra' && <SalarioPeriodoTable key={`entressafra-${refreshKey}`} tipo="ENTRESSAFRA" />}
+      {abaAtiva === 'ferias' && <FeriasFuncionarios funcionarios={funcionarios} />}
 
       {abaAtiva === 'lista' && (
         <>

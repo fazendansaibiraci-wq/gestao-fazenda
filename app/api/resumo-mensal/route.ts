@@ -151,9 +151,38 @@ export async function GET(request: NextRequest) {
     })
     const datasFeriado = new Set(feriadosNoIntervalo.map((f) => f.data.toISOString().split('T')[0]))
 
+    // Férias (Funcionários → aba Férias), regra de 23/09/2026: dia de férias
+    // nunca é falta (qualquer falta nesses dias é ignorada), aparece como
+    // "Férias", sem desconto — mensalista recebe o salário normal; diarista
+    // não recebe (só trabalho). Adicional de 1/3 só informativo.
+    const feriasNoIntervalo = await prisma.feriasFuncionario.findMany({
+      where: {
+        dataInicio: { lte: fimMes },
+        dataFim: { gte: new Date(inicioMes.getTime() - 24 * 60 * 60 * 1000) },
+        ...(isFuncionario ? { funcionarioId: userId } : {}),
+      },
+      select: { funcionarioId: true, dataInicio: true, dataFim: true },
+    })
+    const inicioChave = new Date(inicioMes.getTime() - inicioMes.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+    const fimChave = new Date(fimMes.getTime() - fimMes.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+    const diasFeriasPorFuncionario = new Map<string, Set<string>>()
+    for (const f of feriasNoIntervalo) {
+      if (!diasFeriasPorFuncionario.has(f.funcionarioId)) diasFeriasPorFuncionario.set(f.funcionarioId, new Set())
+      const conjunto = diasFeriasPorFuncionario.get(f.funcionarioId)!
+      const cursorFerias = new Date(f.dataInicio)
+      while (cursorFerias <= f.dataFim) {
+        const chave = cursorFerias.toISOString().split('T')[0]
+        if (chave >= inicioChave && chave <= fimChave) conjunto.add(chave)
+        cursorFerias.setUTCDate(cursorFerias.getUTCDate() + 1)
+      }
+    }
+
     const resumo = funcionarios.map((func) => {
+      const diasFerias = diasFeriasPorFuncionario.get(func.id) || new Set<string>()
       const registrosFuncionario = registros.filter(
-        r => r.funcionarioId === func.id && !(r.isFalta && datasFeriado.has(r.data.toISOString().split('T')[0]))
+        r => r.funcionarioId === func.id && !(r.isFalta && (
+          datasFeriado.has(r.data.toISOString().split('T')[0]) || diasFerias.has(r.data.toISOString().split('T')[0])
+        ))
       )
       // Dias de feriado em que o funcionário TRABALHOU de verdade (tem
       // registro que não é falta nem a folga paga "Feriado"/tipo FERIADO).
@@ -429,6 +458,7 @@ export async function GET(request: NextRequest) {
             isFalta: true,
             isFolga: false,
             isFeriado: false,
+            isFerias: false,
             isSemPeriodo: false,
             motivoFalta: reg.motivoFalta,
             passouDiretoAlmoco: false,
@@ -474,6 +504,7 @@ export async function GET(request: NextRequest) {
           isFalta: false,
           isFolga: false,
           isFeriado: ehFeriado,
+          isFerias: diasFerias.has(chaveData),
           isSemPeriodo: !dadosSalarioNaData(reg.data),
           motivoFalta: null,
           passouDiretoAlmoco: reg.passouDiretoAlmoco,
@@ -507,7 +538,26 @@ export async function GET(request: NextRequest) {
             const [anoFolga, mesFolga, diaFolga] = chave.split('-').map(Number)
             const dataMeioDia = new Date(Date.UTC(anoFolga, mesFolga - 1, diaFolga, 12, 0, 0))
 
-            if (!dadosDoDia) {
+            if (diasFerias.has(chave)) {
+              folgasSemRegistro.push({
+                data: dataMeioDia,
+                horaEntrada: null,
+                horaSaida: null,
+                horasBrutas: 0,
+                descontoAlmoco: 0,
+                horasTrabalhadas: 0,
+                cargaContratual: 0,
+                horasExtras: 0,
+                horasDevidas: 0,
+                isFalta: false,
+                isFolga: true,
+                isFeriado: false,
+                isFerias: true,
+                isSemPeriodo: false,
+                motivoFalta: null,
+                passouDiretoAlmoco: false,
+              })
+            } else if (!dadosDoDia) {
               folgasSemRegistro.push({
                 data: dataMeioDia,
                 horaEntrada: null,
@@ -521,6 +571,7 @@ export async function GET(request: NextRequest) {
                 isFalta: false,
                 isFolga: false,
                 isFeriado: false,
+                isFerias: false,
                 isSemPeriodo: true,
                 motivoFalta: null,
                 passouDiretoAlmoco: false,
@@ -552,6 +603,7 @@ export async function GET(request: NextRequest) {
                   isFalta: false,
                   isFolga: true,
                   isFeriado: datasFeriado.has(chave),
+                  isFerias: false,
                   isSemPeriodo: false,
                   motivoFalta: null,
                   passouDiretoAlmoco: false,
@@ -589,6 +641,17 @@ export async function GET(request: NextRequest) {
       // - DIARIO: soma cada dia efetivamente trabalhado na tarifa do seu
       //   próprio dia (fica de fora se o dia não tiver período/salário
       //   cadastrado) — diarista só recebe pelos dias que trabalhou.
+      // Férias (regra revista em 23/09/2026): os dias de férias NÃO entram
+      // no acumulado do mês — férias são pagas à parte. O valor desses
+      // dias (salário ÷ 30 × dias) e o 1/3 aparecem só como informação.
+      const valorDiasFerias = tipoSalarioFunc === 'MENSAL'
+        ? Array.from(diasFerias).reduce((acc, chave) => {
+            const [yF, mF, dF] = chave.split('-').map(Number)
+            const valorDia = valorDiaNaData(new Date(yF, mF - 1, dF))
+            return acc + (valorDia ?? 0)
+          }, 0)
+        : 0
+
       let acumuladoDiasTrabalhados: number
       if (tipoSalarioFunc === 'DIARIO') {
         // Horas normais × valor da hora, dia a dia (regra de diarista acima).
@@ -604,8 +667,9 @@ export async function GET(request: NextRequest) {
         const cursorDias = new Date(inicioMes)
         while (cursorDias <= fimMes) {
           const chave = cursorDias.toISOString().split('T')[0]
-          // Feriado não trabalhado é dia pago normal pro mensalista.
-          if (!faltasDatas.has(chave) && (!folgaDatas.has(chave) || datasFeriado.has(chave))) {
+          // Feriado não trabalhado é dia pago normal pro mensalista; dia de
+          // férias não entra (férias são pagas à parte).
+          if (!faltasDatas.has(chave) && !diasFerias.has(chave) && (!folgaDatas.has(chave) || datasFeriado.has(chave))) {
             const valorDiaDoDia = valorDiaNaData(cursorDias)
             if (valorDiaDoDia !== null) soma += valorDiaDoDia
           }
@@ -613,7 +677,7 @@ export async function GET(request: NextRequest) {
         }
         acumuladoDiasTrabalhados = soma
       } else {
-        acumuladoDiasTrabalhados = salarioBaseProporcional
+        acumuladoDiasTrabalhados = Math.max(0, salarioBaseProporcional - valorDiasFerias)
       }
       // No período customizado, a falta já foi excluída dos "dias
       // pagáveis" acima — não desconta de novo aqui (senão descontaria a
@@ -634,12 +698,17 @@ export async function GET(request: NextRequest) {
         funcionario: { id: func.id, name: func.name, role: func.role, pagamentoProporcionalDiario: func.pagamentoProporcionalDiario },
         regimeSalario,
         tipoSalario: tipoSalarioFunc,
+        diasFerias: diasFerias.size,
+        // Férias pagas à parte — SÓ INFORMATIVO, não entram no total:
+        // valor dos dias (salário ÷ 30 × dias) e o adicional de 1/3.
+        valorFeriasInformativo: Math.round(valorDiasFerias * 100) / 100,
+        umTercoFeriasInformativo: Math.round((valorDiasFerias / 3) * 100) / 100,
         diasSafraNoPeriodo,
         diasEntressafraNoPeriodo,
         // Diarista: "salário base" exibido = valor das horas normais
         // trabalhadas no período (sem as extras); valorDia = diária média
         // ponderada Safra/Entressafra.
-        salarioBase: Math.round((tipoSalarioFunc === 'DIARIO' ? acumuladoDiasTrabalhados : salarioBaseProporcional) * 100) / 100,
+        salarioBase: Math.round((tipoSalarioFunc === 'DIARIO' || diasFerias.size > 0 ? acumuladoDiasTrabalhados : salarioBaseProporcional) * 100) / 100,
         valorDia: Math.round((diasNoPeriodo > 0
           ? (tipoSalarioFunc === 'DIARIO'
             ? (diasSafraNoPeriodo / diasNoPeriodo) * (repSafra?.salarioDiaria || 0) + (diasEntressafraNoPeriodo / diasNoPeriodo) * (repEntressafra?.salarioDiaria || 0)

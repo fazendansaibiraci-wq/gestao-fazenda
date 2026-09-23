@@ -15,6 +15,7 @@ export interface RegistroDiario {
   isFalta: boolean
   isFolga?: boolean
   isFeriado?: boolean
+  isFerias?: boolean
   isSemPeriodo?: boolean
   motivoFalta: string | null
   passouDiretoAlmoco: boolean
@@ -61,6 +62,10 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario }:
         ) : dia.isFalta ? (
           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
             Falta {dia.motivoFalta ? `— ${dia.motivoFalta}` : ''}
+          </span>
+        ) : dia.isFerias ? (
+          <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
+            Férias
           </span>
         ) : dia.isFeriado ? (
           <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">

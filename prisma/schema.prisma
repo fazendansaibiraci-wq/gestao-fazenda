@@ -156,6 +156,7 @@ domingosPorMes        Int?   @default(2)
   assistantLogs AssistantLog[]
 
   salariosPeriodo SalarioPeriodo[]
+  ferias          FeriasFuncionario[] @relation("FeriasFuncionario")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1358,6 +1359,23 @@ model PeriodoRegimeSalarial {
 // usa-se cargaHorariaSegSex + domingosTrabalhadosPorMes; num período
 // ENTRESSAFRA usa-se cargaHorariaSegQui + cargaHorariaSexta.
 // cargaHorariaSabado/cargaHorariaDomingo são usados nos dois tipos.
+// Férias de um funcionário (intervalo de datas, inclusivo). Definido em
+// 23/09/2026: nos dias de férias não há falta automática, o Resumo Mensal
+// mostra "Férias" sem desconto (mensalista recebe o salário normal), e o
+// adicional de 1/3 aparece só como informação (não soma no total).
+model FeriasFuncionario {
+  id            String   @id @default(cuid())
+  funcionario   User     @relation("FeriasFuncionario", fields: [funcionarioId], references: [id], onDelete: Cascade)
+  funcionarioId String
+  dataInicio    DateTime
+  dataFim       DateTime
+  observacao    String?
+  dataCriacao   DateTime @default(now())
+
+  @@index([funcionarioId])
+  @@map("ferias_funcionario")
+}
+
 model SalarioPeriodo {
   id                      String                @id @default(cuid())
   funcionario             User                  @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)

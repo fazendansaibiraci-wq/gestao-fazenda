@@ -137,6 +137,24 @@ export async function GET(request: NextRequest) {
     })
     const feriadosSet = new Set(feriadosDoMes.map(f => f.data.toISOString().split('T')[0]))
 
+    // Férias cadastradas (Funcionários → aba Férias): dia de férias nunca
+    // vira falta automática. Chave "funcionarioId:YYYY-MM-DD".
+    const feriasDoMes = await prisma.feriasFuncionario.findMany({
+      where: {
+        dataInicio: { lte: new Date(Date.UTC(ano, mesNum, 1)) },
+        dataFim: { gte: new Date(Date.UTC(ano, mesNum - 1, 1)) },
+      },
+      select: { funcionarioId: true, dataInicio: true, dataFim: true },
+    })
+    const diasFeriasSet = new Set<string>()
+    for (const f of feriasDoMes) {
+      const cursorFerias = new Date(f.dataInicio)
+      while (cursorFerias <= f.dataFim) {
+        diasFeriasSet.add(`${f.funcionarioId}:${cursorFerias.toISOString().split('T')[0]}`)
+        cursorFerias.setUTCDate(cursorFerias.getUTCDate() + 1)
+      }
+    }
+
     // Primeiro identifica os dias faltantes de cada funcionário (lógica já existente).
     const candidatosPorFuncionario: { func: (typeof funcionarios)[number]; diasFaltantes: string[] }[] = []
     const funcionariosSemSalario = new Set<string>()
@@ -161,7 +179,7 @@ export async function GET(request: NextRequest) {
 
         if (cargaDia > 0) {
           const chave = `${ano}-${String(mesNum).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
-          if (!datasRegistradas.has(chave) && !feriadosSet.has(chave)) {
+          if (!datasRegistradas.has(chave) && !feriadosSet.has(chave) && !diasFeriasSet.has(`${func.id}:${chave}`)) {
             diasFaltantes.push(chave)
           }
         }

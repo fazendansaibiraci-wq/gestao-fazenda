@@ -14,6 +14,9 @@ interface ResumoFuncionario {
   funcionario: { id: string; name: string; role: string; pagamentoProporcionalDiario?: boolean }
   regimeSalario: 'safra' | 'entressafra' | 'misto'
   tipoSalario?: 'MENSAL' | 'DIARIO' | null
+  diasFerias?: number
+  valorFeriasInformativo?: number
+  umTercoFeriasInformativo?: number
   salarioBase: number
   valorDia: number
   valorHoraNormal: number
@@ -462,6 +465,15 @@ export default function ResumoMensalPage() {
                   </div>
                 </div>
 
+                {(r.diasFerias ?? 0) > 0 && (
+                  <div className="mb-3 text-sm bg-teal-50 border border-teal-100 text-teal-800 rounded-lg px-3 py-2">
+                    Férias no período: {r.diasFerias} dia{r.diasFerias === 1 ? '' : 's'}
+                    {(r.valorFeriasInformativo ?? 0) > 0 && (
+                      <> · pagas à parte (não somadas no total): {fmt(r.valorFeriasInformativo ?? 0)} + 1/3 {fmt(r.umTercoFeriasInformativo ?? 0)}</>
+                    )}
+                  </div>
+                )}
+
                 {/* Visão simplificada do funcionário: salário fixo + horas extras + horas devidas */}
                 <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
                   <div className="flex justify-between items-center">
@@ -615,7 +627,19 @@ export default function ResumoMensalPage() {
                               />
                             </td>
                           )}
-                          <td className="px-4 py-3 font-medium">{r.funcionario.name}</td>
+                          <td className="px-4 py-3 font-medium">
+                            {r.funcionario.name}
+                            {(r.diasFerias ?? 0) > 0 && (
+                              <span
+                                className="ml-2 text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full"
+                                title={(r.valorFeriasInformativo ?? 0) > 0
+                                  ? `Férias pagas à parte (não somadas no total): ${fmt(r.valorFeriasInformativo ?? 0)} + 1/3 ${fmt(r.umTercoFeriasInformativo ?? 0)}`
+                                  : undefined}
+                              >
+                                Férias {r.diasFerias}d
+                              </span>
+                            )}
+                          </td>
                           <td className="px-4 py-3">
                             <BadgeRegime regime={r.regimeSalario} />
                           </td>
