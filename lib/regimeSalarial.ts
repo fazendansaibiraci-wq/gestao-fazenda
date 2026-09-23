@@ -28,5 +28,5 @@ export async function buscarPeriodosRegimeSalarial(): Promise<PeriodoRegimeSalar
 // quando a data não cai em nenhum período cadastrado.
 export function mensagemPeriodoNaoCadastrado(data: Date): string {
   const dataFormatada = data.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
-  return `Nenhum período de Safra/Entressafra cadastrado para o dia ${dataFormatada}. Cadastre esse período em Configurações → Safra/Entressafra antes de continuar.`
+  return `Nenhum período de Safra/Entressafra cadastrado para o dia ${dataFormatada}. Cadastre esse período em Cadastros → Safras → aba Safra / Entressafra antes de continuar.`
 }

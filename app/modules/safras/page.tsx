@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { redirect } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Trash2 } from 'lucide-react'
+import { PeriodosRegimeSalarial } from '@/components/PeriodosRegimeSalarial'
 
 export default function SafrasPage() {
   const { data: session, status } = useSession()
@@ -16,6 +17,8 @@ export default function SafrasPage() {
     status: 'ATIVA',
   })
   const [editingId, setEditingId] = useState<string | null>(null)
+  // Aba "Safra / Entressafra" (períodos do regime salarial) — só Gestor/Gerente.
+  const [abaAtiva, setAbaAtiva] = useState<'safras' | 'regime'>('safras')
 
   const userRole = (session?.user as any)?.role || ''
   const isGestor = ['GESTOR', 'GERENTE'].includes(userRole)
@@ -76,6 +79,32 @@ export default function SafrasPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-primary">Safras</h1>
+
+      {isGestor && (
+        <div className="flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setAbaAtiva('safras')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              abaAtiva === 'safras' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Safras
+          </button>
+          <button
+            onClick={() => setAbaAtiva('regime')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              abaAtiva === 'regime' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Safra / Entressafra
+          </button>
+        </div>
+      )}
+
+      {isGestor && abaAtiva === 'regime' && <PeriodosRegimeSalarial />}
+
+      {abaAtiva === 'safras' && (
+      <>
 
       {/* Formulário — apenas Gestor/Gerente */}
       {isGestor && (
@@ -173,6 +202,8 @@ export default function SafrasPage() {
         <div className="text-center py-12">
           <p className="text-gray-600">Nenhuma safra cadastrada</p>
         </div>
+      )}
+      </>
       )}
     </div>
   )

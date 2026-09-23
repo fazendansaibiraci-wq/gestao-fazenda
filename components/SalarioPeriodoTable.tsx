@@ -189,8 +189,8 @@ export function SalarioPeriodoTable({ tipo }: { tipo: 'SAFRA' | 'ENTRESSAFRA' })
   if (periodos.length === 0) {
     return (
       <div className="card p-4 bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-        Nenhum período de {tipo === 'SAFRA' ? 'Safra' : 'Entressafra'} cadastrado ainda. Cadastre em Configurações →
-        Safra/Entressafra antes de lançar os salários.
+        Nenhum período de {tipo === 'SAFRA' ? 'Safra' : 'Entressafra'} cadastrado ainda. Cadastre em Cadastros → Safras →
+        aba Safra / Entressafra antes de lançar os salários.
       </div>
     )
   }

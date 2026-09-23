@@ -10,7 +10,6 @@ import {
   Package,
   Calendar,
   BarChart3,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -28,6 +27,7 @@ import {
   MapPin,
   ArrowLeft,
   CalendarDays,
+  UserCog,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -67,9 +67,8 @@ export function Sidebar() {
     { label: 'Locais', href: '/modules/locais', icon: MapPin, excludeRoles: 'FUNCIONARIO' },
     { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
     { label: 'Feriados', href: '/modules/feriados', icon: CalendarDays, role: 'GESTOR|GERENTE' },
+    { label: 'Usuários', href: '/settings', icon: UserCog, role: 'GESTOR|GERENTE' },
   ].filter(item => show(item.role, item.excludeRoles))
-
-  const configuracoesItem = { label: 'Configurações/Usuários', href: '/settings', icon: Settings, role: 'GESTOR|GERENTE' }
 
   const combustivelItems = ([
     { label: 'Abastecimento', href: '/modules/combustivel', icon: Fuel },
@@ -153,17 +152,6 @@ export function Sidebar() {
                 </div>
               )}
             </>
-          )}
-
-          {/* Configurações/Usuários — item de menu principal (fora de Cadastros) */}
-          {show(configuracoesItem.role) && (
-            <Link
-              href={configuracoesItem.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive(configuracoesItem.href) ? 'bg-secondary text-primary font-semibold' : 'text-light hover:bg-secondary/20'}`}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {isOpen && <span className="truncate">{configuracoesItem.label}</span>}
-            </Link>
           )}
 
           {/* Cadastros — sub-menu */}
