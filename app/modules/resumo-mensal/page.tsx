@@ -394,7 +394,7 @@ export default function ResumoMensalPage() {
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
           ⚠️ {diasSemPeriodo.length === 1
             ? `O dia ${new Date(diasSemPeriodo[0] + 'T12:00:00').toLocaleDateString('pt-BR')} deste período não tem Safra nem Entressafra cadastrada.`
-            : `${diasSemPeriodo.length} dias deste período não têm Safra nem Entressafra cadastrada.`} Cadastre o período em Cadastros → Safras → aba Safra / Entressafra pra completar o cálculo desses dias.
+            : `${diasSemPeriodo.length} dias deste período não têm Safra nem Entressafra cadastrada.`} Cadastre o período em Cadastros → Safras → aba Salários Safra / Entressafra pra completar o cálculo desses dias.
         </div>
       )}
 
