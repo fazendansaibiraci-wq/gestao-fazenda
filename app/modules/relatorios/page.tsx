@@ -289,6 +289,19 @@ export default function RelatoriosPage() {
       }))
     })
 
+  // Linha de TOTAL do Histórico (respeita os filtros): soma a Hora Máquina
+  // de todas as linhas (uma por máquina) e Horas Homem/Área só da primeira
+  // linha de cada registro, pra não somar em dobro.
+  const totaisHistorico = (linhas: ReturnType<typeof linhasHistorico>) =>
+    linhas.reduce(
+      (acc, l) => ({
+        horasMaquina: acc.horasMaquina + (l.horasMaquina || 0),
+        horasHomem: acc.horasHomem + (l.primeiraLinha ? (l.registro.horasCalculadas || 0) : 0),
+        area: acc.area + (l.primeiraLinha && l.registro.areaHectares != null ? l.registro.areaHectares : 0),
+      }),
+      { horasMaquina: 0, horasHomem: 0, area: 0 }
+    )
+
   const calcularHorasExtras = (regs: any[]) =>
     calcularTotaisHoras(regs).totalHorasExtras.toFixed(1)
 
@@ -501,7 +514,7 @@ export default function RelatoriosPage() {
             {
               nome: 'Histórico de Atividades',
               colunas: ['Data', 'Talhão', 'Safra', 'Atividade', 'Responsável', 'Máquina', 'Hora Máquina', 'Bombas', 'Horas Homem', 'Área (ha)', 'Implemento'],
-              linhas: linhasHistorico(registrosHistorico, filtrosPorRelatorio.historico.maquinaId).map(({ registro: r, primeiraLinha, maquinaNome, horasMaquina, implemento }) => [
+              linhas: [...linhasHistorico(registrosHistorico, filtrosPorRelatorio.historico.maquinaId).map(({ registro: r, primeiraLinha, maquinaNome, horasMaquina, implemento }) => [
                 new Date(r.data).toLocaleDateString('pt-BR'),
                 r.talhao?.nome || '-',
                 r.safra?.nome || '-',
@@ -513,7 +526,10 @@ export default function RelatoriosPage() {
                 primeiraLinha ? (r.horasCalculadas ? `${r.horasCalculadas.toFixed(1)}h` : '-') : '',
                 primeiraLinha ? (r.areaHectares != null ? r.areaHectares.toFixed(2) : '-') : '',
                 implemento || '-',
-              ]),
+              ]), (() => {
+                const t = totaisHistorico(linhasHistorico(registrosHistorico, filtrosPorRelatorio.historico.maquinaId))
+                return ['TOTAL', '', '', '', '', '', `${t.horasMaquina.toFixed(1)}h`, '', `${t.horasHomem.toFixed(1)}h`, t.area.toFixed(2), '']
+              })()],
             },
           ],
         }
@@ -951,6 +967,21 @@ export default function RelatoriosPage() {
                       </tr>
                     ))}
                   </tbody>
+                  {(() => {
+                    const t = totaisHistorico(linhasHistorico(registrosHistorico, filtrosPorRelatorio.historico.maquinaId))
+                    return (
+                      <tfoot>
+                        <tr className="bg-[#EFE9DF] border-t-2 border-[#DDD5C8] font-bold text-[#2C373C]">
+                          <td className="py-3 px-4" colSpan={6}>Total</td>
+                          <td className="py-3 px-4 text-right">{t.horasMaquina.toFixed(1)}h</td>
+                          <td className="py-3 px-4"></td>
+                          <td className="py-3 px-4 text-right">{t.horasHomem.toFixed(1)}h</td>
+                          <td className="py-3 px-4 text-right">{t.area.toFixed(2)} ha</td>
+                          <td className="py-3 px-4"></td>
+                        </tr>
+                      </tfoot>
+                    )
+                  })()}
                 </table>
               </div>
             </div>
