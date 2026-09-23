@@ -1,9 +1,9 @@
 ﻿'use client'
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp, RefreshCw, Search } from 'lucide-react'
 import { redirect, useRouter, useSearchParams } from 'next/navigation'
 import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 
@@ -66,6 +66,58 @@ export default function AtividadesPage() {
   const [filtroTalhao, setFiltroTalhao] = useState(() => searchParams.get('talhao') || '')
   const [filtroTipoAtividade, setFiltroTipoAtividade] = useState(() => searchParams.get('tipoAtividade') || '')
   const [filtroMaquina, setFiltroMaquina] = useState(() => searchParams.get('maquina') || '')
+  // Filtros em modo "rascunho": o que está digitado/selecionado nos campos
+  // da tela. Só vira filtro de verdade (os filtroX acima, que a lista, a
+  // URL e o "Recalcular carga contratual" usam) quando ela clica em
+  // "Filtrar" ou aperta Enter. Evita buscar a cada tecla digitada na data
+  // (datas incompletas tipo ano "0002" no meio da digitação).
+  const [rascunhoDataInicio, setRascunhoDataInicio] = useState(() => searchParams.get('dataInicio') || '')
+  const [rascunhoDataFim, setRascunhoDataFim] = useState(() => searchParams.get('dataFim') || '')
+  const [rascunhoFuncionario, setRascunhoFuncionario] = useState(() => searchParams.get('funcionario') || '')
+  const [rascunhoTalhao, setRascunhoTalhao] = useState(() => searchParams.get('talhao') || '')
+  const [rascunhoTipoAtividade, setRascunhoTipoAtividade] = useState(() => searchParams.get('tipoAtividade') || '')
+  const [rascunhoMaquina, setRascunhoMaquina] = useState(() => searchParams.get('maquina') || '')
+  // Incrementa a cada clique em "Filtrar", pra forçar uma nova busca mesmo
+  // quando as datas não mudaram (ex: ela quer só atualizar a lista).
+  const [versaoFiltro, setVersaoFiltro] = useState(0)
+  // Identifica a busca mais recente: resposta de uma busca antiga que chegar
+  // depois da nova é descartada, pra não sobrescrever a lista com dado velho.
+  const ultimaBuscaRef = useRef(0)
+  const filtrosPendentes =
+    rascunhoDataInicio !== filtroDataInicio ||
+    rascunhoDataFim !== filtroDataFim ||
+    rascunhoFuncionario !== filtroFuncionario ||
+    rascunhoTalhao !== filtroTalhao ||
+    rascunhoTipoAtividade !== filtroTipoAtividade ||
+    rascunhoMaquina !== filtroMaquina
+  const algumFiltroAtivo = !!(filtroDataInicio || filtroDataFim || filtroFuncionario || filtroTalhao || filtroTipoAtividade || filtroMaquina)
+
+  const aplicarFiltros = (e?: { preventDefault: () => void }) => {
+    e?.preventDefault()
+    setFiltroDataInicio(rascunhoDataInicio)
+    setFiltroDataFim(rascunhoDataFim)
+    setFiltroFuncionario(rascunhoFuncionario)
+    setFiltroTalhao(rascunhoTalhao)
+    setFiltroTipoAtividade(rascunhoTipoAtividade)
+    setFiltroMaquina(rascunhoMaquina)
+    setVersaoFiltro((v) => v + 1)
+  }
+
+  const limparFiltros = () => {
+    setRascunhoDataInicio('')
+    setRascunhoDataFim('')
+    setRascunhoFuncionario('')
+    setRascunhoTalhao('')
+    setRascunhoTipoAtividade('')
+    setRascunhoMaquina('')
+    setFiltroDataInicio('')
+    setFiltroDataFim('')
+    setFiltroFuncionario('')
+    setFiltroTalhao('')
+    setFiltroTipoAtividade('')
+    setFiltroMaquina('')
+    setVersaoFiltro((v) => v + 1)
+  }
   const [talhoes, setTalhoes] = useState<{ id: string; nome: string }[]>([])
   const [tiposAtividade, setTiposAtividade] = useState<{ id: number; nome: string }[]>([])
   const [maquinas, setMaquinas] = useState<{ id: string; nome: string }[]>([])
@@ -133,6 +185,7 @@ export default function AtividadesPage() {
   }, [status])
 
   const load = async () => {
+    const idBusca = ++ultimaBuscaRef.current
     try {
       let url = '/api/registros-atividade'
       const params = new URLSearchParams()
@@ -142,11 +195,12 @@ export default function AtividadesPage() {
       const response = await fetch(url)
       if (!response.ok) throw new Error('Erro')
       const data = await response.json()
+      if (idBusca !== ultimaBuscaRef.current) return // chegou uma busca mais nova, descarta esta
       setAtividades(data.data || [])
     } catch (err) {
       console.error(err)
     } finally {
-      setLoading(false)
+      if (idBusca === ultimaBuscaRef.current) setLoading(false)
     }
     // (mantém setLoading(false) aqui — cobre o carregamento inicial da página;
     // atualizações por filtro de data usam atualizandoFiltro separadamente, sem re-triggar este bloco)
@@ -155,7 +209,7 @@ export default function AtividadesPage() {
   useEffect(() => {
     setAtualizandoFiltro(true)
     load().finally(() => setAtualizandoFiltro(false))
-  }, [filtroDataInicio, filtroDataFim])
+  }, [filtroDataInicio, filtroDataFim, versaoFiltro])
 
   useEffect(() => {
     const params = new URLSearchParams()
@@ -535,34 +589,35 @@ export default function AtividadesPage() {
 
       <div className="card space-y-3">
         <h3 className="font-semibold text-primary">Filtros</h3>
+        <form onSubmit={aplicarFiltros} className="space-y-3">
         <div className={`grid grid-cols-1 gap-4 ${isGestor ? 'md:grid-cols-3 lg:grid-cols-6' : 'md:grid-cols-2'}`}>
           <input
             type="date"
-            value={filtroDataInicio}
-            onChange={(e) => setFiltroDataInicio(e.target.value)}
+            value={rascunhoDataInicio}
+            onChange={(e) => setRascunhoDataInicio(e.target.value)}
             placeholder="Data início"
             className="border rounded-lg px-3 py-2 text-sm"
           />
           <input
             type="date"
-            value={filtroDataFim}
-            onChange={(e) => setFiltroDataFim(e.target.value)}
+            value={rascunhoDataFim}
+            onChange={(e) => setRascunhoDataFim(e.target.value)}
             placeholder="Data fim"
-            min={filtroDataInicio || undefined}
+            min={rascunhoDataInicio || undefined}
             className="border rounded-lg px-3 py-2 text-sm"
           />
           {isGestor && (
             <>
               <input
                 type="text"
-                value={filtroFuncionario}
-                onChange={(e) => setFiltroFuncionario(e.target.value)}
+                value={rascunhoFuncionario}
+                onChange={(e) => setRascunhoFuncionario(e.target.value)}
                 placeholder="Buscar funcionário..."
                 className="border rounded-lg px-3 py-2 text-sm"
               />
               <select
-                value={filtroTalhao}
-                onChange={(e) => setFiltroTalhao(e.target.value)}
+                value={rascunhoTalhao}
+                onChange={(e) => setRascunhoTalhao(e.target.value)}
                 className="border rounded-lg px-3 py-2 text-sm"
               >
                 <option value="">Todos os Talhões</option>
@@ -571,8 +626,8 @@ export default function AtividadesPage() {
                 ))}
               </select>
               <select
-                value={filtroTipoAtividade}
-                onChange={(e) => setFiltroTipoAtividade(e.target.value)}
+                value={rascunhoTipoAtividade}
+                onChange={(e) => setRascunhoTipoAtividade(e.target.value)}
                 className="border rounded-lg px-3 py-2 text-sm"
               >
                 <option value="">Todas as Atividades</option>
@@ -581,8 +636,8 @@ export default function AtividadesPage() {
                 ))}
               </select>
               <select
-                value={filtroMaquina}
-                onChange={(e) => setFiltroMaquina(e.target.value)}
+                value={rascunhoMaquina}
+                onChange={(e) => setRascunhoMaquina(e.target.value)}
                 className="border rounded-lg px-3 py-2 text-sm"
               >
                 <option value="">Todas as Máquinas</option>
@@ -593,6 +648,28 @@ export default function AtividadesPage() {
             </>
           )}
         </div>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {filtrosPendentes && (
+            <span className="text-xs text-amber-700">Filtros alterados — clique em Filtrar para aplicar</span>
+          )}
+          {(algumFiltroAtivo || filtrosPendentes) && (
+            <button
+              type="button"
+              onClick={limparFiltros}
+              className="px-3 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Limpar filtros
+            </button>
+          )}
+          <button
+            type="submit"
+            className={`btn btn-primary text-sm ${filtrosPendentes ? 'ring-2 ring-offset-1 ring-amber-400' : ''}`}
+          >
+            <Search className="w-4 h-4" />
+            Filtrar
+          </button>
+        </div>
+        </form>
         {uploadError && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{uploadError}</p>
         )}
