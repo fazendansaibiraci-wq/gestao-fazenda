@@ -154,7 +154,7 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
         className="flex items-center gap-2 border border-primary text-primary px-4 py-2 rounded-lg hover:bg-primary/5"
       >
         <FileUp className="w-4 h-4" />
-        Entrada de Produtos (NF-e)
+        Entrada de Diesel (NF-e)
       </button>
     )
   }
@@ -162,7 +162,7 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
   return (
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg">Entrada de Produtos via NF-e</h2>
+        <h2 className="font-semibold text-lg">Entrada de Diesel via NF-e</h2>
         <button onClick={fechar} className="text-gray-400 hover:text-gray-600">
           <X className="w-5 h-5" />
         </button>
