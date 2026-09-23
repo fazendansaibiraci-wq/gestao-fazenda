@@ -326,7 +326,7 @@ export default function EstoquePage() {
             <button
               onClick={exportarExcel}
               disabled={exportando || produtosFiltrados.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-[#2C373C] disabled:opacity-50 transition-colors"
             >
               <FileSpreadsheet className="w-4 h-4" />
               {exportando ? 'Exportando...' : 'Exportar Excel'}

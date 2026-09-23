@@ -208,7 +208,7 @@ export default function LocaisPage() {
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
               <button onClick={fecharModal} disabled={salvando} className="px-4 py-2 text-sm text-gray-600 font-medium rounded-lg hover:bg-gray-100">Cancelar</button>
-              <button onClick={salvar} disabled={salvando} className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg disabled:opacity-50">
+              <button onClick={salvar} disabled={salvando} className="px-4 py-2 text-sm bg-primary hover:bg-[#2C373C] text-white font-medium rounded-lg disabled:opacity-50">
                 {salvando ? 'Salvando...' : editando ? 'Salvar Alterações' : 'Criar Local'}
               </button>
             </div>

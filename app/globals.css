@@ -14,15 +14,16 @@ html, body {
   font-family: system-ui, -apple-system, sans-serif;
 }
 
+/* Tema "NSA Café" (23/09/2026) — fonte e tamanhos de letra mantidos como antes */
 body {
-  background-color: #ffffff;
-  color: #333;
+  background-color: #F4F1EC;
+  color: #2C373C;
 }
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
-  color: #1a1a1a;
+  color: #2C373C;
 }
 
 h1 {
@@ -51,7 +52,7 @@ button {
 @layer components {
   .btn {
     padding: 0.75rem 1rem;
-    border-radius: 0.375rem;
+    border-radius: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
     display: inline-flex;
@@ -60,31 +61,31 @@ button {
   }
 
   .btn-primary {
-    background-color: #2d6a4f;
-    color: white;
+    background-color: #3C4B52;
+    color: #F5EFE3;
   }
 
   .btn-primary:hover {
-    background-color: #1b4332;
+    background-color: #2C373C;
   }
 
   .btn-secondary {
-    background-color: #52b788;
+    background-color: #A8683C;
     color: white;
   }
 
   .btn-secondary:hover {
-    background-color: #2d6a4f;
+    background-color: #8C5530;
   }
 
   .btn-outline {
-    border: 1px solid #2d6a4f;
-    color: #2d6a4f;
-    background-color: transparent;
+    border: 1px solid #3C4B52;
+    color: #3C4B52;
+    background-color: #ffffff;
   }
 
   .btn-outline:hover {
-    background-color: #f0f0f0;
+    background-color: #EFE9DF;
   }
 
   .form-group {
@@ -93,14 +94,14 @@ button {
 
   .card {
     background-color: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 0.5rem;
+    border: 1px solid #E4DDD2;
+    border-radius: 0.75rem;
     padding: 1rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(44, 55, 60, 0.05);
   }
 
   .card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(44, 55, 60, 0.08);
   }
 
   .spinner {
@@ -108,7 +109,7 @@ button {
     width: 1.5rem;
     height: 1.5rem;
     border: 2px solid #f3f3f3;
-    border-top: 2px solid #2d6a4f;
+    border-top: 2px solid #3C4B52;
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
@@ -151,8 +152,9 @@ button {
 input, textarea, select {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 0.375rem;
+  border: 1px solid #DDD5C8;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
   font-family: inherit;
   font-size: 0.875rem;
   transition: border-color 0.2s ease;
@@ -160,8 +162,8 @@ input, textarea, select {
 
 input:focus, textarea:focus, select:focus {
   outline: none;
-  border-color: #2d6a4f;
-  box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.1);
+  border-color: #3C4B52;
+  box-shadow: 0 0 0 3px rgba(60, 75, 82, 0.12);
 }
 
 label {
@@ -169,7 +171,7 @@ label {
   margin-bottom: 0.25rem;
   font-weight: 500;
   font-size: 0.875rem;
-  color: #333;
+  color: #3C4B52;
 }
 
 /* Tables */
@@ -180,21 +182,22 @@ table {
 }
 
 th {
-  background-color: #f5f5f5;
+  background-color: #EFE9DF;
   padding: 0.75rem;
   text-align: left;
   font-weight: 600;
-  border-bottom: 2px solid #ddd;
+  border-bottom: 2px solid #DDD5C8;
   font-size: 0.875rem;
+  color: #4E5A60;
 }
 
 td {
   padding: 0.75rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #EEE8DE;
 }
 
 tr:hover {
-  background-color: #f9f9f9;
+  background-color: #FAF7F2;
 }
 
 /* Loading spinner animation */

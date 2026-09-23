@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Leaf } from 'lucide-react'
 
 interface Usuario {
   id: string
@@ -63,27 +62,55 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
-            <Leaf className="w-10 h-10 text-primary" />
-          </div>
+    <div className="min-h-screen flex bg-creme">
+      {/* Painel da marca — só em telas grandes */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-grafite text-white flex-col items-center justify-center p-12">
+        <div className="relative flex flex-col items-center -mt-16">
+          {/* Logo em SVG (vetor): fica nítido em qualquer tamanho. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-nsa-claro-sem-cafe.svg" alt="NSA Café" className="h-56 w-auto" />
+          {/* "Café" no mesmo estilo de "Gestão Fazenda" */}
+          <p className="mt-6 text-sm font-semibold uppercase tracking-[0.45em] text-[#93A3A9]">Café</p>
+          <p className="mt-3 text-sm font-semibold uppercase tracking-[0.45em] text-[#93A3A9]">Gestão Fazenda</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-2xl p-8">
-          <h1 className="text-2xl font-bold text-center text-primary mb-2">
-            Gestão Fazenda
-          </h1>
-          <p className="text-center text-gray-600 mb-8">
-            Sistema de Gestão Agrícola
-          </p>
+        {/* Colinas com fileiras de café */}
+        <svg
+          className="absolute left-0 right-0 bottom-0 w-full h-40 pointer-events-none"
+          viewBox="0 0 800 160"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path d="M0 90 C160 50 320 60 470 85 S700 55 800 70 V160 H0Z" fill="#3E4D54" />
+          <path d="M0 120 C200 95 380 102 560 118 S740 100 800 108 V160 H0Z" fill="#35444B" />
+          <g stroke="#C98B52" strokeOpacity="0.35" strokeWidth="2" strokeLinecap="round">
+            <path d="M60 150 l14 -18" /><path d="M100 150 l14 -18" /><path d="M140 150 l14 -18" />
+            <path d="M180 150 l14 -18" /><path d="M220 150 l14 -18" /><path d="M260 150 l14 -18" />
+            <path d="M300 150 l14 -18" /><path d="M340 150 l14 -18" />
+          </g>
+        </svg>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
+      </div>
+
+      {/* Formulário */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm">
+          <div className="flex flex-col items-center mb-8 lg:hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-nsa-sem-cafe.svg" alt="NSA Café" className="h-20 w-auto" />
+            <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.35em] text-[#7A868C]">Café</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-[#7A868C]">Gestão Fazenda</p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-[#E4DDD2] shadow-sm p-8">
+            <h1 className="text-2xl font-bold text-primary">Bem-vindo</h1>
+            <p className="text-gray-500 mt-1 mb-6">Escolha seu usuário e digite a senha.</p>
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="form-group">
@@ -140,14 +167,15 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !email}
-              className="w-full btn btn-primary mt-6 justify-center"
+              className="w-full btn btn-primary mt-6 justify-center py-3 text-base"
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
+          </div>
 
-          <p className="text-center text-gray-600 text-sm mt-6">
-            Acesso seguro apenas para usuários autorizados
+          <p className="text-center text-gray-500 text-xs mt-6">
+            Acesso restrito a usuários autorizados
           </p>
         </div>
       </div>

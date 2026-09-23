@@ -116,7 +116,7 @@ export default function ReceitasPage() {
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <div><h1 className="text-2xl font-bold text-gray-900">Receitas de Aplicação</h1><p className="text-sm text-gray-500">Cadastre receitas para uso nas atividades</p></div>
-        <button onClick={openNew} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium">+ Nova Receita</button>
+        <button onClick={openNew} className="bg-primary hover:bg-[#2C373C] text-white px-4 py-2 rounded-lg font-medium">+ Nova Receita</button>
       </div>
 
       <div className="flex gap-3 mb-6">
@@ -206,7 +206,7 @@ export default function ReceitasPage() {
 
               <div className="flex justify-end gap-3">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded-lg text-sm">Cancelar</button>
-                <button type="submit" disabled={saving} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm">{saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}</button>
+                <button type="submit" disabled={saving} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">{saving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}</button>
               </div>
             </form>
           </div>
@@ -259,7 +259,7 @@ export default function ReceitasPage() {
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowNovoProduto(false)} className="px-4 py-2 border rounded-lg text-sm">Cancelar</button>
-                <button type="submit" disabled={savingProduto} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm">{savingProduto ? 'Salvando...' : 'Cadastrar'}</button>
+                <button type="submit" disabled={savingProduto} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">{savingProduto ? 'Salvando...' : 'Cadastrar'}</button>
               </div>
             </form>
           </div>

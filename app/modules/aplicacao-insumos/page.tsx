@@ -498,7 +498,7 @@ export default function AplicacaoInsumosPage() {
           )}
 
           <div className="flex justify-end gap-3">
-            <button type="submit" disabled={salvando} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm">{salvando ? 'Salvando...' : 'Salvar lançamentos'}</button>
+            <button type="submit" disabled={salvando} className="px-6 py-2 bg-primary hover:bg-[#2C373C] text-white rounded-lg font-medium text-sm">{salvando ? 'Salvando...' : 'Salvar lançamentos'}</button>
           </div>
         </form>
       ) : aba === 'historico' ? (
@@ -554,7 +554,7 @@ export default function AplicacaoInsumosPage() {
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowNovoProduto(false)} className="px-4 py-2 border rounded-lg text-sm">Cancelar</button>
-                <button type="submit" disabled={savingProduto} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm">{savingProduto ? 'Salvando...' : 'Cadastrar'}</button>
+                <button type="submit" disabled={savingProduto} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">{savingProduto ? 'Salvando...' : 'Cadastrar'}</button>
               </div>
             </form>
           </div>
@@ -696,15 +696,15 @@ function Historico({ talhoes, produtos, safras }: { talhoes: Talhao[]; produtos:
       ) : itens.length === 0 ? (
         <div className="text-center py-12 text-gray-400">Nenhum lançamento encontrado</div>
       ) : (
-        <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
-          <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-[#E4DDD2] shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-grafite flex items-center justify-between">
             <p className="text-sm font-semibold text-white">Lançamentos</p>
-            <p className="text-xs text-green-100">{itens.length} registro{itens.length === 1 ? '' : 's'}</p>
+            <p className="text-xs text-[#C9D2D6]">{itens.length} registro{itens.length === 1 ? '' : 's'}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+                <tr className="text-left text-xs text-[#4E5A60] bg-[#EFE9DF] border-b border-[#E4DDD2]">
                   <th className="py-2 px-4 font-semibold">Data</th>
                   <th className="py-2 px-4 font-semibold">Safra</th>
                   <th className="py-2 px-4 font-semibold">Talhão</th>
@@ -814,14 +814,14 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
         <div className="text-center py-12 text-gray-400">Nenhum lançamento encontrado</div>
       ) : (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700">
+          <div className="bg-white rounded-xl border border-[#E4DDD2] shadow-sm overflow-hidden">
+            <div className="px-4 py-3 bg-grafite">
               <p className="text-sm font-semibold text-white">Subtotal por talhão</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+                  <tr className="text-left text-xs text-[#4E5A60] bg-[#EFE9DF] border-b border-[#E4DDD2]">
                     <th className="py-2 px-4 font-semibold">Talhão</th>
                     <th className="py-2 px-4 font-semibold text-right">Qtd. Lançamentos</th>
                     <th className="py-2 px-4 font-semibold text-right">Valor Total</th>
@@ -860,15 +860,15 @@ function SubtotalTalhao({ talhoes, safras }: { talhoes: Talhao[]; safras: Safra[
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm text-white">
+          <div className="bg-grafite rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm text-white">
             <div>
-              <p className="text-xs uppercase tracking-wide text-green-100">Total geral</p>
+              <p className="text-xs uppercase tracking-wide text-[#C9D2D6]">Total geral</p>
               <p className="text-2xl font-bold">R$ {formatBRL(totalGeral)}</p>
             </div>
             {totalAreaGeral > 0 && (
               <div className="text-left sm:text-right">
                 <p className="text-lg font-semibold">R$ {formatBRL(totalGeral / totalAreaGeral)}/ha</p>
-                <p className="text-xs text-green-100">{formatBRL(totalAreaGeral)} ha ao todo</p>
+                <p className="text-xs text-[#C9D2D6]">{formatBRL(totalAreaGeral)} ha ao todo</p>
               </div>
             )}
           </div>

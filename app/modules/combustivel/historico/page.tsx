@@ -416,7 +416,7 @@ export default function HistoricoAbastecimentosPage() {
                 <button
                   onClick={() => enviarEdicao(false)}
                   disabled={salvando}
-                  className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-[#2C373C] disabled:opacity-50"
                 >
                   {salvando ? 'Salvando...' : 'Salvar'}
                 </button>

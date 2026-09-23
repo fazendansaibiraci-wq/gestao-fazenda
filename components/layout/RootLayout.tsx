@@ -50,8 +50,12 @@ export function RootLayout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Top Bar */}
       {!isDesktop && (
-        <div className="fixed top-0 left-0 right-0 lg:hidden bg-primary text-white z-50 flex items-center justify-between px-4 py-3 shadow-sm">
-          <span className="font-semibold text-sm truncate">Gestão Fazenda</span>
+        <div className="fixed top-0 left-0 right-0 lg:hidden bg-grafite text-white z-50 flex items-center justify-between px-4 py-3 shadow-sm">
+          <span className="flex items-center gap-2 min-w-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-nsa-claro.svg" alt="NSA Café" className="h-8 w-auto" />
+            <span className="font-semibold text-sm truncate">Gestão Fazenda</span>
+          </span>
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
             className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors rounded-lg px-3 py-1.5"

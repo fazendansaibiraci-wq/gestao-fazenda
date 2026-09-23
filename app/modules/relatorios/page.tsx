@@ -888,7 +888,7 @@ export default function RelatoriosPage() {
                     <button
                       onClick={exportarExcel}
                       disabled={exportando || vazio}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-[#2C373C] disabled:opacity-50 transition-colors"
                     >
                       <FileSpreadsheet className="w-4 h-4" />
                       {exportando ? 'Exportando...' : 'Excel'}
@@ -910,15 +910,15 @@ export default function RelatoriosPage() {
                   ) : (
                     <>
                       {aba === 'historico' && (
-            <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
+            <div className="bg-white rounded-xl border border-[#E4DDD2] shadow-sm overflow-hidden">
+              <div className="px-4 py-3 bg-grafite flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Histórico de Atividades</h3>
-                <p className="text-xs text-green-100">{registrosHistorico.length} registro{registrosHistorico.length === 1 ? '' : 's'}</p>
+                <p className="text-xs text-[#C9D2D6]">{registrosHistorico.length} registro{registrosHistorico.length === 1 ? '' : 's'}</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+                    <tr className="text-left text-xs text-[#4E5A60] bg-[#EFE9DF] border-b border-[#E4DDD2]">
                       <th className="py-3 px-4 font-semibold">Data</th>
                       <th className="py-3 px-4 font-semibold">Talhão</th>
                       <th className="py-3 px-4 font-semibold">Safra</th>

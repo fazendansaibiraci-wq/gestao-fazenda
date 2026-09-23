@@ -101,17 +101,18 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className={`hidden lg:flex flex-col bg-primary text-white transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-secondary">
+      <aside className={`hidden lg:flex flex-col bg-grafite text-white transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'}`}>
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
           {isOpen && (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
-                <Leaf className="w-5 h-5" />
-              </div>
-              <h1 className="text-lg font-bold">Gestão</h1>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-nsa-claro.svg" alt="NSA Café" className="h-12 w-auto" />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#93A3A9] leading-tight">
+                Gestão<br />Fazenda
+              </span>
             </div>
           )}
-          <button onClick={() => setIsOpen(!isOpen)} className="p-1 hover:bg-secondary/20 rounded-lg transition-colors">
+          <button onClick={() => setIsOpen(!isOpen)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
             {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -121,7 +122,7 @@ export function Sidebar() {
           {/* Operacional */}
           {isOpen && <p className="text-xs text-white/40 uppercase font-semibold px-2 pt-2 pb-1">Operacional</p>}
           {operacionalItems.map(({ label, href, icon: Icon }) => (
-            <Link key={href} href={href} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive(href) ? 'bg-secondary text-primary font-semibold' : 'text-light hover:bg-secondary/20'}`}>
+            <Link key={href} href={href} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive(href) ? 'bg-grafite-claro text-white font-semibold shadow-[inset_3px_0_0_#C98B52] [&>svg]:text-cobre' : 'text-[#D6DDDF] hover:bg-white/10'}`}>
               <Icon className="w-5 h-5 flex-shrink-0" />
               {isOpen && <span className="truncate">{label}</span>}
             </Link>
@@ -131,7 +132,7 @@ export function Sidebar() {
             <>
               <button
                 onClick={() => setCombustivelAberto(o => !o)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${combustivelAtivo ? 'bg-secondary/30' : 'hover:bg-secondary/20'} text-light`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${combustivelAtivo ? 'bg-white/10' : 'hover:bg-white/10'} text-[#D6DDDF]`}
               >
                 <Fuel className="w-5 h-5 flex-shrink-0" />
                 {isOpen && (
@@ -144,7 +145,7 @@ export function Sidebar() {
               {(combustivelAberto || combustivelAtivo) && isOpen && (
                 <div className="ml-4 border-l border-white/20 pl-3 space-y-1">
                   {combustivelItems.map(({ label, href, icon: Icon }) => (
-                    <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${isActive(href) ? 'bg-secondary text-primary font-semibold' : 'text-light hover:bg-secondary/20'}`}>
+                    <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${isActive(href) ? 'bg-grafite-claro text-white font-semibold shadow-[inset_3px_0_0_#C98B52] [&>svg]:text-cobre' : 'text-[#D6DDDF] hover:bg-white/10'}`}>
                       <Icon className="w-4 h-4 flex-shrink-0" />
                       <span className="truncate">{label}</span>
                     </Link>
@@ -160,7 +161,7 @@ export function Sidebar() {
               {isOpen && <p className="text-xs text-white/40 uppercase font-semibold px-2 pt-4 pb-1">Cadastros</p>}
               <button
                 onClick={() => setCadastrosAberto(o => !o)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${cadastroAtivo ? 'bg-secondary/30' : 'hover:bg-secondary/20'} text-light`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${cadastroAtivo ? 'bg-white/10' : 'hover:bg-white/10'} text-[#D6DDDF]`}
               >
                 <FolderOpen className="w-5 h-5 flex-shrink-0" />
                 {isOpen && (
@@ -173,7 +174,7 @@ export function Sidebar() {
               {(cadastrosAberto || cadastroAtivo) && isOpen && (
                 <div className="ml-4 border-l border-white/20 pl-3 space-y-1">
                   {cadastroItems.map(({ label, href, icon: Icon }) => (
-                    <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${isActive(href) ? 'bg-secondary text-primary font-semibold' : 'text-light hover:bg-secondary/20'}`}>
+                    <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${isActive(href) ? 'bg-grafite-claro text-white font-semibold shadow-[inset_3px_0_0_#C98B52] [&>svg]:text-cobre' : 'text-[#D6DDDF] hover:bg-white/10'}`}>
                       <Icon className="w-4 h-4 flex-shrink-0" />
                       <span className="truncate">{label}</span>
                     </Link>
@@ -188,7 +189,7 @@ export function Sidebar() {
             <>
               {isOpen && <p className="text-xs text-white/40 uppercase font-semibold px-2 pt-4 pb-1">Financeiro</p>}
               {relatorioItems.map(({ label, href, icon: Icon }) => (
-                <Link key={href} href={href} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive(href) ? 'bg-secondary text-primary font-semibold' : 'text-light hover:bg-secondary/20'}`}>
+                <Link key={href} href={href} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive(href) ? 'bg-grafite-claro text-white font-semibold shadow-[inset_3px_0_0_#C98B52] [&>svg]:text-cobre' : 'text-[#D6DDDF] hover:bg-white/10'}`}>
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   {isOpen && <span className="truncate">{label}</span>}
                 </Link>
@@ -198,7 +199,7 @@ export function Sidebar() {
                 <>
                   <button
                     onClick={() => setResumoMensalAberto(o => !o)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${resumoMensalAtivo ? 'bg-secondary/30' : 'hover:bg-secondary/20'} text-light`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${resumoMensalAtivo ? 'bg-white/10' : 'hover:bg-white/10'} text-[#D6DDDF]`}
                   >
                     <DollarSign className="w-5 h-5 flex-shrink-0" />
                     {isOpen && (
@@ -211,7 +212,7 @@ export function Sidebar() {
                   {(resumoMensalAberto || resumoMensalAtivo) && isOpen && (
                     <div className="ml-4 border-l border-white/20 pl-3 space-y-1">
                       {resumoMensalItems.map(({ label, href, icon: Icon }) => (
-                        <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${isActive(href) ? 'bg-secondary text-primary font-semibold' : 'text-light hover:bg-secondary/20'}`}>
+                        <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${isActive(href) ? 'bg-grafite-claro text-white font-semibold shadow-[inset_3px_0_0_#C98B52] [&>svg]:text-cobre' : 'text-[#D6DDDF] hover:bg-white/10'}`}>
                           <Icon className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate">{label}</span>
                         </Link>
@@ -225,12 +226,12 @@ export function Sidebar() {
 
         </nav>
 
-        <div className="border-t border-secondary p-4 space-y-1">
-          <button onClick={() => router.back()} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-light hover:bg-secondary/20 transition-colors">
+        <div className="border-t border-white/10 p-4 space-y-1">
+          <button onClick={() => router.back()} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#D6DDDF] hover:bg-white/10 transition-colors">
             <ArrowLeft className="w-5 h-5 flex-shrink-0" />
             {isOpen && <span>Voltar</span>}
           </button>
-          <button onClick={() => signOut({ callbackUrl: '/login' })} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-light hover:bg-secondary/20 transition-colors">
+          <button onClick={() => signOut({ callbackUrl: '/login' })} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#D6DDDF] hover:bg-white/10 transition-colors">
             <LogOut className="w-5 h-5 flex-shrink-0" />
             {isOpen && <span>Sair</span>}
           </button>

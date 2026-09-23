@@ -122,7 +122,7 @@ export default function TiposAtividadePage() {
           <h1 className="text-2xl font-bold text-gray-800">Tipos de Atividade</h1>
           <p className="text-sm text-gray-500 mt-1">Gerencie os tipos disponíveis para registro de atividades</p>
         </div>
-        <button onClick={abrirNovo} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        <button onClick={abrirNovo} className="bg-primary hover:bg-[#2C373C] text-white px-4 py-2 rounded-lg font-medium transition-colors">
           + Novo Tipo
         </button>
       </div>
@@ -235,7 +235,7 @@ export default function TiposAtividadePage() {
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
               <button onClick={fecharModal} disabled={salvando} className="px-4 py-2 text-sm text-gray-600 font-medium rounded-lg hover:bg-gray-100">Cancelar</button>
-              <button onClick={salvar} disabled={salvando} className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg disabled:opacity-50">
+              <button onClick={salvar} disabled={salvando} className="px-4 py-2 text-sm bg-primary hover:bg-[#2C373C] text-white font-medium rounded-lg disabled:opacity-50">
                 {salvando ? 'Salvando...' : editando ? 'Salvar Alterações' : 'Criar Tipo'}
               </button>
             </div>

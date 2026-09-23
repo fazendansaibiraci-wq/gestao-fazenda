@@ -694,15 +694,15 @@ export default function AtividadesPage() {
       </div>
 
       <div className={atualizandoFiltro ? 'opacity-50 transition-opacity' : 'transition-opacity'}>
-      <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
+      <div className="bg-white rounded-xl border border-[#E4DDD2] shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-grafite flex items-center justify-between">
           <p className="text-sm font-semibold text-white">Lançamentos</p>
-          <p className="text-xs text-green-100">{atividadesFiltradas.length} registro{atividadesFiltradas.length === 1 ? '' : 's'}</p>
+          <p className="text-xs text-[#C9D2D6]">{atividadesFiltradas.length} registro{atividadesFiltradas.length === 1 ? '' : 's'}</p>
         </div>
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+            <tr className="text-left text-xs text-[#4E5A60] bg-[#EFE9DF] border-b border-[#E4DDD2]">
               <th className="px-4 py-3 font-semibold w-10"></th>
               <th className="px-4 py-3 font-semibold">Data</th>
               <th className="px-4 py-3 font-semibold">Horário</th>

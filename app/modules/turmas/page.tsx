@@ -321,7 +321,7 @@ export default function TurmasPage() {
                                           <button
                                             onClick={exportarExcel}
                                             disabled={exportando || diarias.length === 0}
-                                            className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg text-sm font-medium hover:bg-green-800 disabled:opacity-50 transition-colors"
+                                            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-[#2C373C] disabled:opacity-50 transition-colors"
                                           >
                                             <FileSpreadsheet className="w-4 h-4" />
                                             {exportando ? 'Exportando...' : 'Excel'}
@@ -444,10 +444,10 @@ export default function TurmasPage() {
                                 </div>
                         </div>
 
-                        <div className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden relative">
-                                <div className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 flex items-center justify-between">
+                        <div className="bg-white rounded-xl border border-[#E4DDD2] shadow-sm overflow-hidden relative">
+                                <div className="px-4 py-3 bg-grafite flex items-center justify-between">
                                         <p className="text-sm font-semibold text-white">Diárias</p>
-                                        <p className="text-xs text-green-100">{diarias.length} registro{diarias.length === 1 ? '' : 's'}</p>
+                                        <p className="text-xs text-[#C9D2D6]">{diarias.length} registro{diarias.length === 1 ? '' : 's'}</p>
                                 </div>
                                 {carregandoFiltro && (
                                         <div className="absolute inset-0 top-[49px] bg-white/60 flex items-start justify-center pt-8 z-10">
@@ -457,7 +457,7 @@ export default function TurmasPage() {
                                 <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                           <thead>
-                                                      <tr className="text-left text-xs text-green-800 bg-green-50 border-b border-green-100">
+                                                      <tr className="text-left text-xs text-[#4E5A60] bg-[#EFE9DF] border-b border-[#E4DDD2]">
                                                                     <th className="px-4 py-3 font-semibold">Data</th>
                                                                     <th className="px-4 py-3 font-semibold">Turma</th>
                                                                     <th className="px-4 py-3 font-semibold">Talhao</th>
@@ -514,8 +514,8 @@ export default function TurmasPage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-5 shadow-sm text-white">
-                                        <p className="text-xs uppercase tracking-wide text-green-100">Custo Total do Periodo Filtrado</p>
+                                <div className="bg-grafite rounded-xl p-5 shadow-sm text-white">
+                                        <p className="text-xs uppercase tracking-wide text-[#C9D2D6]">Custo Total do Periodo Filtrado</p>
                                         <p className="text-3xl font-bold mt-2">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                 </div>
                                 <div className="card">

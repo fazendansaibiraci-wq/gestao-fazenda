@@ -43,8 +43,8 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#2d6a4f' },
-    { media: '(prefers-color-scheme: dark)', color: '#2d6a4f' },
+    { media: '(prefers-color-scheme: light)', color: '#2F3B41' },
+    { media: '(prefers-color-scheme: dark)', color: '#2F3B41' },
   ],
 }
 
@@ -56,7 +56,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content={APP_NAME} />
-        <meta name="theme-color" content="#2d6a4f" />
+        <meta name="theme-color" content="#2F3B41" />
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body>
