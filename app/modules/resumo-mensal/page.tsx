@@ -50,6 +50,10 @@ export default function ResumoMensalPage() {
   const [expandidos, setExpandidos] = useState<string[]>([])
   const [buscaFuncionario, setBuscaFuncionario] = useState('')
   const [selecionados, setSelecionados] = useState<string[]>([])
+  // Os quadradinhos de seleção só aparecem depois que ela escolhe
+  // "Selecionar funcionários" no menu do botão Exportar PDF.
+  const [modoSelecao, setModoSelecao] = useState(false)
+  const [menuExportarAberto, setMenuExportarAberto] = useState(false)
 
   // Período customizado (ex: "de ontem até dia 15") — alternativa ao
   // seletor de mês/ano. Só é aplicado quando o usuário clica em "Aplicar",
@@ -150,6 +154,18 @@ export default function ResumoMensalPage() {
           registrosDiarios: r.registrosDiarios,
         })),
     })
+    sairModoSelecao()
+  }
+
+  const entrarModoSelecao = () => {
+    setMenuExportarAberto(false)
+    setSelecionados([])
+    setModoSelecao(true)
+  }
+
+  const sairModoSelecao = () => {
+    setModoSelecao(false)
+    setSelecionados([])
   }
 
   const toggleSelecionado = (id: string) => {
@@ -311,26 +327,65 @@ export default function ResumoMensalPage() {
             placeholder="Buscar funcionário..."
             className="border rounded-lg px-3 py-2 text-sm w-full sm:w-80"
           />
-          <div className="flex items-center gap-2 sm:ml-auto">
-            {selecionados.length > 0 && (
-              <button
-                onClick={handleExportarSelecionadosPdf}
-                className="flex items-center justify-center gap-2 px-3 py-2 text-sm border border-primary rounded-lg text-primary hover:bg-primary/5 transition-colors"
-                title="Exportar PDF só dos funcionários marcados (um por página)"
-              >
-                <FileDown className="w-4 h-4" />
-                Exportar selecionados ({selecionados.length})
-              </button>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            {modoSelecao ? (
+              <>
+                <button
+                  onClick={toggleTodosVisiveis}
+                  disabled={resumoFiltrado.length === 0}
+                  className="px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  {todosVisiveisSelecionados ? 'Desmarcar todos' : 'Selecionar todos'}
+                </button>
+                <button
+                  onClick={handleExportarSelecionadosPdf}
+                  disabled={selecionados.length === 0}
+                  className="flex items-center justify-center gap-2 px-3 py-2 text-sm border border-primary rounded-lg text-primary hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Exportar PDF só dos funcionários marcados (um por página)"
+                >
+                  <FileDown className="w-4 h-4" />
+                  Exportar selecionados ({selecionados.length})
+                </button>
+                <button
+                  onClick={sairModoSelecao}
+                  className="px-3 py-2 text-sm rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setMenuExportarAberto((v) => !v)}
+                  disabled={resumoFiltrado.length === 0}
+                  className="flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FileDown className="w-4 h-4" />
+                  Exportar PDF
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                {menuExportarAberto && (
+                  <>
+                    {/* Clique fora fecha o menu */}
+                    <div className="fixed inset-0 z-10" onClick={() => setMenuExportarAberto(false)} />
+                    <div className="absolute right-0 mt-1 w-60 bg-white border rounded-lg shadow-lg z-20 py-1">
+                      <button
+                        onClick={() => { setMenuExportarAberto(false); handleExportarTodosPdf() }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        Exportar todos ({resumoFiltrado.length})
+                      </button>
+                      <button
+                        onClick={entrarModoSelecao}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        Selecionar funcionários...
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
-            <button
-              onClick={handleExportarTodosPdf}
-              disabled={resumoFiltrado.length === 0}
-              className="flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Exportar PDF de todos os funcionários listados (um por página)"
-            >
-              <FileDown className="w-4 h-4" />
-              Exportar todos ({resumoFiltrado.length})
-            </button>
           </div>
         </div>
       )}
@@ -474,15 +529,17 @@ export default function ResumoMensalPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50">
-                  <th className="px-4 py-3 w-8">
-                    <input
-                      type="checkbox"
-                      checked={todosVisiveisSelecionados}
-                      onChange={toggleTodosVisiveis}
-                      title="Marcar todos os funcionários listados"
-                      className="rounded border-gray-300"
-                    />
-                  </th>
+                  {modoSelecao && (
+                    <th className="px-4 py-3 w-8">
+                      <input
+                        type="checkbox"
+                        checked={todosVisiveisSelecionados}
+                        onChange={toggleTodosVisiveis}
+                        title="Marcar todos os funcionários listados"
+                        className="rounded border-gray-300"
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-left font-semibold">Funcionário</th>
                   <th className="px-4 py-3 text-left font-semibold">Regime</th>
                   <th className="px-4 py-3 text-left font-semibold">Dias trabalhados</th>
@@ -497,7 +554,7 @@ export default function ResumoMensalPage() {
               <tbody>
                 {resumoFiltrado.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={modoSelecao ? 8 : 7} className="px-4 py-8 text-center text-gray-500">
                       Nenhum funcionário encontrado
                     </td>
                   </tr>
@@ -510,14 +567,16 @@ export default function ResumoMensalPage() {
                           onClick={() => toggleExpandir(r.funcionario.id)}
                           className="border-b hover:bg-gray-50 cursor-pointer transition-colors"
                         >
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selecionados.includes(r.funcionario.id)}
-                              onChange={() => toggleSelecionado(r.funcionario.id)}
-                              className="rounded border-gray-300"
-                            />
-                          </td>
+                          {modoSelecao && (
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selecionados.includes(r.funcionario.id)}
+                                onChange={() => toggleSelecionado(r.funcionario.id)}
+                                className="rounded border-gray-300"
+                              />
+                            </td>
+                          )}
                           <td className="px-4 py-3 font-medium">{r.funcionario.name}</td>
                           <td className="px-4 py-3">
                             <BadgeRegime regime={r.regimeSalario} />
@@ -561,7 +620,7 @@ export default function ResumoMensalPage() {
                         {/* Registros diários — reaproveitado exatamente como na visão anterior */}
                         {expandido && (
                           <tr className="border-b bg-gray-50/50">
-                            <td colSpan={8} className="px-4 py-4">
+                            <td colSpan={modoSelecao ? 8 : 7} className="px-4 py-4">
                               <div className="space-y-2">
                                 {r.registrosDiarios.length === 0 ? (
                                   <p className="text-center text-gray-400 text-sm py-4">Nenhum registro neste período</p>
