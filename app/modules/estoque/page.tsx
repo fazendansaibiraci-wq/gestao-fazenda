@@ -4,7 +4,6 @@ import { Fragment, useEffect, useState } from 'react'
 import { redirect } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Search, AlertTriangle, FileSpreadsheet, FileText, ChevronDown, ChevronUp } from 'lucide-react'
-import { RegistrarSaidaProduto } from '@/components/RegistrarSaidaProduto'
 import { AjustarEstoque } from '@/components/AjustarEstoque'
 import { ImportarNFeEstoque } from '@/components/ImportarNFeEstoque'
 import { ImportarEstoqueIdeagri } from '@/components/ImportarEstoqueIdeagri'
@@ -291,7 +290,6 @@ export default function EstoquePage() {
         </p>
       </div>
 
-      <RegistrarSaidaProduto produtos={produtos} onAtualizado={load} />
       <AjustarEstoque produtos={produtos} onAtualizado={load} />
       <ImportarNFeEstoque onImportado={load} />
       {isGestor && <ImportarEstoqueIdeagri onImportado={load} />}
