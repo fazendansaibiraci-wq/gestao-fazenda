@@ -54,6 +54,10 @@ export default function ResumoMensalPage() {
   // Os quadradinhos de seleção só aparecem depois que ela escolhe
   // "Selecionar funcionários" no menu do botão Exportar PDF.
   const [modoSelecao, setModoSelecao] = useState(false)
+  // Abas do gestor: Mensalistas / Diaristas / Todos (pelo tipo de salário
+  // do funcionário no período). O card de total, a tabela e o "Exportar
+  // todos" seguem a aba escolhida.
+  const [abaTipoSalario, setAbaTipoSalario] = useState<'MENSAL' | 'DIARIO' | 'TODOS'>('MENSAL')
   const [menuExportarAberto, setMenuExportarAberto] = useState(false)
 
   // Período customizado (ex: "de ontem até dia 15") — alternativa ao
@@ -183,9 +187,16 @@ export default function ResumoMensalPage() {
   // Lista filtrada por nome do funcionário (busca client-side, "contém", case-insensitive).
   // Para o funcionário comum, buscaFuncionario permanece vazio (campo não é exibido para ele),
   // então o filtro não altera o resultado da sua própria visão.
-  const resumoFiltrado = resumo.filter((r) =>
+  const ehDiarista = (r: ResumoFuncionario) => r.tipoSalario === 'DIARIO'
+  const resumoBuscado = resumo.filter((r) =>
     r.funcionario.name.toLowerCase().includes(buscaFuncionario.toLowerCase())
   )
+  const qtdMensalistas = resumoBuscado.filter((r) => !ehDiarista(r)).length
+  const qtdDiaristas = resumoBuscado.filter((r) => ehDiarista(r)).length
+  // Funcionário comum não vê abas — sempre vê tudo (só o próprio resumo).
+  const resumoFiltrado = isFuncionario || abaTipoSalario === 'TODOS'
+    ? resumoBuscado
+    : resumoBuscado.filter((r) => (abaTipoSalario === 'DIARIO' ? ehDiarista(r) : !ehDiarista(r)))
 
   // Marca/desmarca todos os funcionários atualmente visíveis (já filtrados
   // pela busca) de uma vez, via checkbox no cabeçalho da tabela. Precisa
@@ -296,10 +307,32 @@ export default function ResumoMensalPage() {
         </div>
       </div>
 
+      {/* Abas Mensalistas / Diaristas / Todos — só para gestor */}
+      {!isFuncionario && (
+        <div className="flex gap-2 border-b border-gray-200">
+          {([
+            { id: 'MENSAL', label: `Mensalistas (${qtdMensalistas})` },
+            { id: 'DIARIO', label: `Diaristas (${qtdDiaristas})` },
+            { id: 'TODOS', label: `Todos (${resumoBuscado.length})` },
+          ] as const).map((aba) => (
+            <button
+              key={aba.id}
+              onClick={() => { setAbaTipoSalario(aba.id); setModoSelecao(false); setSelecionados([]) }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                abaTipoSalario === aba.id ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {aba.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Total geral acumulado — só para gestor */}
       {!isFuncionario && (
         <div className="card bg-primary text-white">
           <p className="text-sm opacity-80">
+            {abaTipoSalario === 'MENSAL' ? 'Mensalistas — ' : abaTipoSalario === 'DIARIO' ? 'Diaristas — ' : ''}
             Total acumulado em {periodoCustomizadoAtivo ? periodoLabel : `${meses[mes - 1]}/${ano}`}
             {periodoCustomizadoAtivo && <span className="ml-1 opacity-70">(estimado)</span>}
           </p>
@@ -310,10 +343,12 @@ export default function ResumoMensalPage() {
               <TrendingUp className="w-4 h-4" />
               {fmtH(totalHorasExtrasGeral)} extras
             </p>
-            <p className="flex items-center gap-1">
-              <TrendingDown className="w-4 h-4" />
-              {fmtH(totalHorasDevidasGeral)} devidas
-            </p>
+            {abaTipoSalario !== 'DIARIO' && (
+              <p className="flex items-center gap-1">
+                <TrendingDown className="w-4 h-4" />
+                {fmtH(totalHorasDevidasGeral)} devidas
+              </p>
+            )}
           </div>
         </div>
       )}
