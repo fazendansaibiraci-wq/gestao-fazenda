@@ -16,6 +16,7 @@ import {
 } from 'recharts'
 import { calcularTotaisHoras } from '@/lib/calculoTotaisFuncionario'
 import { calcularCombustivelPorMaquina } from '@/lib/calculoCombustivelPorMaquina'
+import { SelecaoMultiplaFiltro, valoresSelecionados } from '@/components/SelecaoMultiplaFiltro'
 
 export default function RelatoriosPage() {
   const { data: session } = useSession()
@@ -221,7 +222,8 @@ export default function RelatoriosPage() {
   const filtrarRegistros = (f: FiltrosRelatorio) => registros.filter(r => {
     if (f.safraId && r.safraId !== f.safraId) return false
     if (f.talhaoId && r.talhaoId !== f.talhaoId) return false
-    if (f.tipoAtividade && r.tipoAtividade !== f.tipoAtividade) return false
+    // Tipo de Atividade aceita VÁRIAS atividades (separadas por "|").
+    if (f.tipoAtividade && !valoresSelecionados(f.tipoAtividade).includes(r.tipoAtividade)) return false
     if (f.funcionarioId && r.funcionarioId !== f.funcionarioId) return false
     if (f.maquinaId && !usosMaquinaDoRegistro(r).some(u => u.maquinaId === f.maquinaId)) return false
     if (f.dataInicio && new Date(r.data) < new Date(f.dataInicio)) return false
@@ -828,10 +830,12 @@ export default function RelatoriosPage() {
                       {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
                     </select>
                   ) : campo === 'tipoAtividade' ? (
-                    <select value={filtrosTemp.tipoAtividade} onChange={e => setFiltrosTemp(p => ({ ...p, tipoAtividade: e.target.value }))}>
-                      <option value="">Todos</option>
-                      {tiposAtividade.map(t => <option key={t.id} value={t.nome}>{t.nome}</option>)}
-                    </select>
+                    <SelecaoMultiplaFiltro
+                      opcoes={tiposAtividade.map(t => t.nome)}
+                      valor={filtrosTemp.tipoAtividade}
+                      onChange={v => setFiltrosTemp(p => ({ ...p, tipoAtividade: v }))}
+                      rotuloPlural="atividades"
+                    />
                   ) : campo === 'funcionarioId' ? (
                     <select value={filtrosTemp.funcionarioId} onChange={e => setFiltrosTemp(p => ({ ...p, funcionarioId: e.target.value }))}>
                       <option value="">Todos</option>
