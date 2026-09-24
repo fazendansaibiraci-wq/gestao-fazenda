@@ -39,8 +39,24 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const consumoPorMaquina = calcularCombustivelPorMaquina(abastecimentosMes)
-      .map((m) => ({ maquina: m.nomeMaquina, consumoMedioLH: m.consumoMedioLH }))
+    // Registros com máquina do mesmo período, pra conferência cruzada
+    // horímetro x horas lançadas (sem eles, toda máquina sairia "divergente").
+    const registrosMaquinaMes = await prisma.registroAtividade.findMany({
+      where: { data: { gte: inicioMes, lte: fimMes }, isFalta: false },
+      select: {
+        maquinaId: true,
+        data: true,
+        horasMaquina: true,
+        horimetroInicial: true,
+        horimetroFinal: true,
+        maquinasAdicionais: {
+          select: { maquinaId: true, horasMaquina: true, horimetroInicial: true, horimetroFinal: true },
+        },
+      },
+    })
+
+    const consumoPorMaquina = calcularCombustivelPorMaquina(abastecimentosMes, registrosMaquinaMes)
+      .map((m) => ({ maquina: m.nomeMaquina, consumoMedioLH: m.consumoMedioLH, divergente: !!(m as any).divergente }))
       .sort((a, b) => b.consumoMedioLH - a.consumoMedioLH)
 
     // ─── Horas Trabalhadas por Funcionário ─────────────────────────────────
@@ -71,8 +87,13 @@ export async function GET(request: NextRequest) {
     const horasPorFuncionario = funcionariosAtivos
       .map((func) => {
         const registrosFuncionario = registrosParaHoras.filter((r) => r.funcionarioId === func.id)
-        const { totalHorasTrabalhadas } = calcularTotaisHoras(registrosFuncionario)
-        return { funcionario: func.name, totalHoras: totalHorasTrabalhadas }
+        const { totalHorasTrabalhadas, totalHorasExtras, totalHorasDevidas } = calcularTotaisHoras(registrosFuncionario)
+        return {
+          funcionario: func.name,
+          totalHoras: totalHorasTrabalhadas,
+          horasExtras: totalHorasExtras,
+          horasDevidas: totalHorasDevidas,
+        }
       })
       .filter((f) => f.totalHoras > 0)
       .sort((a, b) => b.totalHoras - a.totalHoras)

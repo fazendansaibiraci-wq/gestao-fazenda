@@ -9,11 +9,10 @@ import { DashboardNovos } from '@/components/dashboard/DashboardNovos'
 import {
   BarChart,
   Bar,
-  LineChart,
+  ComposedChart,
   Line,
-  PieChart,
-  Pie,
   Cell,
+  ReferenceLine,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -48,11 +47,14 @@ interface CustoHHHMPorTalhao {
 interface ConsumoPorMaquina {
   maquina: string
   consumoMedioLH: number
+  divergente?: boolean
 }
 
 interface HorasPorFuncionario {
   funcionario: string
   totalHoras: number
+  horasExtras?: number
+  horasDevidas?: number
 }
 
 interface LitrosDieselPorDia {
@@ -66,12 +68,13 @@ interface DadosGraficos {
   litrosDieselPorDia: LitrosDieselPorDia[]
 }
 
-// Cor para cada fatia do gráfico de pizza de consumo de combustível por
-// máquina — gerada dinamicamente com espaçamento de matiz HSL uniforme,
-// garantindo cores sempre distintas independente de quantas máquinas
-// existirem (evita repetição que uma paleta fixa teria ao ciclar).
-const corConsumoMaquina = (index: number, total: number) =>
-  `hsl(${Math.round((360 / total) * index)}, 65%, 50%)`
+// Paleta NSA Café dos gráficos (24/09/2026), igual à seção "Visão do mês".
+const COR_GRAFITE = '#3C4B52'
+const COR_COBRE = '#A8683C'
+const COR_SALVIA = '#6E8B6A'
+const COR_AREIA = '#D8C9B1'
+const COR_ALERTA = '#B4541A'
+const COR_GRADE = '#EEE8DE'
 
 // Últimos 12 meses (incluindo o atual), mais recente primeiro — opções
 // reutilizadas pelos seletores de mês do dashboard (consumo de
@@ -511,64 +514,48 @@ export default function DashboardPage() {
               Sem dados este mês
             </div>
           ) : (() => {
-            // Ordenado do maior pro menor total (horasHH + horasHM). Layout em
-            // colunas verticais (talhão no eixo X, embaixo) em vez de barras
-            // horizontais — assim a altura do gráfico não cresce conforme
-            // aumenta a quantidade de talhões, só a largura das colunas encolhe.
-            const dadosHHHM = custoHHHMPorTalhao
+            // Barras deitadas (tema NSA Café): os 10 talhões com mais horas e
+            // o restante somado em "Outros", pra os nomes caberem retos.
+            const ordenados = custoHHHMPorTalhao
               .map((t) => ({
                 nomeTalhao: t.nomeTalhao,
                 horasHH: t.horasHH ?? 0,
                 horasHM: t.horasHM ?? 0,
                 total: (t.horasHH ?? 0) + (t.horasHM ?? 0),
               }))
+              .filter((t) => t.total > 0)
               .sort((a, b) => b.total - a.total)
+            const top = ordenados.slice(0, 10)
+            const resto = ordenados.slice(10)
+            const dadosHHHM = resto.length > 0
+              ? [...top, {
+                  nomeTalhao: `Outros (${resto.length})`,
+                  horasHH: resto.reduce((acc, t) => acc + t.horasHH, 0),
+                  horasHM: resto.reduce((acc, t) => acc + t.horasHM, 0),
+                  total: resto.reduce((acc, t) => acc + t.total, 0),
+                }]
+              : top
 
-            // Total acima de cada coluna. Usa o topo do segmento de cima
-            // (horasHM), já que empilhado ele representa o topo da pilha
-            // inteira, independente do valor de horasHM ser zero ou não.
             const renderLabelTotal = (props: any) => {
-              const { x, y, width, index } = props
+              const { x, y, width, height, index } = props
               const total = dadosHHHM[index]?.total ?? 0
               return (
-                <text
-                  x={x + width / 2}
-                  y={y - 6}
-                  fill="#374151"
-                  fontSize={10}
-                  textAnchor="middle"
-                >
-                  {total.toFixed(1)}
-                </text>
-              )
-            }
-
-            // Nome do talhão em diagonal embaixo de cada coluna, pra caber
-            // nomes longos mesmo com colunas estreitas quando há muitos
-            // talhões. O detalhamento exato de Hora Homem/Hora Máquina de
-            // cada coluna fica disponível passando o mouse (Tooltip).
-            const renderTickTalhao = (props: any) => {
-              const { x, y, payload } = props
-              return (
-                <text x={x} y={y} dy={8} textAnchor="end" fill="#6b7280" fontSize={10} transform={`rotate(-45 ${x} ${y})`}>
-                  {payload.value}
+                <text x={x + width + 6} y={y + height / 2 + 4} fill="#2C373C" fontSize={11} fontWeight={700}>
+                  {total.toFixed(0)}h
                 </text>
               )
             }
 
             return (
-              <ResponsiveContainer width="100%" height={380}>
-                <BarChart
-                  data={dadosHHHM}
-                  margin={{ left: 10, right: 10, top: 24, bottom: 80 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                  <XAxis dataKey="nomeTalhao" type="category" interval={0} height={80} tick={renderTickTalhao} />
-                  <YAxis type="number" tick={{ fontSize: 12 }} />
+              <ResponsiveContainer width="100%" height={dadosHHHM.length * 30 + 60}>
+                <BarChart data={dadosHHHM} layout="vertical" margin={{ left: 10, right: 48, top: 4, bottom: 4 }}>
+                  <CartesianGrid stroke={COR_GRADE} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: '#76828A' }} />
+                  <YAxis dataKey="nomeTalhao" type="category" width={130} interval={0} tick={{ fontSize: 11, fill: '#4E5A60' }} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(1)}h`} />
                   <Legend />
-                  <Bar dataKey="horasHH" name="Hora Homem" stackId="horas" fill="#2563eb" />
-                  <Bar dataKey="horasHM" name="Hora Máquina" stackId="horas" fill="#f59e0b" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="horasHH" name="Hora Homem" stackId="horas" fill={COR_GRAFITE} />
+                  <Bar dataKey="horasHM" name="Hora Máquina" stackId="horas" fill={COR_COBRE} radius={[0, 4, 4, 0]}>
                     <LabelList content={renderLabelTotal} />
                   </Bar>
                 </BarChart>
@@ -590,33 +577,58 @@ export default function DashboardPage() {
               ))}
             </select>
           </div>
-          {dadosGraficos.consumoPorMaquina.length === 0 ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
-              Sem dados este mês
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={dadosGraficos.consumoPorMaquina}
-                  dataKey="consumoMedioLH"
-                  nameKey="maquina"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                >
-                  {dadosGraficos.consumoPorMaquina.map((_, index) => (
-                    <Cell
-                      key={`cell-consumo-maquina-${index}`}
-                      fill={corConsumoMaquina(index, dadosGraficos.consumoPorMaquina.length)}
+          {(() => {
+            // Barras (não pizza): L/h é média por máquina, não fatia de um
+            // todo. Terceiros fica fora (distorce a escala); máquinas com
+            // divergência de horímetro em cobre.
+            const ehTerceiro = (nome: string) => /TERCEIR/i.test(nome)
+            const maquinas = dadosGraficos.consumoPorMaquina
+              .filter((m) => !ehTerceiro(m.maquina) && m.consumoMedioLH > 0)
+              .sort((a, b) => b.consumoMedioLH - a.consumoMedioLH)
+            const temTerceiros = dadosGraficos.consumoPorMaquina.some((m) => ehTerceiro(m.maquina))
+            if (maquinas.length === 0) {
+              return (
+                <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
+                  Sem dados este mês
+                </div>
+              )
+            }
+            const media = maquinas.reduce((acc, m) => acc + m.consumoMedioLH, 0) / maquinas.length
+            return (
+              <>
+                <ResponsiveContainer width="100%" height={maquinas.length * 30 + 50}>
+                  <BarChart data={maquinas} layout="vertical" margin={{ left: 10, right: 40, top: 4, bottom: 4 }}>
+                    <CartesianGrid stroke={COR_GRADE} horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: '#76828A' }} />
+                    <YAxis dataKey="maquina" type="category" width={140} interval={0} tick={{ fontSize: 11, fill: '#4E5A60' }} />
+                    <Tooltip formatter={(value: number) => [`${value.toFixed(1)} L/h`, 'Consumo']} />
+                    <ReferenceLine
+                      x={media}
+                      stroke={COR_GRAFITE}
+                      strokeDasharray="4 4"
+                      label={{ value: `média ${media.toFixed(1)} L/h`, position: 'top', fontSize: 11, fill: COR_GRAFITE }}
                     />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `${value.toFixed(1)} L/h`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
+                    <Bar dataKey="consumoMedioLH" radius={[0, 4, 4, 0]}>
+                      {maquinas.map((m, i) => (
+                        <Cell key={`consumo-${i}`} fill={m.divergente ? COR_COBRE : COR_SALVIA} />
+                      ))}
+                      <LabelList
+                        dataKey="consumoMedioLH"
+                        position="right"
+                        formatter={(v: number) => v.toFixed(1)}
+                        style={{ fontSize: 11, fontWeight: 700, fill: '#2C373C' }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#4E5A60] mt-2">
+                  <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_SALVIA }} />Normal</span>
+                  <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_COBRE }} />Com divergência de horímetro</span>
+                  {temTerceiros && <span className="text-gray-500">Terceiros fora do gráfico</span>}
+                </div>
+              </>
+            )
+          })()}
         </div>
 
         <div className="card">
@@ -637,9 +649,13 @@ export default function DashboardPage() {
               Sem dados este mês
             </div>
           ) : (() => {
+            // Barra dividida em horas normais, extras e devidas (tema NSA Café).
             const dadosHorasFuncionario = dadosGraficos.horasPorFuncionario.map(f => ({
               ...f,
               funcionarioCurto: truncarNomeFuncionario(f.funcionario),
+              horasNormais: Math.max(0, f.totalHoras - (f.horasExtras ?? 0)),
+              horasExtras: f.horasExtras ?? 0,
+              horasDevidas: f.horasDevidas ?? 0,
             }))
             const alturaGraficoFuncionarios = Math.max(250, dadosHorasFuncionario.length * 40 + 40)
 
@@ -650,15 +666,19 @@ export default function DashboardPage() {
                   layout="vertical"
                   margin={{ left: 100, right: 16, top: 8, bottom: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis type="number" tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="funcionarioCurto" type="category" width={150} tick={{ fontSize: 11 }} />
+                  <CartesianGrid stroke={COR_GRADE} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: '#76828A' }} />
+                  <YAxis dataKey="funcionarioCurto" type="category" width={150} tick={{ fontSize: 11, fill: '#4E5A60' }} />
                   <Tooltip
                     labelFormatter={(_, payload) =>
                       payload && payload[0] ? (payload[0].payload as any).funcionario : ''
                     }
+                    formatter={(value: number, name: string) => [`${value.toFixed(1)}h`, name]}
                   />
-                  <Bar dataKey="totalHoras" fill="#52b788" radius={[0, 4, 4, 0]} />
+                  <Legend />
+                  <Bar dataKey="horasNormais" name="Horas normais" stackId="h" fill={COR_AREIA} />
+                  <Bar dataKey="horasExtras" name="Extras" stackId="h" fill={COR_SALVIA} />
+                  <Bar dataKey="horasDevidas" name="Devidas" stackId="h" fill={COR_ALERTA} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )
@@ -683,15 +703,45 @@ export default function DashboardPage() {
               Sem dados este mês
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={dadosGraficos.litrosDieselPorDia}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => [`${value.toFixed(1)}L`, 'Litros']} />
-                <Line type="monotone" dataKey="litros" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
+            (() => {
+              // Colunas por dia + linha do acumulado do mês. Abastecimento
+              // grande (2x a média do mês ou mais) em cobre.
+              let acumulado = 0
+              const dias = dadosGraficos.litrosDieselPorDia.map((d) => {
+                acumulado += d.litros
+                return { ...d, acumulado }
+              })
+              const mediaDia = acumulado / Math.max(1, dias.length)
+              return (
+                <>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <ComposedChart data={dias} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
+                      <CartesianGrid stroke={COR_GRADE} vertical={false} />
+                      <XAxis dataKey="dia" tick={{ fontSize: 11, fill: '#76828A' }} />
+                      <YAxis yAxisId="dia" tick={{ fontSize: 11, fill: '#76828A' }} />
+                      <YAxis yAxisId="acum" orientation="right" tick={{ fontSize: 11, fill: COR_SALVIA }} />
+                      <Tooltip
+                        formatter={(value: number, name: string) => [
+                          `${value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} L`,
+                          name === 'acumulado' ? 'Acumulado do mês' : 'Litros no dia',
+                        ]}
+                      />
+                      <Bar yAxisId="dia" dataKey="litros" radius={[3, 3, 0, 0]}>
+                        {dias.map((d, i) => (
+                          <Cell key={`diesel-${i}`} fill={d.litros >= mediaDia * 2 ? COR_COBRE : COR_GRAFITE} />
+                        ))}
+                      </Bar>
+                      <Line yAxisId="acum" type="monotone" dataKey="acumulado" stroke={COR_SALVIA} strokeWidth={2.5} dot={false} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#4E5A60] mt-2">
+                    <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_GRAFITE }} />Litros no dia</span>
+                    <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_COBRE }} />Abastecimento grande</span>
+                    <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_SALVIA }} />Acumulado do mês ({acumulado.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} L)</span>
+                  </div>
+                </>
+              )
+            })()
           )}
         </div>
       </div>
