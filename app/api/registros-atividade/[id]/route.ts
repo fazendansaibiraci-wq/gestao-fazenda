@@ -155,25 +155,30 @@ export async function PUT(
     // Bloqueia a edição se o dia não cair em nenhum período cadastrado.
     const periodosComId = await buscarPeriodosComId()
     const periodoDoDia = obterPeriodoNaData(dataRegistro, periodosComId)
-    if (!periodoDoDia) {
+    // Ajuste de horímetro (funcionário "Não Identificado", sem salário):
+    // não é bloqueado por falta de período/salário — não gera horas.
+    const ehAjusteHorimetro = !!(body.isAjusteHorimetro !== undefined ? body.isAjusteHorimetro : registro.isAjusteHorimetro)
+    if (!periodoDoDia && !ehAjusteHorimetro) {
       return NextResponse.json({ error: mensagemPeriodoNaoCadastrado(dataRegistro) }, { status: 400 })
     }
-    const estaNaSafra = periodoDoDia.tipo === 'SAFRA'
+    const estaNaSafra = periodoDoDia?.tipo === 'SAFRA'
 
     // Salário/hora extra/jornada: cadastrados por funcionário e por
     // período em Funcionários → Salário Safra/Entressafra (ver
     // lib/salarioPeriodo.ts). Bloqueia a edição se faltar esse cadastro
     // pro período em questão.
-    const dadosSalario = await buscarSalarioPeriodoFuncionario(funcionarioId, periodoDoDia.id)
-    if (!dadosSalario) {
+    const dadosSalario = periodoDoDia ? await buscarSalarioPeriodoFuncionario(funcionarioId, periodoDoDia.id) : null
+    if (!dadosSalario && !ehAjusteHorimetro) {
       return NextResponse.json(
         { error: mensagemSalarioNaoCadastrado(funcionario?.name || 'Funcionário', dataRegistro) },
         { status: 400 }
       )
     }
-    const { funcionarioShim, configShim } = shimsParaCargaHoraria(dadosSalario)
+    const shims = dadosSalario ? shimsParaCargaHoraria(dadosSalario) : null
 
-    const cargaHorariaDiaBase = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
+    const cargaHorariaDiaBase = shims
+      ? calcularCargaHorariaDia(dataRegistro, shims.funcionarioShim, shims.configShim, false, estaNaSafra)
+      : 0
 
     // Estado final de falta/motivo depois desta edição (não necessariamente
     // igual ao que veio no body, se o campo não foi enviado nesta edição).

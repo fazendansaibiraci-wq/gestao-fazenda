@@ -187,23 +187,28 @@ export async function POST(request: NextRequest) {
     const dataDoRegistro = new Date(body.data)
     const periodosComId = await buscarPeriodosComId()
     const periodoDoDia = obterPeriodoNaData(dataDoRegistro, periodosComId)
-    if (!periodoDoDia) {
+    // Ajuste de horímetro ("Lançar ajuste" das Horas Não Identificadas) é
+    // lançado no funcionário "Não Identificado", que não tem salário nem
+    // jornada — e não precisa: o ajuste não gera hora homem, extra nem
+    // devida. Por isso ele não é bloqueado por falta de período/salário.
+    const ehAjusteHorimetro = !!body.isAjusteHorimetro
+    if (!periodoDoDia && !ehAjusteHorimetro) {
       return NextResponse.json({ error: mensagemPeriodoNaoCadastrado(dataDoRegistro) }, { status: 400 })
     }
-    const estaNaSafra = periodoDoDia.tipo === 'SAFRA'
+    const estaNaSafra = periodoDoDia?.tipo === 'SAFRA'
 
     // Salário/hora extra/jornada: cadastrados por funcionário e por
     // período em Funcionários → Salário Safra/Entressafra (ver
     // lib/salarioPeriodo.ts). Bloqueia o lançamento se faltar esse
     // cadastro pro período em questão.
-    const dadosSalario = await buscarSalarioPeriodoFuncionario(funcionarioId, periodoDoDia.id)
-    if (!dadosSalario) {
+    const dadosSalario = periodoDoDia ? await buscarSalarioPeriodoFuncionario(funcionarioId, periodoDoDia.id) : null
+    if (!dadosSalario && !ehAjusteHorimetro) {
       return NextResponse.json(
         { error: mensagemSalarioNaoCadastrado(funcionario?.name || 'Funcionário', dataDoRegistro) },
         { status: 400 }
       )
     }
-    const { funcionarioShim, configShim } = shimsParaCargaHoraria(dadosSalario)
+    const shims = dadosSalario ? shimsParaCargaHoraria(dadosSalario) : null
 
     // Calcular horas brutas
     let horasBrutas = null
@@ -236,7 +241,9 @@ export async function POST(request: NextRequest) {
     // Carga horária por dia da semana
     const dataRegistro = new Date(body.data)
     const diaSemana = dataRegistro.getUTCDay() // 0=Dom, 6=Sab
-    const cargaHorariaDiaBase = calcularCargaHorariaDia(dataRegistro, funcionarioShim, configShim, false, estaNaSafra)
+    const cargaHorariaDiaBase = shims
+      ? calcularCargaHorariaDia(dataRegistro, shims.funcionarioShim, shims.configShim, false, estaNaSafra)
+      : 0
 
     // Feriado cadastrado (Configurações → Feriados) na data deste registro.
     // Usado em dois lugares abaixo: (1) quando isFalta+motivoFalta="feriado",
@@ -305,7 +312,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const valorHoraExtra = dadosSalario.valorHoraExtra || 0
+    const valorHoraExtra = dadosSalario?.valorHoraExtra || 0
 
     const registro = await prisma.registroAtividade.create({
       data: {
