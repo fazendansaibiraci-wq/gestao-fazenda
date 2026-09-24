@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Leaf, Tractor, Calendar, BarChart3, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { DashboardNovos } from '@/components/dashboard/DashboardNovos'
 import {
   BarChart,
   Bar,
@@ -487,6 +488,9 @@ export default function DashboardPage() {
           </div>
         </Link>
       </div>
+
+      {/* Gráficos novos (24/09/2026) — acima dos 4 gráficos antigos */}
+      <DashboardNovos />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card">
