@@ -586,6 +586,13 @@ model RegistroAtividade {
   ehHoraExtra     Boolean @default(false)
   statusAprovacao String  @default("pendente")
 
+  // Aprovação do registro para o Relatório por Atividade (aba "Atividades e
+  // Produtos" da Aplicação de Insumos). O relatório só soma horas/custos de
+  // registros aprovados. Diferente de `statusAprovacao` (aprovação de hora
+  // extra). Editar o registro limpa a aprovação (precisa aprovar de novo).
+  aprovadoAtividadeEm     DateTime?
+  aprovadoAtividadePorId  String?
+
   aplicacoesInsumo AplicacaoInsumo[]
 
   dataCriacao       DateTime @default(now())

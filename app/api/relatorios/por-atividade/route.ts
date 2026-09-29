@@ -9,7 +9,8 @@ import { buscarPeriodosComId, obterPeriodoNaData, buscarTodosSalariosPeriodo } f
 //   GET ?tipoAtividade=PLATONA MAG&safraId=...
 //
 // Junta, para UMA atividade (Tipo de Atividade) numa safra:
-//   - Registro de Atividades: funcionários, talhões, horas homem e horas máquina
+//   - Registro de Atividades (SÓ os aprovados na aba Atividades e Produtos):
+//     funcionários, talhões, horas homem e horas máquina
 //     (máquina principal + máquinas extras), com custo HH e HM calculados
 //     igual ao relatório /api/relatorios/custo-hh-hm;
 //   - Diárias de turma com o mesmo tipo de atividade;
@@ -62,9 +63,9 @@ export async function GET(request: NextRequest) {
 
     const filtroAtividade = { equals: tipoAtividade, mode: 'insensitive' as const }
 
-    const [registros, diarias, produtosLanc, encerramentos] = await Promise.all([
+    const [registros, registrosPendentes, diarias, produtosLanc, encerramentos] = await Promise.all([
       prisma.registroAtividade.findMany({
-        where: { safraId, tipoAtividade: filtroAtividade, isFalta: false, isAjusteHorimetro: false },
+        where: { safraId, tipoAtividade: filtroAtividade, isFalta: false, isAjusteHorimetro: false, aprovadoAtividadeEm: { not: null } },
         select: {
           talhaoId: true,
           funcionarioId: true,
@@ -85,6 +86,9 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+      }),
+      prisma.registroAtividade.count({
+        where: { safraId, tipoAtividade: filtroAtividade, isFalta: false, isAjusteHorimetro: false, aprovadoAtividadeEm: null },
       }),
       prisma.diariaTurma.findMany({
         where: { safraId, tipoAtividade: filtroAtividade },
@@ -324,6 +328,7 @@ export async function GET(request: NextRequest) {
           },
         },
         avisos: {
+          registrosPendentes,
           funcionariosSemSalario: funcionariosSemSalario.size,
           lancamentosSemTalhao: talhoes.has(SEM_TALHAO),
           talhoesSemArea: talhoesReais.filter((t) => !t.area || t.area <= 0).map((t) => t.nome),

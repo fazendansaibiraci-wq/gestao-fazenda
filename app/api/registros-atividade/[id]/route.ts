@@ -271,6 +271,9 @@ export async function PUT(
     const updated = await prisma.registroAtividade.update({
       where: { id: params.id },
       data: {
+        // Registro editado volta a ficar pendente no Relatório por Atividade.
+        aprovadoAtividadeEm: null,
+        aprovadoAtividadePorId: null,
         data: body.data ? new Date(body.data) : undefined,
         horaEntrada: body.horaEntrada || undefined,
         horaSaida: body.horaSaida ?? null,

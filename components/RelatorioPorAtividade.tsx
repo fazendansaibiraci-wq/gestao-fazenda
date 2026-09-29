@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 // talhões (com Encerrar/Reabrir), funcionários, turmas, produtos e custos
 // totais e por hectare. Dados de /api/relatorios/por-atividade.
 
-interface Safra { id: string; nome: string }
+interface Safra { id: string; nome: string; status?: string }
 interface TipoAtividade { id: number; nome: string }
 interface TalhaoRel {
   talhaoId: string; nome: string; area: number | null
@@ -28,7 +28,7 @@ interface Relatorio {
     custoHH: number; custoHM: number; custoTurmas: number; custoProdutos: number; custoTotal: number
     porHa: { hh: number | null; hm: number | null; turmas: number | null; produtos: number | null; total: number | null }
   }
-  avisos: { funcionariosSemSalario: number; lancamentosSemTalhao: boolean; talhoesSemArea: string[] }
+  avisos: { registrosPendentes: number; funcionariosSemSalario: number; lancamentosSemTalhao: boolean; talhoesSemArea: string[] }
   talhoes: TalhaoRel[]
   funcionarios: { funcionarioId: string; nome: string; horasHH: number; horasHM: number; dias: number; talhoes: string[] }[]
   turmas: { turmaId: string; nome: string; pessoasDia: number; dias: number; valorTotal: number }[]
@@ -43,10 +43,13 @@ const dataBR = (s: string | null | undefined) => (s ? s.split('-').reverse().joi
 const SITUACAO_LABEL = { SEM_LANCAMENTO: 'Sem lançamentos', EM_ANDAMENTO: 'Em andamento', CONCLUIDA: 'Concluída' } as const
 const SITUACAO_COR = { SEM_LANCAMENTO: 'bg-gray-100 text-gray-600', EM_ANDAMENTO: 'bg-amber-100 text-amber-800', CONCLUIDA: 'bg-green-100 text-green-800' } as const
 
+// Safra padrão: a marcada como ATIVA (a mesma que o Registro de Atividades usa), senão a mais recente.
+const safraPadrao = (safras: Safra[]) => (safras.find(s => s.status === 'ATIVA') || safras[0])?.id || ''
+
 export default function RelatorioPorAtividade({ safras }: { safras: Safra[] }) {
   const [tipos, setTipos] = useState<TipoAtividade[]>([])
   const [atividade, setAtividade] = useState('')
-  const [safraId, setSafraId] = useState(safras[0]?.id || '')
+  const [safraId, setSafraId] = useState(safraPadrao(safras))
   const [rel, setRel] = useState<Relatorio | null>(null)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
@@ -61,7 +64,7 @@ export default function RelatorioPorAtividade({ safras }: { safras: Safra[] }) {
       .then(d => setTipos(Array.isArray(d) ? d : []))
       .catch(() => setTipos([]))
   }, [])
-  useEffect(() => { if (!safraId && safras.length) setSafraId(safras[0].id) }, [safras, safraId])
+  useEffect(() => { if (!safraId && safras.length) setSafraId(safraPadrao(safras)) }, [safras, safraId])
   useEffect(() => { carregar() }, [atividade, safraId])
 
   async function carregar() {
@@ -328,8 +331,14 @@ export default function RelatorioPorAtividade({ safras }: { safras: Safra[] }) {
             <span className="text-sm text-gray-500">Safra {rel.safra.nome}</span>
           </div>
 
+          {rel.avisos.registrosPendentes > 0 && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded text-sm">
+              {rel.avisos.registrosPendentes} registro(s) desta atividade aguardando aprovação na aba <b>Atividades e Produtos</b>. As horas e os custos deles só entram no relatório depois de aprovados.
+            </div>
+          )}
+
           {r.situacao === 'SEM_LANCAMENTO' ? (
-            <div className="text-center py-10 text-gray-400">Nenhum lançamento desta atividade nesta safra</div>
+            <div className="text-center py-10 text-gray-400">Nenhum lançamento aprovado desta atividade nesta safra</div>
           ) : (
             <>
               {(rel.avisos.funcionariosSemSalario > 0 || rel.avisos.lancamentosSemTalhao || rel.avisos.talhoesSemArea.length > 0) && (
@@ -441,7 +450,7 @@ export default function RelatorioPorAtividade({ safras }: { safras: Safra[] }) {
                 <div className="bg-white rounded-xl border overflow-hidden">
                   <div className="px-4 py-3 bg-grafite"><p className="text-sm font-semibold text-white">Funcionários</p></div>
                   {rel.funcionarios.length === 0 && rel.turmas.length === 0 ? (
-                    <p className="text-sm text-gray-400 p-4">Nenhum registro de atividade</p>
+                    <p className="text-sm text-gray-400 p-4">Nenhum registro aprovado</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
@@ -481,7 +490,7 @@ export default function RelatorioPorAtividade({ safras }: { safras: Safra[] }) {
                 <div className="bg-white rounded-xl border overflow-hidden">
                   <div className="px-4 py-3 bg-grafite"><p className="text-sm font-semibold text-white">Produtos usados</p></div>
                   {rel.produtos.length === 0 ? (
-                    <p className="text-sm text-gray-400 p-4">Nenhum produto lançado na aba Produtos por Atividade</p>
+                    <p className="text-sm text-gray-400 p-4">Nenhum produto lançado na aba Atividades e Produtos</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">

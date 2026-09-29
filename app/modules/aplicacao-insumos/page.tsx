@@ -271,7 +271,7 @@ export default function AplicacaoInsumosPage() {
         <button onClick={() => setAba('novo')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'novo' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Novo Lançamento</button>
         <button onClick={() => setAba('historico')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'historico' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Histórico</button>
         <button onClick={() => setAba('subtotal')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'subtotal' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Subtotal por Talhão</button>
-        <button onClick={() => setAba('atividade')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'atividade' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Produtos por Atividade</button>
+        <button onClick={() => setAba('atividade')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'atividade' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Atividades e Produtos</button>
         <button onClick={() => setAba('relatorio')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'relatorio' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Relatório por Atividade</button>
       </div>
 
