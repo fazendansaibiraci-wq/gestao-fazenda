@@ -157,6 +157,8 @@ domingosPorMes        Int?   @default(2)
 
   salariosPeriodo SalarioPeriodo[]
   ferias          FeriasFuncionario[] @relation("FeriasFuncionario")
+  encerramentosAtividade EncerramentoAtividadeTalhao[] @relation("EncerramentoAtividadeUsuario")
+  produtosAtividadeRegistrados ProdutoAtividade[] @relation("ProdutoAtividadeUsuario")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -243,6 +245,8 @@ model Talhao {
   aplicacaoInsumoItens AplicacaoInsumoItem[]
   saidasProduto      SaidaProduto[]
   abastecimentos     AbastecimentoTrator[]
+  encerramentosAtividade EncerramentoAtividadeTalhao[]
+  produtosAtividade  ProdutoAtividade[]
 
   @@map("talhoes")
 }
@@ -304,6 +308,7 @@ model Produto {
   ajustesEstoque     AjusteEstoque[]
   entradas           EntradaProduto[]
   aplicacaoInsumoItens AplicacaoInsumoItem[]
+  produtosAtividade    ProdutoAtividade[]
   estoqueLocais EstoqueLocal[]
   transferencias TransferenciaEstoque[]
 
@@ -510,6 +515,8 @@ model Safra {
   saidasProduto      SaidaProduto[]
   abastecimentos     AbastecimentoTrator[]
   aplicacaoInsumoItens AplicacaoInsumoItem[]
+  encerramentosAtividade EncerramentoAtividadeTalhao[]
+  produtosAtividade    ProdutoAtividade[]
 
   @@map("safras")
 }
@@ -1436,4 +1443,54 @@ model AplicacaoInsumoItem {
   @@index([talhaoId, safraId])
   @@index([safraId, atividade])
   @@map("aplicacao_insumo_itens")
+}
+
+// Encerramento de uma atividade (Tipo de Atividade) num talhão, dentro de uma
+// safra — marca que o talhão terminou aquela atividade. Sem registro aqui o
+// talhão aparece "Em andamento" no Relatório por Atividade. Reabrir = apagar.
+model EncerramentoAtividadeTalhao {
+  id            String   @id @default(cuid())
+  tipoAtividade String
+  talhao        Talhao   @relation(fields: [talhaoId], references: [id], onDelete: Cascade)
+  talhaoId      String
+  safra         Safra    @relation(fields: [safraId], references: [id], onDelete: Cascade)
+  safraId       String
+  dataFim       DateTime
+  encerradoPor   User    @relation("EncerramentoAtividadeUsuario", fields: [encerradoPorId], references: [id])
+  encerradoPorId String
+  dataCriacao   DateTime @default(now())
+
+  @@unique([tipoAtividade, talhaoId, safraId])
+  @@index([tipoAtividade, safraId])
+  @@map("encerramentos_atividade_talhao")
+}
+
+// Produto usado numa atividade (Tipo de Atividade do cadastro, ex: "PLATONA MAG"),
+// lançado na aba "Produtos por Atividade" da tela Aplicação de Insumos.
+// Tabela SEPARADA de AplicacaoInsumoItem de propósito (decisão da gestora):
+// alimenta só o Relatório por Atividade. Não mexe em estoque.
+model ProdutoAtividade {
+  id            String   @id @default(cuid())
+  tipoAtividade String
+  safra         Safra    @relation(fields: [safraId], references: [id])
+  safraId       String
+  talhao        Talhao   @relation(fields: [talhaoId], references: [id])
+  talhaoId      String
+  produto       Produto  @relation(fields: [produtoId], references: [id])
+  produtoId     String
+  data          DateTime
+  quantidade    Float
+  // Unidade e preço do produto no dia do lançamento (mudança de preço
+  // depois não altera o custo já lançado).
+  unidadeSnapshot       String
+  valorUnitarioSnapshot Float
+  valorTotal    Float
+  observacao    String?
+  registradoPor   User   @relation("ProdutoAtividadeUsuario", fields: [registradoPorId], references: [id])
+  registradoPorId String
+  dataCriacao   DateTime @default(now())
+
+  @@index([tipoAtividade, safraId])
+  @@index([talhaoId])
+  @@map("produtos_atividade")
 }
