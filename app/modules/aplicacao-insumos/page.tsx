@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import ProdutosPorAtividade from '@/components/ProdutosPorAtividade'
+import RelatorioPorAtividade from '@/components/RelatorioPorAtividade'
 
 type Atividade = 'HERBICIDA' | 'PULVERIZACAO' | 'DRENCH' | 'ADUBACAO' | 'CORRECAO_SOLO'
 
@@ -52,7 +53,7 @@ export default function AplicacaoInsumosPage() {
   const { status } = useSession()
   const router = useRouter()
 
-  const [aba, setAba] = useState<'novo' | 'historico' | 'subtotal' | 'atividade'>('novo')
+  const [aba, setAba] = useState<'novo' | 'historico' | 'subtotal' | 'atividade' | 'relatorio'>('novo')
 
   const [talhoes, setTalhoes] = useState<Talhao[]>([])
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -271,6 +272,7 @@ export default function AplicacaoInsumosPage() {
         <button onClick={() => setAba('historico')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'historico' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Histórico</button>
         <button onClick={() => setAba('subtotal')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'subtotal' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Subtotal por Talhão</button>
         <button onClick={() => setAba('atividade')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'atividade' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Produtos por Atividade</button>
+        <button onClick={() => setAba('relatorio')} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${aba === 'relatorio' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500'}`}>Relatório por Atividade</button>
       </div>
 
       {aba === 'novo' ? (
@@ -507,6 +509,8 @@ export default function AplicacaoInsumosPage() {
         <Historico talhoes={talhoes} produtos={produtos} safras={safras} />
       ) : aba === 'atividade' ? (
         <ProdutosPorAtividade talhoes={talhoes} produtos={produtos} safras={safras} />
+      ) : aba === 'relatorio' ? (
+        <RelatorioPorAtividade safras={safras} />
       ) : (
         <SubtotalTalhao talhoes={talhoes} safras={safras} />
       )}
