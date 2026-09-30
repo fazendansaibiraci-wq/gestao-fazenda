@@ -103,6 +103,8 @@ export default function DashboardPage() {
     atividadesPendentes: 0,
   })
   const [loading, setLoading] = useState(true)
+  // Gráfico por talhão: mostra os 10 maiores + "Outros"; "Ver todos" expande.
+  const [verTodosTalhoes, setVerTodosTalhoes] = useState(false)
   const [alertasAusencia, setAlertasAusencia] = useState<AlertaAusencia[]>([])
   const [alertaAusenciaExpandido, setAlertaAusenciaExpandido] = useState(false)
   const [dadosGraficos, setDadosGraficos] = useState<DadosGraficos>({
@@ -525,8 +527,8 @@ export default function DashboardPage() {
               }))
               .filter((t) => t.total > 0)
               .sort((a, b) => b.total - a.total)
-            const top = ordenados.slice(0, 10)
-            const resto = ordenados.slice(10)
+            const top = verTodosTalhoes ? ordenados : ordenados.slice(0, 10)
+            const resto = verTodosTalhoes ? [] : ordenados.slice(10)
             const dadosHHHM = resto.length > 0
               ? [...top, {
                   nomeTalhao: `Outros (${resto.length})`,
@@ -547,6 +549,7 @@ export default function DashboardPage() {
             }
 
             return (
+              <>
               <ResponsiveContainer width="100%" height={dadosHHHM.length * 30 + 60}>
                 <BarChart data={dadosHHHM} layout="vertical" margin={{ left: 10, right: 48, top: 4, bottom: 4 }}>
                   <CartesianGrid stroke={COR_GRADE} horizontal={false} />
@@ -560,6 +563,18 @@ export default function DashboardPage() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              {ordenados.length > 10 && (
+                <div className="flex justify-center mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setVerTodosTalhoes((v) => !v)}
+                    className="text-sm font-semibold text-primary border border-[#DDD5C8] rounded-lg px-3 py-1.5 hover:bg-[#EFE9DF]"
+                  >
+                    {verTodosTalhoes ? 'Mostrar só os 10 maiores' : `Ver todos os ${ordenados.length} talhões`}
+                  </button>
+                </div>
+              )}
+              </>
             )
           })()}
         </div>
