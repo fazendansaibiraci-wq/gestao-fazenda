@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import ProdutosPorAtividade from '@/components/ProdutosPorAtividade'
 import RelatorioPorAtividade from '@/components/RelatorioPorAtividade'
+import { ColarReceitaModal, type ReceitaAplicada } from '@/components/ColarReceitaModal'
 
 type Atividade = 'HERBICIDA' | 'PULVERIZACAO' | 'DRENCH' | 'ADUBACAO' | 'CORRECAO_SOLO'
 
@@ -81,6 +82,65 @@ export default function AplicacaoInsumosPage() {
   const [erroProduto, setErroProduto] = useState('')
 
   const modoBomba = ATIVIDADES_BOMBA.includes(atividade)
+
+  // "Colar receita do WhatsApp" (ver components/ColarReceitaModal.tsx)
+  const [showColarReceita, setShowColarReceita] = useState(false)
+  // Aviso de onde vieram os produtos pré-preenchidos (aplicação já lançada)
+  const [origemProdutos, setOrigemProdutos] = useState('')
+
+  function aplicarReceita(r: ReceitaAplicada) {
+    if (r.atividade) setAtividade(r.atividade as Atividade)
+    if (r.numAplicacao) setNumAplicacao(r.numAplicacao)
+    if (r.produtos.length) setProdutosBomba(r.produtos)
+    if (r.talhoes.length) setTalhoesBomba(r.talhoes.map(t => ({ talhaoId: t.talhaoId, numBombas: '', data: hoje() })))
+    setOrigemProdutos('Produtos e talhões preenchidos a partir da receita colada. Confira as doses e preencha o nº de bombas de cada talhão.')
+    setShowColarReceita(false)
+  }
+
+  // Repetir os produtos da mesma aplicação: ao escolher Safra + Atividade +
+  // Nº da Aplicação que JÁ tem lançamento, preenche a lista de produtos com
+  // as doses do lançamento mais recente dessa aplicação — assim, ao lançar
+  // talhão por talhão, não precisa selecionar os produtos de novo. Só
+  // preenche se a lista de produtos estiver vazia (não apaga o que foi
+  // digitado).
+  useEffect(() => {
+    if (!modoBomba || !safraId || !String(numAplicacao || '').trim()) return
+    let cancelado = false
+    fetch(`/api/aplicacao-insumo?safraId=${safraId}&atividade=${atividade}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (cancelado || !d) return
+        const num = String(numAplicacao).trim()
+        const itens = (d.data || []).filter((it: any) => String(it.numAplicacao || '1').trim() === num && it.qtd != null)
+        if (!itens.length) return
+        const ref = itens[0] // API devolve do mais recente pro mais antigo
+        const grupo = itens.filter((it: any) => it.talhaoId === ref.talhaoId && it.data === ref.data)
+        const vistos = new Set<string>()
+        const lista: { produtoId: string; dose: string }[] = []
+        for (const it of grupo.slice().reverse()) {
+          if (vistos.has(it.produtoId)) continue
+          vistos.add(it.produtoId)
+          lista.push({ produtoId: it.produtoId, dose: String(it.qtd) })
+        }
+        if (!lista.length) return
+        let preencheu = false
+        setProdutosBomba(prev => {
+          const vazia = prev.every(p => !p.produtoId && !p.dose)
+          if (!vazia) return prev
+          preencheu = true
+          return lista
+        })
+        if (preencheu) {
+          const dataRef = new Date(ref.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+          setOrigemProdutos(
+            `Produtos preenchidos a partir da ${num}ª ${ATIVIDADE_LABELS[atividade]} já lançada (${ref.talhao?.nome || 'talhão'}, ${dataRef}). Confira as doses.`
+          )
+        }
+      })
+      .catch(() => {})
+    return () => { cancelado = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modoBomba, safraId, atividade, numAplicacao])
 
   useEffect(() => { if (status === 'unauthenticated') router.push('/login') }, [status, router])
   useEffect(() => { if (status === 'authenticated') carregarBase() }, [status])
@@ -244,7 +304,8 @@ export default function AplicacaoInsumosPage() {
       })
       if (!r.ok) { const d = await r.json(); throw new Error(d.error || 'Erro ao salvar') }
       setSucesso(`${itens.length} lançamento(s) registrado(s) com sucesso.`)
-      setProdutosBomba([{ produtoId: '', dose: '' }])
+      // Mantém os produtos (a próxima leva costuma ser a mesma receita em
+      // outro talhão); limpa só os talhões.
       setTalhoesBomba([{ talhaoId: '', numBombas: '', data: hoje() }])
       setLancamentos([{ talhaoId: '', produtoId: '', quantidade: '', data: hoje() }])
     } catch (err: unknown) {
@@ -277,6 +338,14 @@ export default function AplicacaoInsumosPage() {
 
       {aba === 'novo' ? (
         <form onSubmit={salvar} className="space-y-6">
+          {showColarReceita && (
+            <ColarReceitaModal
+              produtos={produtos}
+              talhoes={talhoes}
+              onAplicar={aplicarReceita}
+              onFechar={() => setShowColarReceita(false)}
+            />
+          )}
           {erro && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">{erro}</div>}
           {sucesso && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm">{sucesso}</div>}
 
@@ -312,11 +381,16 @@ export default function AplicacaoInsumosPage() {
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-sm font-medium">Produtos *</label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap justify-end">
+                    <button type="button" onClick={() => setShowColarReceita(true)} className="text-xs text-white bg-primary px-2 py-1 rounded-lg hover:bg-[#2C373C]">Colar receita do WhatsApp</button>
+                    <button type="button" onClick={() => { setProdutosBomba([{ produtoId: '', dose: '' }]); setOrigemProdutos('') }} className="text-xs text-gray-500 border border-gray-200 px-2 py-1 rounded-lg hover:bg-gray-50">Limpar produtos</button>
                     <button type="button" onClick={() => { setShowNovoProduto(true); setErroProduto('') }} className="text-xs text-blue-600 border border-blue-200 px-2 py-1 rounded-lg hover:bg-blue-50">+ Cadastrar produto</button>
                     <button type="button" onClick={addProdutoBomba} className="text-xs text-green-600 border border-green-200 px-2 py-1 rounded-lg hover:bg-green-50">+ Adicionar produto</button>
                   </div>
                 </div>
+                {origemProdutos && (
+                  <div className="mb-3 p-2.5 bg-[#EFE9DF] border border-[#DDD5C8] rounded-lg text-xs text-[#3C4B52]">{origemProdutos}</div>
+                )}
                 {produtosBomba.map((p, i) => (
                   <div key={i} className="flex gap-2 mb-2">
                     <select value={p.produtoId} onChange={e => updProdutoBomba(i, 'produtoId', e.target.value)} className="flex-1 border rounded-lg px-3 py-2 text-sm">
