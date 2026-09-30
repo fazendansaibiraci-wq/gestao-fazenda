@@ -89,6 +89,8 @@ export default function CalendarioResumoMensalPage() {
           horasDevidas: Math.max(existente.horasDevidas, reg.horasDevidas),
           isFalta: existente.isFalta || reg.isFalta,
           isFolga: existente.isFolga || reg.isFolga,
+          isFeriado: existente.isFeriado || reg.isFeriado,
+          isFerias: existente.isFerias || reg.isFerias,
         })
       }
     })
@@ -102,6 +104,10 @@ export default function CalendarioResumoMensalPage() {
 
   const corDaCelula = (registro: RegistroDiario | undefined) => {
     if (!registro) return 'bg-white border-gray-200'
+    // Férias e feriados (cadastrados em Funcionários → Férias e Cadastros →
+    // Feriados) ganham cor própria, trabalhados ou não.
+    if (registro.isFerias) return 'bg-sky-100 border-sky-400'
+    if (registro.isFeriado) return 'bg-purple-100 border-purple-400'
     if (registro.isFalta) return 'bg-red-100 border-red-400'
     if (registro.isFolga) return 'bg-gray-200 border-gray-400'
     if (registro.horasDevidas > 0) return 'bg-yellow-100 border-yellow-400'
@@ -110,6 +116,10 @@ export default function CalendarioResumoMensalPage() {
 
   const textoDaCelula = (registro: RegistroDiario | undefined, pagamentoProporcionalDiario?: boolean) => {
     if (!registro) return null
+    if (registro.isFerias) return 'Férias'
+    if (registro.isFeriado) {
+      return registro.horasTrabalhadas > 0 ? `Feriado · ${fmtHCompacto(registro.horasTrabalhadas)}` : 'Feriado'
+    }
     if (registro.isFalta) return 'Falta'
     if (registro.isFolga) return 'Folga'
     if (registro.horasDevidas > 0 && !pagamentoProporcionalDiario) return `-${fmtHCompacto(registro.horasDevidas)} devendo`
@@ -155,6 +165,8 @@ export default function CalendarioResumoMensalPage() {
         <span className="flex items-center gap-1">🟥 Falta</span>
         <span className="flex items-center gap-1">🟨 Devendo horas / período parcial</span>
         <span className="flex items-center gap-1">⬜ Sem expectativa (folga)</span>
+        <span className="flex items-center gap-1">🟪 Feriado</span>
+        <span className="flex items-center gap-1">🟦 Férias</span>
       </div>
 
       {resumo.length === 0 ? (
