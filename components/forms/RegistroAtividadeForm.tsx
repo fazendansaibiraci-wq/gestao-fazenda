@@ -168,6 +168,40 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   // `safras` acima, que é o cadastro de Safra AGRÍCOLA (ex: "Safra 25/26",
   // pro dropdown de talhão/colheita) — outro conceito, com seu próprio
   // período, sem relação com o regime salarial do dia.
+  // Safras que valem na data do lançamento (início ≤ data ≤ fim; sem fim =
+  // ainda aberta). Assim, lançando em out/2026 só aparece a SAFRA 26/27.
+  // Se nenhuma safra cobrir a data, mostra todas (pra não travar o
+  // lançamento). A safra já escolhida (ex: editando um registro antigo)
+  // sempre continua na lista.
+  const safrasDaData = useMemo(() => {
+    const lista = safras as any[]
+    const dataStr = String(form.data || '').slice(0, 10)
+    if (!dataStr) return lista
+    const cobre = lista.filter((s) => {
+      const ini = s.dataInicio ? String(s.dataInicio).slice(0, 10) : ''
+      const fim = s.dataFim ? String(s.dataFim).slice(0, 10) : ''
+      return (!ini || ini <= dataStr) && (!fim || dataStr <= fim)
+    })
+    const base = cobre.length > 0 ? cobre : lista
+    const escolhida = lista.find((s) => s.id === form.safraId)
+    return escolhida && !base.some((s) => s.id === escolhida.id) ? [...base, escolhida] : base
+  }, [safras, form.data, form.safraId])
+
+  // Se só uma safra vale na data e nenhuma válida está escolhida, já
+  // seleciona ela.
+  useEffect(() => {
+    const cobre = (safrasDaData as any[]).filter((s) => {
+      const dataStr = String(form.data || '').slice(0, 10)
+      const ini = s.dataInicio ? String(s.dataInicio).slice(0, 10) : ''
+      const fim = s.dataFim ? String(s.dataFim).slice(0, 10) : ''
+      return (!ini || ini <= dataStr) && (!fim || dataStr <= fim)
+    })
+    if (cobre.length === 1 && !cobre.some((s) => s.id === form.safraId)) {
+      setForm(prev => ({ ...prev, safraId: cobre[0].id }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safrasDaData, form.data])
+
   const regimeDoDia = useMemo(() => {
     if (!form.data || periodosRegime.length === 0) return null
     return obterRegimeNaData(new Date(form.data + 'T12:00:00'), periodosRegime)
@@ -300,7 +334,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         // qualquer só pra satisfazer campo obrigatório (mesmo problema
         // corrigido hoje mais cedo pro sistema automático de faltas).
         talhaoId: null,
-        safraId: form.safraId || (safras[0] as any)?.id,
+        safraId: form.safraId || (safrasDaData[0] as any)?.id,
         tipoAtividade: 'GERAIS', status: 'CONCLUIDO', horaEntrada: '00:00',
       } : form.isAjusteHorimetro ? {
         data: new Date(form.data + 'T12:00:00'),
@@ -311,7 +345,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         horaEntrada: '00:00',
         // Ajuste não tem talhão real — mesmo motivo da falta acima.
         talhaoId: null,
-        safraId: form.safraId || (safras[0] as any)?.id,
+        safraId: form.safraId || (safrasDaData[0] as any)?.id,
         maquinaId: form.maquinaId,
         horimetroInicial, horimetroFinal, horasMaquina,
         observacao: form.observacao,
@@ -533,7 +567,7 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   <label htmlFor="safraId">Safra *</label>
                   <select id="safraId" name="safraId" value={form.safraId} onChange={handleChange} required disabled={loading}>
                     <option value="">Selecionar safra</option>
-                    {safras.map((s: any) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                    {(safrasDaData as any[]).map((s: any) => <option key={s.id} value={s.id}>{s.nome}</option>)}
                   </select>
                 </div>
               </div>
