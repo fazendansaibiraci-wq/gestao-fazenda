@@ -50,6 +50,10 @@ export default function RelatorioSemanalPage() {
   const [concluindo, setConcluindo] = useState<string | null>(null)
   const [dataConcluir, setDataConcluir] = useState('')
   const [salvandoConclusao, setSalvandoConclusao] = useState(false)
+  // Filtros do Andamento das operações (continuam ao trocar de semana)
+  const [filtroAtividade, setFiltroAtividade] = useState('')
+  const [filtroTalhao, setFiltroTalhao] = useState('')
+  const [filtroStatus, setFiltroStatus] = useState('')
   const semanaCarregada = useRef('')
 
   useEffect(() => {
@@ -173,14 +177,34 @@ export default function RelatorioSemanalPage() {
   // Operações com área (barra de progresso) x sem área (oficina, gerais,
   // talhão sem área cadastrada ou nenhuma área lançada) — ficam separadas.
   const temArea = (o: any) => o.areaTalhao > 0 && o.areaFeita > 0
-  const operacoesComArea = useMemo(() => (dados?.operacoes || []).filter(temArea), [dados])
-  const operacoesSemArea = useMemo(() => (dados?.operacoes || []).filter((o: any) => !temArea(o)), [dados])
+  const todasOperacoes: any[] = dados?.operacoes || []
+  const opcoesAtividade = useMemo(() => {
+    const set = new Set<string>(todasOperacoes.map((o) => o.atividade))
+    if (filtroAtividade) set.add(filtroAtividade)
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [dados, filtroAtividade])
+  const opcoesTalhao = useMemo(() => {
+    const set = new Set<string>(
+      todasOperacoes.filter((o) => !filtroAtividade || o.atividade === filtroAtividade).map((o) => o.talhao)
+    )
+    if (filtroTalhao) set.add(filtroTalhao)
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [dados, filtroAtividade, filtroTalhao])
+  // Atividade + talhão (os números das etiquetas de status seguem estes dois)
+  const operacoesFiltradas = useMemo(
+    () => todasOperacoes.filter((o) => (!filtroAtividade || o.atividade === filtroAtividade) && (!filtroTalhao || o.talhao === filtroTalhao)),
+    [dados, filtroAtividade, filtroTalhao]
+  )
+  const passaStatus = (o: any) => !filtroStatus || o.status === filtroStatus
+  const operacoesComArea = useMemo(() => operacoesFiltradas.filter((o) => temArea(o) && passaStatus(o)), [operacoesFiltradas, filtroStatus])
+  const operacoesSemArea = useMemo(() => operacoesFiltradas.filter((o) => !temArea(o) && passaStatus(o)), [operacoesFiltradas, filtroStatus])
+  const temFiltro = !!(filtroAtividade || filtroTalhao || filtroStatus)
 
   const contagem = useMemo(() => {
     const c: Record<string, number> = { novo: 0, andamento: 0, concluida: 0, parada: 0 }
-    for (const o of operacoesComArea) c[o.status]++
+    for (const o of operacoesFiltradas) if (temArea(o)) c[o.status]++
     return c
-  }, [operacoesComArea])
+  }, [operacoesFiltradas])
 
   const kpis = dados
     ? [
@@ -291,15 +315,79 @@ export default function RelatorioSemanalPage() {
           {/* Operações */}
           <section className="space-y-2">
             <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Andamento das operações</h2>
+            {/* Filtros (só na tela; no PDF sai uma linha dizendo o filtro usado) */}
+            <div className="print:hidden flex flex-wrap items-end gap-2 bg-white border border-[#E4DDD2] rounded-xl p-2.5">
+              <label className="text-xs font-semibold" style={{ color: MU }}>
+                Atividade
+                <select
+                  value={filtroAtividade}
+                  onChange={(e) => { setFiltroAtividade(e.target.value); setFiltroTalhao('') }}
+                  className="!w-auto block mt-0.5 border border-[#DDD5C8] rounded px-2 py-1 text-sm"
+                  style={{ color: INK }}
+                >
+                  <option value="">Todas</option>
+                  {opcoesAtividade.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-semibold" style={{ color: MU }}>
+                Talhão
+                <select
+                  value={filtroTalhao}
+                  onChange={(e) => setFiltroTalhao(e.target.value)}
+                  className="!w-auto block mt-0.5 border border-[#DDD5C8] rounded px-2 py-1 text-sm"
+                  style={{ color: INK }}
+                >
+                  <option value="">Todos</option>
+                  {opcoesTalhao.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-semibold" style={{ color: MU }}>
+                Status
+                <select
+                  value={filtroStatus}
+                  onChange={(e) => setFiltroStatus(e.target.value)}
+                  className="!w-auto block mt-0.5 border border-[#DDD5C8] rounded px-2 py-1 text-sm"
+                  style={{ color: INK }}
+                >
+                  <option value="">Todos</option>
+                  {(['novo', 'andamento', 'concluida', 'parada'] as const).map((s) => <option key={s} value={s}>{STATUS[s].rotulo}</option>)}
+                </select>
+              </label>
+              {temFiltro && (
+                <button
+                  onClick={() => { setFiltroAtividade(''); setFiltroTalhao(''); setFiltroStatus('') }}
+                  className="text-xs underline pb-1.5"
+                  style={{ color: C }}
+                >
+                  Limpar filtros
+                </button>
+              )}
+            </div>
+            {temFiltro && (
+              <p className="hidden print:block text-xs" style={{ color: MU }}>
+                Filtro: {[filtroAtividade && `atividade ${filtroAtividade}`, filtroTalhao && `talhão ${filtroTalhao}`, filtroStatus && `status ${STATUS[filtroStatus].rotulo}`].filter(Boolean).join(' · ')}
+              </p>
+            )}
             <div className="flex flex-wrap gap-2 text-xs font-bold">
-              {(['novo', 'andamento', 'concluida', 'parada'] as const).map((s) => (
-                <span key={s} className="px-2.5 py-1 rounded-full" style={{ background: STATUS[s].bg, color: STATUS[s].fg }}>
-                  {contagem[s]} {STATUS[s].rotulo.toLowerCase()}
-                </span>
-              ))}
+              {(['novo', 'andamento', 'concluida', 'parada'] as const).map((s) => {
+                const ativo = filtroStatus === s
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setFiltroStatus(ativo ? '' : s)}
+                    className="px-2.5 py-1 rounded-full"
+                    style={{ background: STATUS[s].bg, color: STATUS[s].fg, outline: ativo ? `2px solid ${STATUS[s].fg}` : 'none' }}
+                    title={ativo ? 'Mostrar todos os status' : `Mostrar só ${STATUS[s].rotulo.toLowerCase()}`}
+                  >
+                    {contagem[s]} {STATUS[s].rotulo.toLowerCase()}
+                  </button>
+                )
+              })}
             </div>
             {operacoesComArea.length === 0 ? (
-              <p className="text-sm text-gray-500">Nenhuma operação com área lançada nesta semana.</p>
+              <p className="text-sm text-gray-500">
+                {temFiltro ? 'Nenhuma operação com área para este filtro.' : 'Nenhuma operação com área lançada nesta semana.'}
+              </p>
             ) : (
               <div className="bg-white border border-[#E4DDD2] rounded-xl overflow-hidden overflow-x-auto">
                 <table className="w-full text-sm">
