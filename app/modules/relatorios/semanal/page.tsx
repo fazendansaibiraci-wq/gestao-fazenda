@@ -60,11 +60,17 @@ export default function RelatorioSemanalPage() {
 
   const mudarSemana = (dias: number) => setSegunda((s) => new Date(s.getFullYear(), s.getMonth(), s.getDate() + dias))
 
+  // Operações com área (barra de progresso) x sem área (oficina, gerais,
+  // talhão sem área cadastrada ou nenhuma área lançada) — ficam separadas.
+  const temArea = (o: any) => o.areaTalhao > 0 && o.areaFeita > 0
+  const operacoesComArea = useMemo(() => (dados?.operacoes || []).filter(temArea), [dados])
+  const operacoesSemArea = useMemo(() => (dados?.operacoes || []).filter((o: any) => !temArea(o)), [dados])
+
   const contagem = useMemo(() => {
     const c: Record<string, number> = { novo: 0, andamento: 0, concluida: 0, parada: 0 }
-    for (const o of dados?.operacoes || []) c[o.status]++
+    for (const o of operacoesComArea) c[o.status]++
     return c
-  }, [dados])
+  }, [operacoesComArea])
 
   const kpis = dados
     ? [
@@ -181,8 +187,8 @@ export default function RelatorioSemanalPage() {
                 </span>
               ))}
             </div>
-            {dados.operacoes.length === 0 ? (
-              <p className="text-sm text-gray-500">Nenhuma operação com talhão nesta semana.</p>
+            {operacoesComArea.length === 0 ? (
+              <p className="text-sm text-gray-500">Nenhuma operação com área lançada nesta semana.</p>
             ) : (
               <div className="bg-white border border-[#E4DDD2] rounded-xl overflow-hidden overflow-x-auto">
                 <table className="w-full text-sm">
@@ -197,28 +203,22 @@ export default function RelatorioSemanalPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {dados.operacoes.map((o: any, i: number) => {
+                    {operacoesComArea.map((o: any, i: number) => {
                       const st = STATUS[o.status]
-                      const pct = o.areaTalhao > 0 ? Math.min(1, o.areaFeita / o.areaTalhao) : null
+                      const pct = Math.min(1, o.areaFeita / o.areaTalhao)
                       return (
                         <tr key={i} className="rs-bloco border-b border-[#EEE8DE]">
                           <td className="px-3 py-2 font-semibold" style={{ color: INK }}>{o.atividade}</td>
                           <td className="px-3 py-2" style={{ color: '#4E5A60' }}>{o.talhao}</td>
                           <td className="px-3 py-2">
-                            {pct == null ? (
-                              <span className="text-xs" style={{ color: MU }}>
-                                {o.areaFeita > 0 ? `${n1(o.areaFeita)} ha (talhão sem área cadastrada)` : 'sem área lançada'}
-                              </span>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 h-2 rounded-full bg-[#EEE8DE] overflow-hidden">
-                                  <div className="h-full rounded-full" style={{ width: `${pct * 100}%`, background: st.barra }} />
-                                </div>
-                                <span className="text-xs font-bold whitespace-nowrap" style={{ color: INK }}>
-                                  {n1(o.areaFeita)} / {n1(o.areaTalhao)} ha · {Math.round(pct * 100)}%
-                                </span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 rounded-full bg-[#EEE8DE] overflow-hidden">
+                                <div className="h-full rounded-full" style={{ width: `${pct * 100}%`, background: st.barra }} />
                               </div>
-                            )}
+                              <span className="text-xs font-bold whitespace-nowrap" style={{ color: INK }}>
+                                {n1(o.areaFeita)} / {n1(o.areaTalhao)} ha · {Math.round(pct * 100)}%
+                              </span>
+                            </div>
                           </td>
                           <td className="px-3 py-2">
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: st.bg, color: st.fg }}>
@@ -232,6 +232,49 @@ export default function RelatorioSemanalPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Atividades sem área: separadas, sem barra de progresso */}
+            {operacoesSemArea.length > 0 && (
+              <div className="rs-bloco space-y-2 pt-2">
+                <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: G }}>
+                  Outras atividades (sem área para medir) · {operacoesSemArea.length}
+                </h3>
+                <p className="text-xs" style={{ color: MU }}>
+                  Atividades em que não foi lançada área ou cujo talhão não tem área cadastrada (ex: oficina, manutenção, gerais). Não entram no progresso.
+                </p>
+                <div className="bg-white border border-[#E4DDD2] rounded-xl overflow-hidden overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs bg-[#F4F1EC]" style={{ color: '#4E5A60' }}>
+                        <th className="px-3 py-2">Atividade</th>
+                        <th className="px-3 py-2">Talhão / local</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2">Quem trabalhou</th>
+                        <th className="px-3 py-2 text-right">Horas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {operacoesSemArea.map((o: any, i: number) => {
+                        const st = STATUS[o.status === 'concluida' ? 'andamento' : o.status]
+                        return (
+                          <tr key={i} className="rs-bloco border-b border-[#EEE8DE]">
+                            <td className="px-3 py-2 font-semibold" style={{ color: INK }}>{o.atividade}</td>
+                            <td className="px-3 py-2" style={{ color: '#4E5A60' }}>{o.talhao}</td>
+                            <td className="px-3 py-2">
+                              <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: st.bg, color: st.fg }}>
+                                {st.rotulo}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-xs" style={{ color: '#4E5A60' }}>{o.quem || '—'}</td>
+                            <td className="px-3 py-2 text-right font-bold" style={{ color: INK }}>{o.horasSemana ? `${n1(o.horasSemana)}h` : '—'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </section>
