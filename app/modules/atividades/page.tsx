@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp, RefreshCw, Search } from 'lucide-react'
+import { Plus, Trash2, FileText, X, AlertCircle, ChevronDown, ChevronUp, RefreshCw, Search, MessageSquare } from 'lucide-react'
 import { redirect, useRouter, useSearchParams } from 'next/navigation'
 import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 
@@ -831,6 +831,14 @@ export default function AtividadesPage() {
                       <span className="text-gray-400">—</span>
                     ) : (
                       <span className="inline-block text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700">{a.tipoAtividade}</span>
+                    )}
+                    {/* Observação visível direto na linha (sem precisar abrir).
+                        A frase padrão das faltas automáticas não aparece. */}
+                    {a.observacao && a.observacao !== 'Falta gerada automaticamente por ausência de registro' && (
+                      <span className="mt-1 flex items-start gap-1 text-xs text-[#8A5A2B] max-w-[240px]" title={a.observacao}>
+                        <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                        <span className="line-clamp-2">{a.observacao}</span>
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3">
