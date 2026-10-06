@@ -46,16 +46,26 @@ export default function RelatorioSemanalPage() {
   const [erro, setErro] = useState('')
 
   useEffect(() => {
+    // Cancela a busca anterior ao trocar de semana — sem isso, clicando
+    // rápido nas setas, a resposta de uma semana antiga podia chegar depois
+    // e o relatório (e o PDF) ficava com datas diferentes do seletor.
+    const controle = new AbortController()
     setCarregando(true)
     setErro('')
-    fetch(`/api/relatorios/semanal?inicio=${ymd(segunda)}`)
+    setDados(null)
+    fetch(`/api/relatorios/semanal?inicio=${ymd(segunda)}`, { signal: controle.signal })
       .then(async (r) => {
         const d = await r.json()
         if (!r.ok) throw new Error(d.error || 'Erro ao carregar')
         setDados(d.data)
       })
-      .catch((e) => setErro(e.message))
-      .finally(() => setCarregando(false))
+      .catch((e) => {
+        if (e?.name !== 'AbortError') setErro(e.message)
+      })
+      .finally(() => {
+        if (!controle.signal.aborted) setCarregando(false)
+      })
+    return () => controle.abort()
   }, [segunda])
 
   const mudarSemana = (dias: number) => setSegunda((s) => new Date(s.getFullYear(), s.getMonth(), s.getDate() + dias))
@@ -98,6 +108,7 @@ export default function RelatorioSemanalPage() {
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 12mm; }
+          html, body { background: #FFFFFF !important; }
           body * { visibility: hidden !important; }
           #rs-print, #rs-print * { visibility: visible !important; }
           #rs-print { position: absolute; left: 0; top: 0; width: 100%; }
@@ -126,7 +137,7 @@ export default function RelatorioSemanalPage() {
           <button onClick={() => mudarSemana(7)} className="p-2 border border-[#DDD5C8] rounded-lg bg-white hover:bg-[#EFE9DF]" title="Próxima semana">
             <ChevronRight className="w-4 h-4" />
           </button>
-          <button onClick={() => window.print()} disabled={!dados} className="btn btn-primary text-sm disabled:opacity-50">
+          <button onClick={() => window.print()} disabled={!dados || carregando} className="btn btn-primary text-sm disabled:opacity-50">
             <FileDown className="w-4 h-4" /> Gerar PDF
           </button>
         </div>
@@ -157,7 +168,7 @@ export default function RelatorioSemanalPage() {
           {/* Resumo */}
           <section className="rs-bloco space-y-2">
             <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Resumo da semana</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 print:grid-cols-6 gap-3">
               {kpis.map((k) => {
                 const a = dados.resumo.atual[k.k] || 0
                 const b = dados.resumo.anterior[k.k] || 0
@@ -299,7 +310,7 @@ export default function RelatorioSemanalPage() {
           </div>
 
           {/* Página 2 no PDF */}
-          <div className="rs-quebra grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="rs-quebra grid grid-cols-1 lg:grid-cols-2 print:grid-cols-2 gap-5">
             <section className="rs-bloco space-y-3">
               <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Aplicações de insumos</h2>
               {dados.aplicacoes.length === 0 ? (
