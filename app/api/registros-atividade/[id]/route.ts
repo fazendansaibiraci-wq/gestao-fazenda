@@ -385,13 +385,26 @@ export async function PATCH(
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     if (session.user?.role !== 'GESTOR') {
-      return NextResponse.json({ error: 'Apenas o Gestor pode editar a área feita no dia' }, { status: 403 })
+      return NextResponse.json({ error: 'Apenas o Gestor pode fazer essa alteração' }, { status: 403 })
     }
 
     const registro = await prisma.registroAtividade.findUnique({ where: { id: params.id } })
     if (!registro) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
 
     const body = await request.json()
+
+    // Correção rápida da safra (lista do Registro de Atividades)
+    if (body.safraId !== undefined) {
+      const safra = await prisma.safra.findUnique({ where: { id: String(body.safraId) }, select: { id: true } })
+      if (!safra) return NextResponse.json({ error: 'Safra não encontrada' }, { status: 400 })
+      const atualizado = await prisma.registroAtividade.update({
+        where: { id: params.id },
+        data: { safraId: safra.id },
+        select: { id: true, safraId: true },
+      })
+      return NextResponse.json({ success: true, data: atualizado })
+    }
+
     const areaHectares =
       body.areaHectares === '' || body.areaHectares === null || body.areaHectares === undefined
         ? null

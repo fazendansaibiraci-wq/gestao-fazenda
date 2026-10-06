@@ -22,7 +22,8 @@ interface Atividade {
   atestadoUrl?: string
   talhaoId: string
   talhao: { nome: string }
-  safra: { nome: string }
+  safraId?: string
+  safra: { id?: string; nome: string }
   funcionario?: { name: string }
   horasCalculadas?: number | null
   horasprevistasdia?: number | null
@@ -119,6 +120,11 @@ export default function AtividadesPage() {
     setVersaoFiltro((v) => v + 1)
   }
   const [talhoes, setTalhoes] = useState<{ id: string; nome: string }[]>([])
+  // Safras pro campo de correção rápida de safra (detalhe do lançamento)
+  const [safrasLista, setSafrasLista] = useState<{ id: string; nome: string }[]>([])
+  const [safraSalvando, setSafraSalvando] = useState<string | null>(null)
+  const [safraSalva, setSafraSalva] = useState<string | null>(null)
+  const [safraErro, setSafraErro] = useState<Record<string, string>>({})
   const [tiposAtividade, setTiposAtividade] = useState<{ id: number; nome: string }[]>([])
   const [maquinas, setMaquinas] = useState<{ id: string; nome: string }[]>([])
 
@@ -178,6 +184,7 @@ export default function AtividadesPage() {
       loadAlertasAusencia()
       if (isGestor) {
         loadTalhoes()
+        loadSafras()
         loadTiposAtividade()
         loadMaquinas()
       }
@@ -232,6 +239,42 @@ export default function AtividadesPage() {
       }
     } catch (err) {
       console.error('Erro ao carregar alertas de ausência:', err)
+    }
+  }
+
+  const loadSafras = async () => {
+    try {
+      const res = await fetch('/api/safras')
+      if (res.ok) {
+        const data = await res.json()
+        setSafrasLista(Array.isArray(data) ? data : data.data || [])
+      }
+    } catch (err) {
+      console.error('Erro ao carregar safras:', err)
+    }
+  }
+
+  // Corrige a safra de um lançamento direto na lista (sem abrir o Editar).
+  const handleSalvarSafra = async (id: string, safraId: string) => {
+    if (!safraId) return
+    setSafraSalvando(id)
+    setSafraErro((prev) => ({ ...prev, [id]: '' }))
+    try {
+      const res = await fetch(`/api/registros-atividade/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ safraId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar')
+      const safra = safrasLista.find((s) => s.id === safraId)
+      setAtividades((prev) => prev.map((a) => (a.id === id ? { ...a, safraId, safra: safra ? { ...(a.safra || {}), id: safra.id, nome: safra.nome } : a.safra } : a)))
+      setSafraSalva(id)
+      setTimeout(() => setSafraSalva((atual) => (atual === id ? null : atual)), 2500)
+    } catch (err) {
+      setSafraErro((prev) => ({ ...prev, [id]: err instanceof Error ? err.message : 'Erro ao salvar' }))
+    } finally {
+      setSafraSalvando(null)
     }
   }
 
@@ -886,7 +929,27 @@ export default function AtividadesPage() {
                               </div>
                               <div>
                                 <span className="block text-gray-400">Safra</span>
-                                <span className="font-medium text-gray-700">{a.safra?.nome || '-'}</span>
+                                {isGestorEstrito && !a.isFalta && safrasLista.length > 0 ? (
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value={a.safraId || a.safra?.id || ''}
+                                      onChange={(e) => handleSalvarSafra(a.id, e.target.value)}
+                                      disabled={safraSalvando === a.id}
+                                      className="border rounded-md px-2 py-1 text-xs font-medium text-gray-700 bg-white"
+                                      title="Trocar a safra deste lançamento (salva na hora)"
+                                    >
+                                      {!(a.safraId || a.safra?.id) && <option value="">—</option>}
+                                      {safrasLista.map((s) => (
+                                        <option key={s.id} value={s.id}>{s.nome}</option>
+                                      ))}
+                                    </select>
+                                    {safraSalvando === a.id && <span className="text-xs text-gray-400">Salvando...</span>}
+                                    {safraSalva === a.id && <span className="text-xs text-green-700">Salvo ✓</span>}
+                                  </div>
+                                ) : (
+                                  <span className="font-medium text-gray-700">{a.safra?.nome || '-'}</span>
+                                )}
+                                {safraErro[a.id] && <span className="block text-xs text-red-600">{safraErro[a.id]}</span>}
                               </div>
                               <div>
                                 <span className="block text-gray-400">Tipo de Atividade</span>
