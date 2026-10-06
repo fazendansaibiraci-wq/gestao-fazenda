@@ -314,6 +314,42 @@ export default function AtividadesPage() {
     }
   }
 
+  // "Corrigir safra pelas datas": acerta a safra de todos os lançamentos do
+  // período filtrado (inclusive faltas) pelas datas cadastradas em Safras.
+  const [corrigindoSafras, setCorrigindoSafras] = useState(false)
+  const [msgSafras, setMsgSafras] = useState('')
+  const handleCorrigirSafras = async () => {
+    if (!filtroDataInicio || !filtroDataFim) return
+    setCorrigindoSafras(true)
+    setMsgSafras('')
+    try {
+      const chamar = async (confirmar: boolean) => {
+        const res = await fetch('/api/registros-atividade/corrigir-safras', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataInicio: filtroDataInicio, dataFim: filtroDataFim, confirmar }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Erro')
+        return data as { total: number; porSafra: Record<string, number> }
+      }
+      const previa = await chamar(false)
+      if (previa.total === 0) {
+        setMsgSafras('Todos os lançamentos do período já estão na safra certa.')
+        return
+      }
+      const detalhe = Object.entries(previa.porSafra).map(([n, q]) => `${q} para ${n}`).join(', ')
+      if (!window.confirm(`${previa.total} lançamento(s) do período estão com a safra diferente da data (${detalhe}). Corrigir agora?`)) return
+      const feito = await chamar(true)
+      setMsgSafras(`${feito.total} lançamento(s) corrigido(s).`)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao corrigir safras')
+    } finally {
+      setCorrigindoSafras(false)
+    }
+  }
+
   const handlePreviaRecalculo = async () => {
     if (!filtroDataInicio || !filtroDataFim) return
     setRecalculando(true)
@@ -731,6 +767,18 @@ export default function AtividadesPage() {
               <p className="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 inline-block">
                 Recálculo aplicado com sucesso.
               </p>
+            )}
+            <button
+              onClick={handleCorrigirSafras}
+              disabled={!filtroDataInicio || !filtroDataFim || corrigindoSafras}
+              title={!filtroDataInicio || !filtroDataFim ? 'Selecione data início e fim primeiro' : 'Acerta a safra de todos os lançamentos do período (inclusive faltas) pelas datas cadastradas em Cadastros → Safras'}
+              className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-600 hover:text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${corrigindoSafras ? 'animate-spin' : ''}`} />
+              Corrigir safra pelas datas (período filtrado)
+            </button>
+            {msgSafras && (
+              <p className="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 inline-block">{msgSafras}</p>
             )}
           </div>
         )}

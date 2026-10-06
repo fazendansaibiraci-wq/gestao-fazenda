@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { safraDaData } from '@/lib/safraPorData'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 import { buscarPeriodosComId, obterPeriodoNaData, buscarTodosSalariosPeriodo, shimsParaCargaHoraria } from '@/lib/salarioPeriodo'
 
@@ -208,6 +209,9 @@ export async function GET(request: NextRequest) {
     if (!safraAtual) {
       safraAtual = await prisma.safra.findFirst()
     }
+    // A falta fica na safra que vale NA DATA dela (pelas datas cadastradas
+    // em Safras); a safra ATIVA acima é só o plano B.
+    const todasSafras = await prisma.safra.findMany({ select: { id: true, dataInicio: true, dataFim: true } })
 
     const resultado: { funcionarioId: string; nome: string; diasFaltantes: string[] }[] = []
 
@@ -243,7 +247,7 @@ export async function GET(request: NextRequest) {
               status: 'CONCLUIDO',
               horaEntrada: '00:00',
               tipoAtividade: 'GERAIS',
-              safraId: safraAtual.id,
+              safraId: (safraDaData(todasSafras, chave) || safraAtual).id,
             },
           })
 
