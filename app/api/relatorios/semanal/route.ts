@@ -10,7 +10,9 @@ export const dynamic = 'force-dynamic'
 
 // Relatório Semanal (Relatórios → Relatório Semanal). Semana de segunda a
 // domingo. Status das operações (atividade × talhão) pela ÁREA lançada:
-// - concluída: área somada na safra ≥ área do talhão (e teve lançamento na semana)
+// - concluída: área somada na safra ≥ área do talhão (e teve lançamento na semana),
+//   OU marcada à mão (botão Concluir → EncerramentoAtividadeTalhao) com data
+//   de término até o fim da semana — serve para quando não há área para medir
 // - começou: primeiro lançamento dessa atividade nesse talhão (na safra) foi nesta semana
 // - em andamento: já vinha de antes e teve lançamento nesta semana
 // - parada: começou, não concluiu e não teve lançamento na semana (último há até 30 dias)
@@ -115,25 +117,45 @@ export async function GET(request: NextRequest) {
         if (primeiroNome) o.quem.add(primeiroNome.charAt(0) + primeiroNome.slice(1).toLowerCase())
       }
     }
+    // Conclusões marcadas à mão (atividade × talhão × safra)
+    const encerramentos = safra
+      ? await prisma.encerramentoAtividadeTalhao.findMany({
+          where: { safraId: safra.id },
+          select: { id: true, tipoAtividade: true, talhaoId: true, dataFim: true },
+        })
+      : []
+    const encPorOp = new Map<string, { id: string; dataFim: Date }>(
+      encerramentos.map((e) => [`${e.tipoAtividade}|${e.talhaoId}`, { id: e.id, dataFim: e.dataFim }])
+    )
     const operacoes: any[] = []
-    for (const o of ops.values()) {
+    for (const [k, o] of ops.entries()) {
       const total = areaTalhao.get(o.talhaoId) || 0
-      const concluida = total > 0 && o.area >= total * 0.98
+      const enc = encPorOp.get(k)
+      const concluidaArea = total > 0 && o.area >= total * 0.98
+      const concluidaManual = !!enc && enc.dataFim <= fim
+      const concluida = concluidaArea || concluidaManual
       let status: string | null = null
       if (o.naSemana) {
         if (concluida) status = 'concluida'
         else if (o.primeiro >= inicio) status = 'novo'
         else status = 'andamento'
+      } else if (concluidaManual && enc!.dataFim >= inicio) {
+        // marcada como concluída nesta semana, mesmo sem lançamento nela
+        status = 'concluida'
       } else if (!concluida && o.ultimo >= new Date(inicio.getTime() - 30 * DIA)) {
         status = 'parada'
       }
       if (!status) continue
       operacoes.push({
         atividade: o.atividade,
+        talhaoId: o.talhaoId,
         talhao: nomeTalhao.get(o.talhaoId) || '-',
         areaFeita: Math.round(o.area * 100) / 100,
         areaTalhao: total,
         status,
+        concluidaPor: concluidaArea ? 'area' : concluidaManual ? 'manual' : null,
+        encerramento: enc ? { id: enc.id, dataFim: chave(enc.dataFim) } : null,
+        ultimoLancamento: chave(o.ultimo > fim ? fim : o.ultimo),
         quem: Array.from(o.quem).join(' · '),
         horasSemana: Math.round(o.horasSemana * 10) / 10,
       })
@@ -260,6 +282,7 @@ export async function GET(request: NextRequest) {
       data: {
         semana: { inicio: chave(inicio), fim: chave(fim) },
         safra: safra?.nome || null,
+        safraId: safra?.id || null,
         resumo: {
           atual: Object.fromEntries(Object.entries(atual).map(([k, v]) => [k, arred(v as number)])),
           anterior: Object.fromEntries(Object.entries(anterior).map(([k, v]) => [k, arred(v as number)])),

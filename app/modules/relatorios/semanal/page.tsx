@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, FileDown, MessageSquare, ArrowLeft } from 'lucide-react'
 
@@ -44,6 +44,13 @@ export default function RelatorioSemanalPage() {
   const [dados, setDados] = useState<any>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
+  // Recarrega a semana depois de concluir/reabrir uma operação à mão
+  const [versao, setVersao] = useState(0)
+  // Operação com o campo de data aberto para concluir (atividade|talhaoId)
+  const [concluindo, setConcluindo] = useState<string | null>(null)
+  const [dataConcluir, setDataConcluir] = useState('')
+  const [salvandoConclusao, setSalvandoConclusao] = useState(false)
+  const semanaCarregada = useRef('')
 
   useEffect(() => {
     // Cancela a busca anterior ao trocar de semana — sem isso, clicando
@@ -52,7 +59,13 @@ export default function RelatorioSemanalPage() {
     const controle = new AbortController()
     setCarregando(true)
     setErro('')
-    setDados(null)
+    // Trocou de semana: limpa a tela. Só recarregando (após Concluir/Reabrir):
+    // mantém o relatório visível enquanto busca.
+    if (semanaCarregada.current !== ymd(segunda)) {
+      setDados(null)
+      setConcluindo(null)
+    }
+    semanaCarregada.current = ymd(segunda)
     fetch(`/api/relatorios/semanal?inicio=${ymd(segunda)}`, { signal: controle.signal })
       .then(async (r) => {
         const d = await r.json()
@@ -66,7 +79,94 @@ export default function RelatorioSemanalPage() {
         if (!controle.signal.aborted) setCarregando(false)
       })
     return () => controle.abort()
-  }, [segunda])
+  }, [segunda, versao])
+
+  const concluirOperacao = async (o: any) => {
+    if (!dataConcluir) return
+    setSalvandoConclusao(true)
+    try {
+      const r = await fetch('/api/encerramentos-atividade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipoAtividade: o.atividade, talhaoId: o.talhaoId, safraId: dados?.safraId, dataFim: dataConcluir }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Erro ao concluir')
+      setConcluindo(null)
+      setVersao((v) => v + 1)
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setSalvandoConclusao(false)
+    }
+  }
+
+  const reabrirOperacao = async (o: any) => {
+    if (!o.encerramento) return
+    if (!confirm(`Reabrir ${o.atividade} no talhão ${o.talhao}? Ela deixa de aparecer como concluída.`)) return
+    try {
+      const r = await fetch(`/api/encerramentos-atividade?id=${o.encerramento.id}`, { method: 'DELETE' })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Erro ao reabrir')
+      setVersao((v) => v + 1)
+    } catch (e: any) {
+      alert(e.message)
+    }
+  }
+
+  // Concluir / Reabrir à mão (só na tela, não sai no PDF)
+  const acaoConclusao = (o: any) => {
+    const k = `${o.atividade}|${o.talhaoId}`
+    if (o.concluidaPor === 'area') {
+      return <span className="text-[11px]" style={{ color: MU }}>pela área</span>
+    }
+    if (o.concluidaPor === 'manual') {
+      return (
+        <span className="text-[11px] whitespace-nowrap" style={{ color: MU }}>
+          à mão em {brCurto(o.encerramento.dataFim)} ·{' '}
+          <button onClick={() => reabrirOperacao(o)} className="underline font-semibold" style={{ color: C }}>Reabrir</button>
+        </span>
+      )
+    }
+    if (o.encerramento) {
+      // concluída numa data depois desta semana
+      return <span className="text-[11px] whitespace-nowrap" style={{ color: MU }}>concluída em {brCurto(o.encerramento.dataFim)}</span>
+    }
+    if (concluindo === k) {
+      return (
+        <span className="flex items-center gap-1 whitespace-nowrap">
+          <input
+            type="date"
+            value={dataConcluir}
+            onChange={(e) => setDataConcluir(e.target.value)}
+            className="!w-auto border border-[#DDD5C8] rounded px-1 py-0.5 text-xs"
+          />
+          <button
+            onClick={() => concluirOperacao(o)}
+            disabled={salvandoConclusao || !dataConcluir}
+            className="text-xs font-bold px-2 py-0.5 rounded text-white disabled:opacity-50"
+            style={{ background: S }}
+          >
+            {salvandoConclusao ? '...' : 'OK'}
+          </button>
+          <button onClick={() => setConcluindo(null)} className="text-xs underline" style={{ color: MU }}>Cancelar</button>
+        </span>
+      )
+    }
+    return (
+      <button
+        onClick={() => {
+          setConcluindo(k)
+          setDataConcluir(o.ultimoLancamento)
+        }}
+        className="text-xs font-semibold px-2 py-0.5 rounded border border-[#DDD5C8] bg-white hover:bg-[#EFE9DF] whitespace-nowrap"
+        style={{ color: G }}
+        title="Marcar esta atividade como concluída neste talhão"
+      >
+        Concluir
+      </button>
+    )
+  }
 
   const mudarSemana = (dias: number) => setSegunda((s) => new Date(s.getFullYear(), s.getMonth(), s.getDate() + dias))
 
@@ -211,6 +311,7 @@ export default function RelatorioSemanalPage() {
                       <th className="px-3 py-2">Status</th>
                       <th className="px-3 py-2">Quem trabalhou</th>
                       <th className="px-3 py-2 text-right">Horas</th>
+                      <th className="px-3 py-2 print:hidden">Conclusão</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -238,6 +339,7 @@ export default function RelatorioSemanalPage() {
                           </td>
                           <td className="px-3 py-2 text-xs" style={{ color: '#4E5A60' }}>{o.quem || '—'}</td>
                           <td className="px-3 py-2 text-right font-bold" style={{ color: INK }}>{o.horasSemana ? `${n1(o.horasSemana)}h` : '—'}</td>
+                          <td className="px-3 py-2 print:hidden">{acaoConclusao(o)}</td>
                         </tr>
                       )
                     })}
@@ -253,7 +355,7 @@ export default function RelatorioSemanalPage() {
                   Outras atividades (sem área para medir) · {operacoesSemArea.length}
                 </h3>
                 <p className="text-xs" style={{ color: MU }}>
-                  Atividades em que não foi lançada área ou cujo talhão não tem área cadastrada (ex: oficina, manutenção, gerais). Não entram no progresso.
+                  Atividades em que não foi lançada área ou cujo talhão não tem área cadastrada (ex: oficina, manutenção, gerais). Não entram no progresso — para dar como concluída, use o botão Concluir.
                 </p>
                 <div className="bg-white border border-[#E4DDD2] rounded-xl overflow-hidden overflow-x-auto">
                   <table className="w-full text-sm">
@@ -264,11 +366,12 @@ export default function RelatorioSemanalPage() {
                         <th className="px-3 py-2">Status</th>
                         <th className="px-3 py-2">Quem trabalhou</th>
                         <th className="px-3 py-2 text-right">Horas</th>
+                        <th className="px-3 py-2 print:hidden">Conclusão</th>
                       </tr>
                     </thead>
                     <tbody>
                       {operacoesSemArea.map((o: any, i: number) => {
-                        const st = STATUS[o.status === 'concluida' ? 'andamento' : o.status]
+                        const st = STATUS[o.status]
                         return (
                           <tr key={i} className="rs-bloco border-b border-[#EEE8DE]">
                             <td className="px-3 py-2 font-semibold" style={{ color: INK }}>{o.atividade}</td>
@@ -280,6 +383,7 @@ export default function RelatorioSemanalPage() {
                             </td>
                             <td className="px-3 py-2 text-xs" style={{ color: '#4E5A60' }}>{o.quem || '—'}</td>
                             <td className="px-3 py-2 text-right font-bold" style={{ color: INK }}>{o.horasSemana ? `${n1(o.horasSemana)}h` : '—'}</td>
+                            <td className="px-3 py-2 print:hidden">{acaoConclusao(o)}</td>
                           </tr>
                         )
                       })}
@@ -296,7 +400,7 @@ export default function RelatorioSemanalPage() {
             {[
               ['novo', 'o primeiro lançamento dessa atividade nesse talhão, na safra, foi nesta semana.'],
               ['andamento', 'já vinha de semanas anteriores e teve lançamento nesta semana.'],
-              ['concluida', 'a área somada na safra chegou à área cadastrada do talhão.'],
+              ['concluida', 'a área somada na safra chegou à área cadastrada do talhão, ou foi marcada como concluída à mão (botão Concluir), para quando não há área para medir.'],
               ['parada', 'começou, não terminou e ficou sem lançamento nesta semana (só entra se o último lançamento foi há até 30 dias).'],
             ].map(([k, texto]) => (
               <p key={k} className="flex items-start gap-2">
