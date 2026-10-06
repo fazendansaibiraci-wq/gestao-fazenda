@@ -236,6 +236,25 @@ export default function RelatorioSemanalPage() {
             )}
           </section>
 
+          {/* Legenda dos status (tela e PDF) */}
+          <div className="rs-bloco bg-white border border-[#E4DDD2] rounded-xl p-3 text-xs space-y-1.5" style={{ color: '#4E5A60' }}>
+            <p className="font-bold uppercase" style={{ color: MU }}>Como o status é calculado</p>
+            {[
+              ['novo', 'o primeiro lançamento dessa atividade nesse talhão, na safra, foi nesta semana.'],
+              ['andamento', 'já vinha de semanas anteriores e teve lançamento nesta semana.'],
+              ['concluida', 'a área somada na safra chegou à área cadastrada do talhão.'],
+              ['parada', 'começou, não terminou e ficou sem lançamento nesta semana (só entra se o último lançamento foi há até 30 dias).'],
+            ].map(([k, texto]) => (
+              <p key={k} className="flex items-start gap-2">
+                <span className="font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: STATUS[k].bg, color: STATUS[k].fg }}>
+                  {STATUS[k].rotulo}
+                </span>
+                <span className="pt-0.5">{texto}</span>
+              </p>
+            ))}
+            <p className="pt-0.5">O progresso usa a &quot;Área feita no dia&quot; dos lançamentos somada na safra, dividida pela área do talhão.</p>
+          </div>
+
           {/* Página 2 no PDF */}
           <div className="rs-quebra grid grid-cols-1 lg:grid-cols-2 gap-5">
             <section className="rs-bloco space-y-3">
