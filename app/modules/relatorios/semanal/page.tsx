@@ -30,6 +30,7 @@ const segundaDaSemana = (d: Date) => {
   x.setDate(x.getDate() - (dow === 0 ? 6 : dow - 1))
   return x
 }
+const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const br = (s: string) => s.split('-').reverse().join('/')
 const brCurto = (s: string) => s.split('-').reverse().slice(0, 2).join('/')
 const n1 = (x: number) => x.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
@@ -40,7 +41,14 @@ const fmtH = (h: number) => {
 }
 
 export default function RelatorioSemanalPage() {
+  // Semana (seg–dom) ou mês inteiro. "segunda" = 1º dia do período
+  // (a segunda-feira, ou o dia 1 no modo mês).
+  const [modo, setModo] = useState<'semana' | 'mes'>('semana')
   const [segunda, setSegunda] = useState(() => segundaDaSemana(new Date()))
+  const mensal = modo === 'mes'
+  const P = mensal
+    ? { o: 'o mês', neste: 'neste mês', no: 'no mês', anterior: 'mês anterior', anteriores: 'meses anteriores', titulo: 'Relatório Mensal' }
+    : { o: 'a semana', neste: 'nesta semana', no: 'na semana', anterior: 'semana anterior', anteriores: 'semanas anteriores', titulo: 'Relatório Semanal' }
   const [dados, setDados] = useState<any>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
@@ -65,12 +73,13 @@ export default function RelatorioSemanalPage() {
     setErro('')
     // Trocou de semana: limpa a tela. Só recarregando (após Concluir/Reabrir):
     // mantém o relatório visível enquanto busca.
-    if (semanaCarregada.current !== ymd(segunda)) {
+    const chavePeriodo = `${modo}|${ymd(segunda)}`
+    if (semanaCarregada.current !== chavePeriodo) {
       setDados(null)
       setConcluindo(null)
     }
-    semanaCarregada.current = ymd(segunda)
-    fetch(`/api/relatorios/semanal?inicio=${ymd(segunda)}`, { signal: controle.signal })
+    semanaCarregada.current = chavePeriodo
+    fetch(`/api/relatorios/semanal?inicio=${ymd(segunda)}${mensal ? '&periodo=mes' : ''}`, { signal: controle.signal })
       .then(async (r) => {
         const d = await r.json()
         if (!r.ok) throw new Error(d.error || 'Erro ao carregar')
@@ -83,7 +92,7 @@ export default function RelatorioSemanalPage() {
         if (!controle.signal.aborted) setCarregando(false)
       })
     return () => controle.abort()
-  }, [segunda, versao])
+  }, [segunda, modo, versao])
 
   const concluirOperacao = async (o: any) => {
     if (!dataConcluir) return
@@ -172,7 +181,24 @@ export default function RelatorioSemanalPage() {
     )
   }
 
-  const mudarSemana = (dias: number) => setSegunda((s) => new Date(s.getFullYear(), s.getMonth(), s.getDate() + dias))
+  // Setas: ±1 semana ou ±1 mês
+  const mudarPeriodo = (passo: number) =>
+    setSegunda((s) => (mensal ? new Date(s.getFullYear(), s.getMonth() + passo, 1) : new Date(s.getFullYear(), s.getMonth(), s.getDate() + passo * 7)))
+  const trocarModo = (novo: 'semana' | 'mes') => {
+    if (novo === modo) return
+    if (novo === 'mes') {
+      setSegunda(new Date(segunda.getFullYear(), segunda.getMonth(), 1))
+    } else {
+      // volta para a semana de hoje se for o mês atual; senão, a 1ª semana do mês
+      const hoje = new Date()
+      const mesmoMes = hoje.getFullYear() === segunda.getFullYear() && hoje.getMonth() === segunda.getMonth()
+      setSegunda(segundaDaSemana(mesmoMes ? hoje : segunda))
+    }
+    setModo(novo)
+  }
+  const rotuloPeriodo = mensal
+    ? `${MESES[segunda.getMonth()]}/${segunda.getFullYear()}`
+    : `${brCurto(ymd(segunda))} – ${br(ymd(new Date(segunda.getFullYear(), segunda.getMonth(), segunda.getDate() + 6)))}`
 
   // Operações com área (barra de progresso) x sem área (oficina, gerais,
   // talhão sem área cadastrada ou nenhuma área lançada) — ficam separadas.
@@ -249,16 +275,28 @@ export default function RelatorioSemanalPage() {
           <Link href="/modules/relatorios" className="text-sm text-gray-500 hover:text-primary inline-flex items-center gap-1">
             <ArrowLeft className="w-4 h-4" /> Relatórios
           </Link>
-          <h1 className="text-3xl font-bold text-primary mt-1">Relatório Semanal</h1>
+          <h1 className="text-3xl font-bold text-primary mt-1">{P.titulo}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => mudarSemana(-7)} className="p-2 border border-[#DDD5C8] rounded-lg bg-white hover:bg-[#EFE9DF]" title="Semana anterior">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex border border-[#DDD5C8] rounded-lg overflow-hidden text-sm font-semibold">
+            {(['semana', 'mes'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => trocarModo(m)}
+                className="px-3 py-2"
+                style={modo === m ? { background: G, color: '#fff' } : { background: '#fff', color: G }}
+              >
+                {m === 'semana' ? 'Semana' : 'Mês'}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => mudarPeriodo(-1)} className="p-2 border border-[#DDD5C8] rounded-lg bg-white hover:bg-[#EFE9DF]" title={mensal ? 'Mês anterior' : 'Semana anterior'}>
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="px-3 py-2 border border-[#DDD5C8] rounded-lg bg-white text-sm font-semibold text-primary">
-            {brCurto(ymd(segunda))} – {br(ymd(new Date(segunda.getFullYear(), segunda.getMonth(), segunda.getDate() + 6)))}
+            {rotuloPeriodo}
           </span>
-          <button onClick={() => mudarSemana(7)} className="p-2 border border-[#DDD5C8] rounded-lg bg-white hover:bg-[#EFE9DF]" title="Próxima semana">
+          <button onClick={() => mudarPeriodo(1)} className="p-2 border border-[#DDD5C8] rounded-lg bg-white hover:bg-[#EFE9DF]" title={mensal ? 'Próximo mês' : 'Próxima semana'}>
             <ChevronRight className="w-4 h-4" />
           </button>
           <button onClick={() => window.print()} disabled={!dados || carregando} className="btn btn-primary text-sm disabled:opacity-50">
@@ -278,9 +316,10 @@ export default function RelatorioSemanalPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-nsa.svg" alt="NSA Café" className="h-12 w-auto" />
               <div>
-                <p className="text-lg font-bold" style={{ color: INK }}>Relatório Semanal</p>
+                <p className="text-lg font-bold" style={{ color: INK }}>{dados.periodo === 'mes' ? 'Relatório Mensal' : 'Relatório Semanal'}</p>
                 <p className="text-xs" style={{ color: MU }}>
-                  Semana de {br(dados.semana.inicio)} a {br(dados.semana.fim)}{dados.safra ? ` · ${dados.safra}` : ''}
+                  {dados.periodo === 'mes' ? `${MESES[Number(dados.semana.inicio.slice(5, 7)) - 1]}/${dados.semana.inicio.slice(0, 4)} · ` : 'Semana de '}
+                  {br(dados.semana.inicio)} a {br(dados.semana.fim)}{dados.safra ? ` · ${dados.safra}` : ''}
                 </p>
               </div>
             </div>
@@ -291,7 +330,7 @@ export default function RelatorioSemanalPage() {
 
           {/* Resumo */}
           <section className="rs-bloco space-y-2">
-            <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Resumo da semana</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Resumo d{P.o}</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 print:grid-cols-6 gap-3">
               {kpis.map((k) => {
                 const a = dados.resumo.atual[k.k] || 0
@@ -304,7 +343,7 @@ export default function RelatorioSemanalPage() {
                     <p className="text-xs font-semibold" style={{ color: MU }}>{k.t}</p>
                     <p className="text-xl font-bold whitespace-nowrap" style={{ color: INK }}>{k.fmt(a)}</p>
                     <p className="text-xs font-bold" style={{ color: bom == null ? MU : bom ? S : AL }}>
-                      {v} <span className="font-normal" style={{ color: MU }}>vs semana anterior</span>
+                      {v} <span className="font-normal" style={{ color: MU }}>vs {P.anterior}</span>
                     </p>
                   </div>
                 )
@@ -386,7 +425,7 @@ export default function RelatorioSemanalPage() {
             </div>
             {operacoesComArea.length === 0 ? (
               <p className="text-sm text-gray-500">
-                {temFiltro ? 'Nenhuma operação com área para este filtro.' : 'Nenhuma operação com área lançada nesta semana.'}
+                {temFiltro ? 'Nenhuma operação com área para este filtro.' : `Nenhuma operação com área lançada ${P.neste}.`}
               </p>
             ) : (
               <div className="bg-white border border-[#E4DDD2] rounded-xl overflow-hidden overflow-x-auto">
@@ -486,10 +525,10 @@ export default function RelatorioSemanalPage() {
           <div className="rs-bloco bg-white border border-[#E4DDD2] rounded-xl p-3 text-xs space-y-1.5" style={{ color: '#4E5A60' }}>
             <p className="font-bold uppercase" style={{ color: MU }}>Como o status é calculado</p>
             {[
-              ['novo', 'o primeiro lançamento dessa atividade nesse talhão, na safra, foi nesta semana.'],
-              ['andamento', 'já vinha de semanas anteriores e teve lançamento nesta semana.'],
+              ['novo', `o primeiro lançamento dessa atividade nesse talhão, na safra, foi ${P.neste}.`],
+              ['andamento', `já vinha de ${P.anteriores} e teve lançamento ${P.neste}.`],
               ['concluida', 'a área somada na safra chegou à área cadastrada do talhão, ou foi marcada como concluída à mão (botão Concluir), para quando não há área para medir.'],
-              ['parada', 'começou, não terminou e ficou sem lançamento nesta semana (só entra se o último lançamento foi há até 30 dias).'],
+              ['parada', `começou, não terminou e ficou sem lançamento ${P.neste} (só entra se o último lançamento foi há até 30 dias antes do início d${P.o}).`],
             ].map(([k, texto]) => (
               <p key={k} className="flex items-start gap-2">
                 <span className="font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: STATUS[k].bg, color: STATUS[k].fg }}>
@@ -516,8 +555,8 @@ export default function RelatorioSemanalPage() {
                         <p className="font-bold" style={{ color: INK }}>{a.titulo}</p>
                         <p className="text-xs" style={{ color: MU }}>
                           {a.faltam.length > 0 ? `${a.feitos.length} de ${total} talhões` : `${a.feitos.length} talhões`}
-                          {a.bombasSemana ? ` · ${n1(a.bombasSemana)} bombas na semana` : ''}
-                          {a.comecouNaSemana ? ' · começou nesta semana' : ''}
+                          {a.bombasSemana ? ` · ${n1(a.bombasSemana)} bombas ${P.no}` : ''}
+                          {a.comecouNaSemana ? ` · começou ${P.neste}` : ''}
                         </p>
                       </div>
                       {a.faltam.length > 0 && (
@@ -550,7 +589,7 @@ export default function RelatorioSemanalPage() {
               <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Máquinas</h2>
               <div className="bg-white border border-[#E4DDD2] rounded-xl p-3">
                 {dados.maquinas.length === 0 ? (
-                  <p className="text-sm text-gray-500">Nenhuma máquina usada na semana.</p>
+                  <p className="text-sm text-gray-500">Nenhuma máquina usada {P.no}.</p>
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
@@ -572,7 +611,7 @@ export default function RelatorioSemanalPage() {
                   </table>
                 )}
                 {dados.maquinas.some((m: any) => m.alerta) && (
-                  <p className="text-xs mt-2" style={{ color: C }}>⚠ Horímetro com horas não identificadas na semana</p>
+                  <p className="text-xs mt-2" style={{ color: C }}>⚠ Horímetro com horas não identificadas {P.no}</p>
                 )}
               </div>
             </section>
@@ -608,7 +647,7 @@ export default function RelatorioSemanalPage() {
             <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Observações e alertas</h2>
             <div className="bg-white border border-[#E4DDD2] rounded-xl p-3 space-y-3">
               <div>
-                <p className="text-xs font-bold uppercase" style={{ color: MU }}>Observações da semana</p>
+                <p className="text-xs font-bold uppercase" style={{ color: MU }}>Observações d{P.o}</p>
                 {dados.observacoes.length === 0 ? (
                   <p className="text-sm text-gray-500 mt-1">Nenhuma observação.</p>
                 ) : (

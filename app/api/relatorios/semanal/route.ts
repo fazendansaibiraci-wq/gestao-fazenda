@@ -9,7 +9,7 @@ import { safraDaData } from '@/lib/safraPorData'
 export const dynamic = 'force-dynamic'
 
 // Relatório Semanal (Relatórios → Relatório Semanal). Semana de segunda a
-// domingo. Status das operações (atividade × talhão) pela ÁREA lançada:
+// domingo, ou o mês inteiro com ?periodo=mes (aí "semana" abaixo = mês). Status das operações (atividade × talhão) pela ÁREA lançada:
 // - concluída: área somada na safra ≥ área do talhão (e teve lançamento na semana),
 //   OU marcada à mão (botão Concluir → EncerramentoAtividadeTalhao) com data
 //   de término até o fim da semana — serve para quando não há área para medir
@@ -72,11 +72,24 @@ export async function GET(request: NextRequest) {
     }
     const { searchParams } = new URL(request.url)
     const inicioStr = searchParams.get('inicio')
-    if (!inicioStr) return NextResponse.json({ error: 'Informe o início da semana' }, { status: 400 })
-    const inicio = new Date(`${inicioStr}T00:00:00.000Z`)
-    const fim = new Date(inicio.getTime() + 7 * DIA - 1)
-    const inicioAnt = new Date(inicio.getTime() - 7 * DIA)
-    const fimAnt = new Date(inicio.getTime() - 1)
+    if (!inicioStr || !/^\d{4}-\d{2}-\d{2}$/.test(inicioStr)) {
+      return NextResponse.json({ error: 'Informe o início do período' }, { status: 400 })
+    }
+    // periodo=mes: mês inteiro (comparado com o mês anterior); senão, semana seg–dom
+    const mensal = searchParams.get('periodo') === 'mes'
+    let inicio: Date, fim: Date, inicioAnt: Date, fimAnt: Date
+    if (mensal) {
+      const [ano, mes] = inicioStr.split('-').map(Number)
+      inicio = new Date(Date.UTC(ano, mes - 1, 1))
+      fim = new Date(Date.UTC(ano, mes, 1) - 1)
+      inicioAnt = new Date(Date.UTC(ano, mes - 2, 1))
+      fimAnt = new Date(inicio.getTime() - 1)
+    } else {
+      inicio = new Date(`${inicioStr}T00:00:00.000Z`)
+      fim = new Date(inicio.getTime() + 7 * DIA - 1)
+      inicioAnt = new Date(inicio.getTime() - 7 * DIA)
+      fimAnt = new Date(inicio.getTime() - 1)
+    }
 
     // ─── Safra da semana ──────────────────────────────────────────────────
     const safras: { id: string; nome: string; dataInicio: Date; dataFim: Date | null }[] = await prisma.safra.findMany({
@@ -281,6 +294,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         semana: { inicio: chave(inicio), fim: chave(fim) },
+        periodo: mensal ? 'mes' : 'semana',
         safra: safra?.nome || null,
         safraId: safra?.id || null,
         resumo: {
