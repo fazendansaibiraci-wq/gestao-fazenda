@@ -62,6 +62,8 @@ export default function RelatorioSemanalPage() {
   const [filtroAtividade, setFiltroAtividade] = useState('')
   const [filtroTalhao, setFiltroTalhao] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
+  // Paradas ficam recolhidas no rodapé da tabela (no PDF saem sempre)
+  const [mostrarParadas, setMostrarParadas] = useState(false)
   const semanaCarregada = useRef('')
 
   useEffect(() => {
@@ -232,6 +234,19 @@ export default function RelatorioSemanalPage() {
     return c
   }, [operacoesFiltradas])
 
+  // Seções por status (Em andamento, Começou, Concluída, Parada). Dentro de
+  // cada seção, maior progresso primeiro. Paradas ficam recolhidas na tela
+  // (botão Mostrar) e saem sempre no PDF.
+  const paradasVisiveis = mostrarParadas
+  const ORDEM_SECOES = ['andamento', 'novo', 'concluida', 'parada'] as const
+  const secoes = useMemo(() => {
+    const pctDe = (o: any) => o.areaFeita / o.areaTalhao
+    return ORDEM_SECOES.map((st) => ({
+      st,
+      ops: operacoesComArea.filter((o) => o.status === st).sort((a, b) => pctDe(b) - pctDe(a)),
+    }))
+  }, [operacoesComArea])
+
   const kpis = dados
     ? [
         { t: 'Horas homem', k: 'horasHomem', fmt: (v: number) => `${n1(v)}h`, maisEhBom: true },
@@ -278,28 +293,35 @@ export default function RelatorioSemanalPage() {
           <h1 className="text-3xl font-bold text-primary mt-1">{P.titulo}</h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex border border-[#DDD5C8] rounded-lg overflow-hidden text-sm font-semibold">
+          <div className="flex bg-[#EFE9DF] rounded-lg p-[3px] text-sm font-semibold">
             {(['semana', 'mes'] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => trocarModo(m)}
-                className="px-3 py-2"
-                style={modo === m ? { background: G, color: '#fff' } : { background: '#fff', color: G }}
+                className="px-3.5 py-1.5 rounded-md"
+                style={modo === m ? { background: '#fff', color: G, boxShadow: '0 1px 2px rgba(44,55,60,0.12)' } : { background: 'transparent', color: MU }}
               >
                 {m === 'semana' ? 'Semana' : 'Mês'}
               </button>
             ))}
           </div>
-          <button onClick={() => mudarPeriodo(-1)} className="p-2 border border-[#DDD5C8] rounded-lg bg-white hover:bg-[#EFE9DF]" title={mensal ? 'Mês anterior' : 'Semana anterior'}>
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="px-3 py-2 border border-[#DDD5C8] rounded-lg bg-white text-sm font-semibold text-primary">
-            {rotuloPeriodo}
-          </span>
-          <button onClick={() => mudarPeriodo(1)} className="p-2 border border-[#DDD5C8] rounded-lg bg-white hover:bg-[#EFE9DF]" title={mensal ? 'Próximo mês' : 'Próxima semana'}>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          <button onClick={() => window.print()} disabled={!dados || carregando} className="btn btn-primary text-sm disabled:opacity-50">
+          <div className="flex items-center bg-white border border-[#DDD5C8] rounded-lg">
+            <button onClick={() => mudarPeriodo(-1)} className="p-2.5 hover:bg-[#EFE9DF] rounded-l-lg" title={mensal ? 'Mês anterior' : 'Semana anterior'} aria-label={mensal ? 'Mês anterior' : 'Semana anterior'}>
+              <ChevronLeft className="w-4 h-4" style={{ color: G }} />
+            </button>
+            <span className="px-1.5 text-sm font-semibold whitespace-nowrap" style={{ color: G }}>
+              {rotuloPeriodo}
+            </span>
+            <button onClick={() => mudarPeriodo(1)} className="p-2.5 hover:bg-[#EFE9DF] rounded-r-lg" title={mensal ? 'Próximo mês' : 'Próxima semana'} aria-label={mensal ? 'Próximo mês' : 'Próxima semana'}>
+              <ChevronRight className="w-4 h-4" style={{ color: G }} />
+            </button>
+          </div>
+          <button
+            onClick={() => window.print()}
+            disabled={!dados || carregando}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-50"
+            style={{ background: C }}
+          >
             <FileDown className="w-4 h-4" /> Gerar PDF
           </button>
         </div>
@@ -331,19 +353,21 @@ export default function RelatorioSemanalPage() {
           {/* Resumo */}
           <section className="rs-bloco space-y-2">
             <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Resumo d{P.o}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 print:grid-cols-6 gap-3">
-              {kpis.map((k) => {
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 print:grid-cols-6 bg-white border border-[#E4DDD2] rounded-xl overflow-hidden">
+              {kpis.map((k, i) => {
                 const a = dados.resumo.atual[k.k] || 0
                 const b = dados.resumo.anterior[k.k] || 0
                 const v = variacao(a, b, k.k)
                 const subiu = a > b
                 const bom = v === '=' ? null : k.maisEhBom ? subiu : !subiu
+                const cor = bom == null ? MU : bom ? S : AL
+                const seta = v === '=' || v === 'novo' ? '' : subiu ? '▲ ' : '▼ '
                 return (
-                  <div key={k.k} className="bg-white border border-[#E4DDD2] rounded-xl px-3 py-2.5">
-                    <p className="text-xs font-semibold" style={{ color: MU }}>{k.t}</p>
-                    <p className="text-xl font-bold whitespace-nowrap" style={{ color: INK }}>{k.fmt(a)}</p>
-                    <p className="text-xs font-bold" style={{ color: bom == null ? MU : bom ? S : AL }}>
-                      {v} <span className="font-normal" style={{ color: MU }}>vs {P.anterior}</span>
+                  <div key={k.k} className={`px-4 py-3 border-[#EEE8DE] ${i > 0 ? 'lg:border-l print:border-l' : ''} border-b lg:border-b-0 print:border-b-0`}>
+                    <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: MU }}>{k.t}</p>
+                    <p className="text-2xl font-bold whitespace-nowrap" style={{ color: INK }}>{k.fmt(a)}</p>
+                    <p className="text-xs" style={{ color: MU }}>
+                      <span className="font-bold" style={{ color: cor }}>{seta}{v.replace(/^[+−]/, '')}</span> vs {P.anterior}
                     </p>
                   </div>
                 )
@@ -351,128 +375,121 @@ export default function RelatorioSemanalPage() {
             </div>
           </section>
 
-          {/* Operações */}
-          <section className="space-y-2">
-            <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Andamento das operações</h2>
-            {/* Filtros (só na tela; no PDF sai uma linha dizendo o filtro usado) */}
-            <div className="print:hidden flex flex-wrap items-end gap-2 bg-white border border-[#E4DDD2] rounded-xl p-2.5">
-              <label className="text-xs font-semibold" style={{ color: MU }}>
-                Atividade
-                <select
-                  value={filtroAtividade}
-                  onChange={(e) => { setFiltroAtividade(e.target.value); setFiltroTalhao('') }}
-                  className="!w-auto block mt-0.5 border border-[#DDD5C8] rounded px-2 py-1 text-sm"
-                  style={{ color: INK }}
-                >
-                  <option value="">Todas</option>
-                  {opcoesAtividade.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </label>
-              <label className="text-xs font-semibold" style={{ color: MU }}>
-                Talhão
-                <select
-                  value={filtroTalhao}
-                  onChange={(e) => setFiltroTalhao(e.target.value)}
-                  className="!w-auto block mt-0.5 border border-[#DDD5C8] rounded px-2 py-1 text-sm"
-                  style={{ color: INK }}
-                >
-                  <option value="">Todos</option>
-                  {opcoesTalhao.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </label>
-              <label className="text-xs font-semibold" style={{ color: MU }}>
-                Status
-                <select
-                  value={filtroStatus}
-                  onChange={(e) => setFiltroStatus(e.target.value)}
-                  className="!w-auto block mt-0.5 border border-[#DDD5C8] rounded px-2 py-1 text-sm"
-                  style={{ color: INK }}
-                >
-                  <option value="">Todos</option>
-                  {(['novo', 'andamento', 'concluida', 'parada'] as const).map((s) => <option key={s} value={s}>{STATUS[s].rotulo}</option>)}
-                </select>
-              </label>
-              {temFiltro && (
-                <button
-                  onClick={() => { setFiltroAtividade(''); setFiltroTalhao(''); setFiltroStatus('') }}
-                  className="text-xs underline pb-1.5"
-                  style={{ color: C }}
-                >
-                  Limpar filtros
-                </button>
-              )}
+          {/* Operações (modelo F: seções por status) */}
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-bold" style={{ color: G }}>Andamento das operações</h2>
+              {/* Filtros (só na tela; no PDF sai uma linha dizendo o filtro usado) */}
+              <div className="print:hidden flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-1.5 bg-white border border-[#DDD5C8] rounded-lg px-2.5 h-10 text-xs font-semibold" style={{ color: MU }}>
+                  Atividade
+                  <select
+                    value={filtroAtividade}
+                    onChange={(e) => { setFiltroAtividade(e.target.value); setFiltroTalhao('') }}
+                    className="!w-auto border-0 bg-transparent text-sm py-1"
+                    style={{ color: INK }}
+                  >
+                    <option value="">Todas</option>
+                    {opcoesAtividade.map((x) => <option key={x} value={x}>{x}</option>)}
+                  </select>
+                </label>
+                <label className="flex items-center gap-1.5 bg-white border border-[#DDD5C8] rounded-lg px-2.5 h-10 text-xs font-semibold" style={{ color: MU }}>
+                  Talhão
+                  <select
+                    value={filtroTalhao}
+                    onChange={(e) => setFiltroTalhao(e.target.value)}
+                    className="!w-auto border-0 bg-transparent text-sm py-1"
+                    style={{ color: INK }}
+                  >
+                    <option value="">Todos</option>
+                    {opcoesTalhao.map((x) => <option key={x} value={x}>{x}</option>)}
+                  </select>
+                </label>
+                {temFiltro && (
+                  <button
+                    onClick={() => { setFiltroAtividade(''); setFiltroTalhao(''); setFiltroStatus('') }}
+                    className="text-xs font-semibold underline px-2"
+                    style={{ color: C }}
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
             </div>
             {temFiltro && (
               <p className="hidden print:block text-xs" style={{ color: MU }}>
-                Filtro: {[filtroAtividade && `atividade ${filtroAtividade}`, filtroTalhao && `talhão ${filtroTalhao}`, filtroStatus && `status ${STATUS[filtroStatus].rotulo}`].filter(Boolean).join(' · ')}
+                Filtro: {[filtroAtividade && `atividade ${filtroAtividade}`, filtroTalhao && `talhão ${filtroTalhao}`].filter(Boolean).join(' · ')}
               </p>
             )}
-            <div className="flex flex-wrap gap-2 text-xs font-bold">
-              {(['novo', 'andamento', 'concluida', 'parada'] as const).map((s) => {
-                const ativo = filtroStatus === s
-                return (
-                  <button
-                    key={s}
-                    onClick={() => setFiltroStatus(ativo ? '' : s)}
-                    className="px-2.5 py-1 rounded-full"
-                    style={{ background: STATUS[s].bg, color: STATUS[s].fg, outline: ativo ? `2px solid ${STATUS[s].fg}` : 'none' }}
-                    title={ativo ? 'Mostrar todos os status' : `Mostrar só ${STATUS[s].rotulo.toLowerCase()}`}
-                  >
-                    {contagem[s]} {STATUS[s].rotulo.toLowerCase()}
-                  </button>
-                )
-              })}
-            </div>
+
             {operacoesComArea.length === 0 ? (
               <p className="text-sm text-gray-500">
                 {temFiltro ? 'Nenhuma operação com área para este filtro.' : `Nenhuma operação com área lançada ${P.neste}.`}
               </p>
             ) : (
-              <div className="bg-white border border-[#E4DDD2] rounded-xl overflow-hidden overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs bg-[#EFE9DF]" style={{ color: '#4E5A60' }}>
-                      <th className="px-3 py-2">Atividade</th>
-                      <th className="px-3 py-2">Talhão</th>
-                      <th className="px-3 py-2 min-w-[200px]">Progresso (área)</th>
-                      <th className="px-3 py-2">Status</th>
-                      <th className="px-3 py-2">Quem trabalhou</th>
-                      <th className="px-3 py-2 text-right">Horas</th>
-                      <th className="px-3 py-2 print:hidden">Conclusão</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {operacoesComArea.map((o: any, i: number) => {
-                      const st = STATUS[o.status]
-                      const pct = Math.min(1, o.areaFeita / o.areaTalhao)
-                      return (
-                        <tr key={i} className="rs-bloco border-b border-[#EEE8DE]">
-                          <td className="px-3 py-2 font-semibold" style={{ color: INK }}>{o.atividade}</td>
-                          <td className="px-3 py-2" style={{ color: '#4E5A60' }}>{o.talhao}</td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 rounded-full bg-[#EEE8DE] overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${pct * 100}%`, background: st.barra }} />
+              secoes.map(({ st, ops }) => {
+                const info = STATUS[st]
+                const ehParada = st === 'parada'
+                const recolhida = ehParada && !paradasVisiveis
+                const fundo = st === 'andamento' ? '#EEF4F9' : ehParada ? '#FBF4EE' : '#F0F5EE'
+                const dica =
+                  st === 'andamento' ? `vinham de ${P.anteriores} e tiveram lançamento`
+                  : st === 'novo' ? `primeiro lançamento foi ${P.neste}`
+                  : st === 'concluida' ? 'pela área ou marcada à mão'
+                  : `sem lançamento ${P.neste}`
+                const titulo = st === 'novo' ? `Começou ${P.neste}` : info.rotulo
+                return (
+                  <div key={st} className="bg-white border border-[#E4DDD2] rounded-2xl overflow-hidden">
+                    <div className="rs-bloco flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-[#EEE8DE]" style={{ background: fundo }}>
+                      <span className="flex items-center gap-2.5">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: info.fg }} />
+                        <span className="text-[15px] font-extrabold" style={{ color: info.fg }}>{titulo}</span>
+                        <span className="text-xs font-bold bg-white rounded-full px-2.5 py-0.5" style={{ color: info.fg }}>{ops.length}</span>
+                      </span>
+                      <span className="flex items-center gap-3 text-xs" style={{ color: MU }}>
+                        {dica}
+                        {ehParada && ops.length > 0 && (
+                          <button onClick={() => setMostrarParadas((m) => !m)} className="print:hidden font-bold" style={{ color: C }}>
+                            {mostrarParadas ? 'Ocultar ▴' : 'Mostrar ▾'}
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                    {ops.length === 0 ? (
+                      <p className="px-4 py-3 text-[13px]" style={{ color: MU }}>
+                        Nenhuma operação {st === 'concluida' ? 'concluída' : st === 'parada' ? 'parada' : 'nesta situação'} {P.neste}.
+                      </p>
+                    ) : (
+                      <div className={`overflow-x-auto ${recolhida ? 'hidden print:block' : ''}`}>
+                        <div className="min-w-[860px]">
+                          {ops.map((o: any) => {
+                            const pct = Math.min(1, o.areaFeita / o.areaTalhao)
+                            return (
+                              <div
+                                key={`${o.atividade}|${o.talhaoId}`}
+                                className="rs-bloco grid items-center gap-3.5 px-4 py-2.5 border-t border-[#F2EDE5] first:border-t-0 grid-cols-[170px_150px_minmax(0,1fr)_190px_56px_minmax(120px,auto)] print:grid-cols-[150px_130px_minmax(0,1fr)_170px_50px]"
+                              >
+                                <span className="text-sm font-bold" style={{ color: G }}>{o.talhao}</span>
+                                <span className="text-xs font-bold tracking-wide" style={{ color: INK }}>{o.atividade}</span>
+                                <div className="flex items-center gap-2.5">
+                                  <div className="flex-1 h-2 rounded-full bg-[#EEE8DE] overflow-hidden">
+                                    <div className="h-full rounded-full" style={{ width: `${pct * 100}%`, background: info.barra }} />
+                                  </div>
+                                  <span className="text-sm font-extrabold w-10 text-right" style={{ color: INK }}>{Math.round(pct * 100)}%</span>
+                                  <span className="text-[11px] w-20 whitespace-nowrap" style={{ color: MU }}>{n1(o.areaFeita)} / {n1(o.areaTalhao)} ha</span>
+                                </div>
+                                <span className="text-xs" style={{ color: '#4E5A60' }}>{o.quem || '—'}</span>
+                                <span className="text-[13px] font-bold text-right" style={{ color: INK }}>{o.horasSemana ? `${n1(o.horasSemana)}h` : '—'}</span>
+                                <span className="print:hidden text-right">{acaoConclusao(o)}</span>
                               </div>
-                              <span className="text-xs font-bold whitespace-nowrap" style={{ color: INK }}>
-                                {n1(o.areaFeita)} / {n1(o.areaTalhao)} ha · {Math.round(pct * 100)}%
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: st.bg, color: st.fg }}>
-                              {st.rotulo}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-xs" style={{ color: '#4E5A60' }}>{o.quem || '—'}</td>
-                          <td className="px-3 py-2 text-right font-bold" style={{ color: INK }}>{o.horasSemana ? `${n1(o.horasSemana)}h` : '—'}</td>
-                          <td className="px-3 py-2 print:hidden">{acaoConclusao(o)}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })
             )}
 
             {/* Atividades sem área: separadas, sem barra de progresso */}
