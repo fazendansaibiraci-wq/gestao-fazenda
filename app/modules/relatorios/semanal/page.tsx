@@ -648,7 +648,7 @@ export default function RelatorioSemanalPage() {
                   </table>
                 )}
                 {dados.maquinas.some((m: any) => m.alerta) && (
-                  <p className="text-xs mt-2" style={{ color: C }}>⚠ Horímetro com horas não identificadas {P.no}</p>
+                  <p className="text-xs mt-2" style={{ color: C }}>⚠ Diferença acima de 20% entre o horímetro dos abastecimentos e as horas lançadas, na safra até o fim d{P.o} (mesma conta do Comparativo de Combustível)</p>
                 )}
               </div>
             </section>

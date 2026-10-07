@@ -262,6 +262,25 @@ export async function GET(request: NextRequest) {
       include: { maquina: true },
     })
     const combustivel = calcularCombustivelPorMaquina(abastSemana as any, regsSemana.filter((r) => !r.isFalta) as any)
+    // Conferência horímetro × horas lançadas (⚠): mesma base do Comparativo de
+    // Combustível — do início da safra até o fim do período, incluindo os
+    // ajustes de horímetro. Só a semana dava falso alarme, porque os
+    // intervalos entre abastecimentos ficam cortados nas pontas.
+    const inicioConferencia = safrasPeriodo.length ? new Date(safrasPeriodo[0].dataInicio) : inicio
+    const [abastConferencia, regsConferencia] = await Promise.all([
+      prisma.abastecimentoTrator.findMany({
+        where: { data: { gte: inicioConferencia, lte: fim } },
+        include: { maquina: true },
+      }),
+      prisma.registroAtividade.findMany({
+        where: { data: { gte: inicioConferencia, lte: fim }, isFalta: false },
+        select: {
+          data: true, maquinaId: true, horasMaquina: true, horimetroInicial: true, horimetroFinal: true,
+          maquinasAdicionais: { select: { maquinaId: true, horasMaquina: true, horimetroInicial: true, horimetroFinal: true } },
+        },
+      }),
+    ])
+    const conferencia = calcularCombustivelPorMaquina(abastConferencia as any, regsConferencia as any)
     const maquinasNomes = await prisma.maquina.findMany({ select: { id: true, nome: true } })
     const horasPorMaquina = new Map<string, number>()
     for (const r of regsSemana) {
@@ -275,7 +294,7 @@ export async function GET(request: NextRequest) {
           nome: maquinasNomes.find((m) => m.id === id)?.nome || id,
           horas: Math.round(horas * 10) / 10,
           consumoLH: c && c.consumoMedioLH > 0 ? Math.round(c.consumoMedioLH * 10) / 10 : null,
-          alerta: !!c?.divergente,
+          alerta: !!conferencia.find((m) => m.maquinaId === id)?.divergente,
         }
       })
       .filter((m) => m.horas > 0)
