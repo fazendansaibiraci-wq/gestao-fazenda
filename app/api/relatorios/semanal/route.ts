@@ -96,6 +96,14 @@ export async function GET(request: NextRequest) {
       select: { id: true, nome: true, dataInicio: true, dataFim: true },
     })
     const safra: { id: string; nome: string } | null = safraDaData(safras, fim) || safraDaData(safras, inicio)
+    // Todas as safras que pegam algum dia do período (no mês da virada, ex.
+    // agosto, entram a que termina e a que começa). Cada operação é contada
+    // dentro da sua própria safra.
+    const diaStr = (d: Date | string) => (typeof d === 'string' ? d : d.toISOString()).slice(0, 10)
+    const safrasPeriodo = safras
+      .filter((x) => diaStr(x.dataInicio) <= diaStr(fim) && (!x.dataFim || diaStr(x.dataFim) >= diaStr(inicio)))
+      .sort((a, b) => (diaStr(a.dataInicio) < diaStr(b.dataInicio) ? -1 : 1))
+    const idsSafras = safrasPeriodo.map((x) => x.id)
 
     // ─── Resumo (semana x anterior) ───────────────────────────────────────
     const [atual, anterior] = await Promise.all([totaisDaSemana(inicio, fim), totaisDaSemana(inicioAnt, fimAnt)])
@@ -106,19 +114,19 @@ export async function GET(request: NextRequest) {
     })
     const nomeTalhao = new Map<string, string>(talhoes.map((t) => [t.id, t.nome]))
     const areaTalhao = new Map<string, number>(talhoes.map((t) => [t.id, t.area || 0]))
-    const regsSafra = safra
+    const regsSafra = idsSafras.length
       ? await prisma.registroAtividade.findMany({
-          where: { safraId: safra.id, data: { lte: fim }, isFalta: false, isAjusteHorimetro: false, talhaoId: { not: null } },
+          where: { safraId: { in: idsSafras }, data: { lte: fim }, isFalta: false, isAjusteHorimetro: false, talhaoId: { not: null } },
           select: {
-            data: true, tipoAtividade: true, talhaoId: true, areaHectares: true, horasCalculadas: true,
+            safraId: true, data: true, tipoAtividade: true, talhaoId: true, areaHectares: true, horasCalculadas: true,
             funcionario: { select: { name: true } },
           },
         })
       : []
     const ops = new Map<string, any>()
     for (const r of regsSafra) {
-      const k = `${r.tipoAtividade}|${r.talhaoId}`
-      if (!ops.has(k)) ops.set(k, { atividade: r.tipoAtividade, talhaoId: r.talhaoId, area: 0, primeiro: r.data, ultimo: r.data, horasSemana: 0, quem: new Set<string>(), naSemana: false })
+      const k = `${r.safraId}|${r.tipoAtividade}|${r.talhaoId}`
+      if (!ops.has(k)) ops.set(k, { safraId: r.safraId, atividade: r.tipoAtividade, talhaoId: r.talhaoId, area: 0, primeiro: r.data, ultimo: r.data, horasSemana: 0, quem: new Set<string>(), naSemana: false })
       const o = ops.get(k)
       o.area += r.areaHectares || 0
       if (r.data < o.primeiro) o.primeiro = r.data
@@ -131,14 +139,14 @@ export async function GET(request: NextRequest) {
       }
     }
     // Conclusões marcadas à mão (atividade × talhão × safra)
-    const encerramentos = safra
+    const encerramentos = idsSafras.length
       ? await prisma.encerramentoAtividadeTalhao.findMany({
-          where: { safraId: safra.id },
-          select: { id: true, tipoAtividade: true, talhaoId: true, dataFim: true },
+          where: { safraId: { in: idsSafras } },
+          select: { id: true, safraId: true, tipoAtividade: true, talhaoId: true, dataFim: true },
         })
       : []
     const encPorOp = new Map<string, { id: string; dataFim: Date }>(
-      encerramentos.map((e) => [`${e.tipoAtividade}|${e.talhaoId}`, { id: e.id, dataFim: e.dataFim }])
+      encerramentos.map((e) => [`${e.safraId}|${e.tipoAtividade}|${e.talhaoId}`, { id: e.id, dataFim: e.dataFim }])
     )
     const operacoes: any[] = []
     for (const [k, o] of ops.entries()) {
@@ -160,6 +168,7 @@ export async function GET(request: NextRequest) {
       }
       if (!status) continue
       operacoes.push({
+        safraId: o.safraId,
         atividade: o.atividade,
         talhaoId: o.talhaoId,
         talhao: nomeTalhao.get(o.talhaoId) || '-',
@@ -178,16 +187,16 @@ export async function GET(request: NextRequest) {
 
     // ─── Aplicações de insumos ────────────────────────────────────────────
     const ROT: Record<string, string> = { HERBICIDA: 'Herbicida', PULVERIZACAO: 'Pulverização', DRENCH: 'Drench', ADUBACAO: 'Adubação', CORRECAO_SOLO: 'Correção de Solo' }
-    const itens = safra
+    const itens = idsSafras.length
       ? await prisma.aplicacaoInsumoItem.findMany({
-          where: { safraId: safra.id, data: { lte: fim } },
-          select: { atividade: true, numAplicacao: true, talhaoId: true, numBombas: true, data: true },
+          where: { safraId: { in: idsSafras }, data: { lte: fim } },
+          select: { safraId: true, atividade: true, numAplicacao: true, talhaoId: true, numBombas: true, data: true },
         })
       : []
     const grupos = new Map<string, any>()
     for (const it of itens) {
-      const k = `${it.atividade}|${String(it.numAplicacao || '1').trim()}`
-      if (!grupos.has(k)) grupos.set(k, { atividade: it.atividade, num: String(it.numAplicacao || '1').trim(), talhoes: new Map<string, number>(), ultimo: it.data, primeiro: it.data, bombasSemana: 0 })
+      const k = `${it.safraId}|${it.atividade}|${String(it.numAplicacao || '1').trim()}`
+      if (!grupos.has(k)) grupos.set(k, { safraId: it.safraId, atividade: it.atividade, num: String(it.numAplicacao || '1').trim(), talhoes: new Map<string, number>(), ultimo: it.data, primeiro: it.data, bombasSemana: 0 })
       const g = grupos.get(k)
       // bombas por talhão/dia: pega o maior nº de bombas do talhão no dia (cada produto repete o mesmo nº)
       const kt = `${it.talhaoId}|${chave(it.data)}`
@@ -203,7 +212,7 @@ export async function GET(request: NextRequest) {
     for (const g of grupos.values()) {
       if (g.ultimo < new Date(inicio.getTime() - 30 * DIA)) continue
       // "Faltam": talhões da aplicação anterior da mesma atividade que ainda não entraram nesta
-      const anterior = grupos.get(`${g.atividade}|${Number(g.num) - 1}`)
+      const anterior = grupos.get(`${g.safraId}|${g.atividade}|${Number(g.num) - 1}`)
       const feitos = Array.from(g.talhoes.keys()).map((id) => nomeTalhao.get(id as string) || '-').sort()
       const faltam = anterior
         ? Array.from(anterior.talhoes.keys()).filter((id) => !g.talhoes.has(id)).map((id) => nomeTalhao.get(id as string) || '-').sort()
@@ -295,7 +304,7 @@ export async function GET(request: NextRequest) {
       data: {
         semana: { inicio: chave(inicio), fim: chave(fim) },
         periodo: mensal ? 'mes' : 'semana',
-        safra: safra?.nome || null,
+        safra: safrasPeriodo.length ? safrasPeriodo.map((x) => x.nome).join(' / ') : safra?.nome || null,
         safraId: safra?.id || null,
         resumo: {
           atual: Object.fromEntries(Object.entries(atual).map(([k, v]) => [k, arred(v as number)])),

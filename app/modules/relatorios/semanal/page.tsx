@@ -103,7 +103,7 @@ export default function RelatorioSemanalPage() {
       const r = await fetch('/api/encerramentos-atividade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tipoAtividade: o.atividade, talhaoId: o.talhaoId, safraId: dados?.safraId, dataFim: dataConcluir }),
+        body: JSON.stringify({ tipoAtividade: o.atividade, talhaoId: o.talhaoId, safraId: o.safraId || dados?.safraId, dataFim: dataConcluir }),
       })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || 'Erro ao concluir')
@@ -131,7 +131,7 @@ export default function RelatorioSemanalPage() {
 
   // Concluir / Reabrir à mão (só na tela, não sai no PDF)
   const acaoConclusao = (o: any) => {
-    const k = `${o.atividade}|${o.talhaoId}`
+    const k = `${o.safraId}|${o.atividade}|${o.talhaoId}`
     if (o.concluidaPor === 'area') {
       return <span className="text-[11px]" style={{ color: MU }}>pela área</span>
     }
@@ -486,7 +486,7 @@ export default function RelatorioSemanalPage() {
                             const pct = Math.min(1, o.areaFeita / o.areaTalhao)
                             return (
                               <div
-                                key={`${o.atividade}|${o.talhaoId}`}
+                                key={`${o.safraId}|${o.atividade}|${o.talhaoId}`}
                                 className="rs-bloco grid items-center gap-3.5 px-4 py-2.5 border-t border-[#F2EDE5] first:border-t-0 grid-cols-[170px_150px_minmax(0,1fr)_190px_56px_minmax(120px,auto)] print:grid-cols-[150px_130px_minmax(0,1fr)_170px_50px]"
                               >
                                 <span className="text-sm font-bold" style={{ color: G }}>{o.talhao}</span>
