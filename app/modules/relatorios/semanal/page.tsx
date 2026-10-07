@@ -17,10 +17,10 @@ const INK = '#2C373C'
 const MU = '#76828A'
 
 const STATUS: Record<string, { rotulo: string; bg: string; fg: string; barra: string }> = {
-  novo: { rotulo: 'Começou', bg: '#E6EEE3', fg: '#3F6B3A', barra: G },
-  andamento: { rotulo: 'Em andamento', bg: '#E3ECF4', fg: '#3E6A8A', barra: G },
-  concluida: { rotulo: 'Concluída', bg: '#E6EEE3', fg: '#2E6B2A', barra: S },
-  parada: { rotulo: 'Parada', bg: '#F5E6DA', fg: '#A2542A', barra: C },
+  novo: { rotulo: 'Começou', bg: '#E9F1E1', fg: '#4F7F30', barra: '#5B8A3A' },
+  andamento: { rotulo: 'Em andamento', bg: '#E4EEF6', fg: '#2F6C9A', barra: '#2F6C9A' },
+  concluida: { rotulo: 'Concluída', bg: '#DDEBD9', fg: '#2E6B2A', barra: '#2E6B2A' },
+  parada: { rotulo: 'Parada', bg: '#F8E8DC', fg: '#A5582A', barra: '#B0602B' },
 }
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -247,6 +247,40 @@ export default function RelatorioSemanalPage() {
     }))
   }, [operacoesComArea])
 
+  // Indicadores do resumo: escuro = na faixa grafite do topo (tela);
+  // claro = no PDF
+  const renderKpis = (escuro: boolean) => (
+    <div
+      className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 print:grid-cols-6 rounded-xl overflow-hidden border ${escuro ? '' : 'bg-white border-[#E4DDD2]'}`}
+      style={escuro ? { background: 'rgba(255,255,255,0.07)', borderColor: 'rgba(255,255,255,0.14)' } : undefined}
+    >
+      {kpis.map((k, i) => {
+        const a = dados.resumo.atual[k.k] || 0
+        const b = dados.resumo.anterior[k.k] || 0
+        const v = variacao(a, b, k.k)
+        const subiu = a > b
+        const bom = v === '=' ? null : k.maisEhBom ? subiu : !subiu
+        const cor = escuro
+          ? bom == null ? '#C9D2D6' : bom ? '#9FD18C' : '#F2B38A'
+          : bom == null ? MU : bom ? '#3F7A35' : '#B0602B'
+        const seta = v === '=' || v === 'novo' ? '' : subiu ? '▲ ' : '▼ '
+        return (
+          <div
+            key={k.k}
+            className={`px-4 py-3 ${i > 0 ? 'lg:border-l print:border-l' : ''} border-b lg:border-b-0 print:border-b-0`}
+            style={{ borderColor: escuro ? 'rgba(255,255,255,0.12)' : '#EEE8DE' }}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: escuro ? '#C9D2D6' : MU }}>{k.t}</p>
+            <p className="text-2xl font-bold whitespace-nowrap" style={{ color: escuro ? '#FFFFFF' : INK }}>{k.fmt(a)}</p>
+            <p className="text-xs" style={{ color: escuro ? '#C9D2D6' : MU }}>
+              <span className="font-bold" style={{ color: cor }}>{seta}{v.replace(/^[+−]/, '')}</span> vs {P.anterior}
+            </p>
+          </div>
+        )
+      })}
+    </div>
+  )
+
   const kpis = dados
     ? [
         { t: 'Horas homem', k: 'horasHomem', fmt: (v: number) => `${n1(v)}h`, maisEhBom: true },
@@ -284,47 +318,54 @@ export default function RelatorioSemanalPage() {
         }
       `}</style>
 
-      {/* Barra da tela (não sai no PDF) */}
-      <div className="rs-sem-impressao flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <Link href="/modules/relatorios" className="text-sm text-gray-500 hover:text-primary inline-flex items-center gap-1">
-            <ArrowLeft className="w-4 h-4" /> Relatórios
-          </Link>
-          <h1 className="text-3xl font-bold text-primary mt-1">{P.titulo}</h1>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex bg-[#EFE9DF] rounded-lg p-[3px] text-sm font-semibold">
-            {(['semana', 'mes'] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => trocarModo(m)}
-                className="px-3.5 py-1.5 rounded-md"
-                style={modo === m ? { background: '#fff', color: G, boxShadow: '0 1px 2px rgba(44,55,60,0.12)' } : { background: 'transparent', color: MU }}
-              >
-                {m === 'semana' ? 'Semana' : 'Mês'}
+      {/* Faixa grafite do topo: título, período e indicadores (não sai no PDF) */}
+      <div className="rs-sem-impressao rounded-2xl p-5 space-y-4" style={{ background: G }}>
+        <div className="flex items-end justify-between gap-3 flex-wrap">
+          <div>
+            <Link href="/modules/relatorios" className="text-sm inline-flex items-center gap-1 hover:underline" style={{ color: '#C9D2D6' }}>
+              <ArrowLeft className="w-4 h-4" /> Relatórios
+            </Link>
+            <h1 className="text-3xl font-bold mt-1 text-white">{P.titulo}</h1>
+            {dados && (
+              <p className="text-sm mt-0.5" style={{ color: '#C9D2D6' }}>
+                {dados.periodo === 'mes' ? `${MESES[Number(dados.semana.inicio.slice(5, 7)) - 1]}/${dados.semana.inicio.slice(0, 4)} · ` : 'Semana de '}
+                {br(dados.semana.inicio)} a {br(dados.semana.fim)}{dados.safra ? ` · ${dados.safra}` : ''}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex rounded-lg p-[3px] text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.12)' }}>
+              {(['semana', 'mes'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => trocarModo(m)}
+                  className="px-3.5 py-1.5 rounded-md"
+                  style={modo === m ? { background: '#fff', color: G } : { background: 'transparent', color: '#C9D2D6' }}
+                >
+                  {m === 'semana' ? 'Semana' : 'Mês'}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center rounded-lg text-white" style={{ background: 'rgba(255,255,255,0.12)' }}>
+              <button onClick={() => mudarPeriodo(-1)} className="p-2.5 rounded-l-lg hover:bg-white/10" title={mensal ? 'Mês anterior' : 'Semana anterior'} aria-label={mensal ? 'Mês anterior' : 'Semana anterior'}>
+                <ChevronLeft className="w-4 h-4" />
               </button>
-            ))}
-          </div>
-          <div className="flex items-center bg-white border border-[#DDD5C8] rounded-lg">
-            <button onClick={() => mudarPeriodo(-1)} className="p-2.5 hover:bg-[#EFE9DF] rounded-l-lg" title={mensal ? 'Mês anterior' : 'Semana anterior'} aria-label={mensal ? 'Mês anterior' : 'Semana anterior'}>
-              <ChevronLeft className="w-4 h-4" style={{ color: G }} />
+              <span className="px-1.5 text-sm font-semibold whitespace-nowrap">{rotuloPeriodo}</span>
+              <button onClick={() => mudarPeriodo(1)} className="p-2.5 rounded-r-lg hover:bg-white/10" title={mensal ? 'Próximo mês' : 'Próxima semana'} aria-label={mensal ? 'Próximo mês' : 'Próxima semana'}>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <button
+              onClick={() => window.print()}
+              disabled={!dados || carregando}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-50"
+              style={{ background: C }}
+            >
+              <FileDown className="w-4 h-4" /> Gerar PDF
             </button>
-            <span className="px-1.5 text-sm font-semibold whitespace-nowrap" style={{ color: G }}>
-              {rotuloPeriodo}
-            </span>
-            <button onClick={() => mudarPeriodo(1)} className="p-2.5 hover:bg-[#EFE9DF] rounded-r-lg" title={mensal ? 'Próximo mês' : 'Próxima semana'} aria-label={mensal ? 'Próximo mês' : 'Próxima semana'}>
-              <ChevronRight className="w-4 h-4" style={{ color: G }} />
-            </button>
           </div>
-          <button
-            onClick={() => window.print()}
-            disabled={!dados || carregando}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-50"
-            style={{ background: C }}
-          >
-            <FileDown className="w-4 h-4" /> Gerar PDF
-          </button>
         </div>
+        {dados && <div className={carregando ? 'opacity-60' : ''}>{renderKpis(true)}</div>}
       </div>
 
       {erro && <p className="rs-sem-impressao text-sm text-red-600">{erro}</p>}
@@ -333,7 +374,7 @@ export default function RelatorioSemanalPage() {
       {dados && (
         <div id="rs-print" className={`space-y-5 ${carregando ? 'opacity-60' : ''}`}>
           {/* Cabeçalho do PDF (aparece na tela também, discreto) */}
-          <div className="flex items-center justify-between border-b-2 pb-3" style={{ borderColor: G }}>
+          <div className="hidden print:flex items-center justify-between border-b-2 pb-3" style={{ borderColor: G }}>
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-nsa.svg" alt="NSA Café" className="h-12 w-auto" />
@@ -350,32 +391,13 @@ export default function RelatorioSemanalPage() {
             </p>
           </div>
 
-          {/* Resumo */}
-          <section className="rs-bloco space-y-2">
+          {/* Resumo (no PDF; na tela fica na faixa grafite do topo) */}
+          <section className="rs-bloco space-y-2 hidden print:block">
             <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: G }}>Resumo d{P.o}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 print:grid-cols-6 bg-white border border-[#E4DDD2] rounded-xl overflow-hidden">
-              {kpis.map((k, i) => {
-                const a = dados.resumo.atual[k.k] || 0
-                const b = dados.resumo.anterior[k.k] || 0
-                const v = variacao(a, b, k.k)
-                const subiu = a > b
-                const bom = v === '=' ? null : k.maisEhBom ? subiu : !subiu
-                const cor = bom == null ? MU : bom ? S : AL
-                const seta = v === '=' || v === 'novo' ? '' : subiu ? '▲ ' : '▼ '
-                return (
-                  <div key={k.k} className={`px-4 py-3 border-[#EEE8DE] ${i > 0 ? 'lg:border-l print:border-l' : ''} border-b lg:border-b-0 print:border-b-0`}>
-                    <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: MU }}>{k.t}</p>
-                    <p className="text-2xl font-bold whitespace-nowrap" style={{ color: INK }}>{k.fmt(a)}</p>
-                    <p className="text-xs" style={{ color: MU }}>
-                      <span className="font-bold" style={{ color: cor }}>{seta}{v.replace(/^[+−]/, '')}</span> vs {P.anterior}
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
+            {renderKpis(false)}
           </section>
 
-          {/* Operações (modelo F: seções por status) */}
+          {/* Operações (seções por status, cores do modelo I · topo grafite) */}
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base font-bold" style={{ color: G }}>Andamento das operações</h2>
@@ -431,7 +453,6 @@ export default function RelatorioSemanalPage() {
                 const info = STATUS[st]
                 const ehParada = st === 'parada'
                 const recolhida = ehParada && !paradasVisiveis
-                const fundo = st === 'andamento' ? '#EEF4F9' : ehParada ? '#FBF4EE' : '#F0F5EE'
                 const dica =
                   st === 'andamento' ? `vinham de ${P.anteriores} e tiveram lançamento`
                   : st === 'novo' ? `primeiro lançamento foi ${P.neste}`
@@ -439,12 +460,11 @@ export default function RelatorioSemanalPage() {
                   : `sem lançamento ${P.neste}`
                 const titulo = st === 'novo' ? `Começou ${P.neste}` : info.rotulo
                 return (
-                  <div key={st} className="bg-white border border-[#E4DDD2] rounded-2xl overflow-hidden">
-                    <div className="rs-bloco flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-[#EEE8DE]" style={{ background: fundo }}>
+                  <div key={st} className="bg-white border border-[#E4DDD2] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(44,55,60,0.05)]">
+                    <div className="rs-bloco flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-[#EEE8DE] bg-white">
                       <span className="flex items-center gap-2.5">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: info.fg }} />
                         <span className="text-[15px] font-extrabold" style={{ color: info.fg }}>{titulo}</span>
-                        <span className="text-xs font-bold bg-white rounded-full px-2.5 py-0.5" style={{ color: info.fg }}>{ops.length}</span>
+                        <span className="text-xs font-extrabold rounded-full px-2.5 py-0.5" style={{ background: info.bg, color: info.fg }}>{ops.length}</span>
                       </span>
                       <span className="flex items-center gap-3 text-xs" style={{ color: MU }}>
                         {dica}
@@ -470,12 +490,12 @@ export default function RelatorioSemanalPage() {
                                 className="rs-bloco grid items-center gap-3.5 px-4 py-2.5 border-t border-[#F2EDE5] first:border-t-0 grid-cols-[170px_150px_minmax(0,1fr)_190px_56px_minmax(120px,auto)] print:grid-cols-[150px_130px_minmax(0,1fr)_170px_50px]"
                               >
                                 <span className="text-sm font-bold" style={{ color: G }}>{o.talhao}</span>
-                                <span className="text-xs font-bold tracking-wide" style={{ color: INK }}>{o.atividade}</span>
+                                <span className="justify-self-start text-[11px] font-extrabold tracking-wide rounded-md px-2 py-0.5 bg-[#F4F1EC]" style={{ color: '#4E5A60' }}>{o.atividade}</span>
                                 <div className="flex items-center gap-2.5">
-                                  <div className="flex-1 h-2 rounded-full bg-[#EEE8DE] overflow-hidden">
+                                  <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: info.bg }}>
                                     <div className="h-full rounded-full" style={{ width: `${pct * 100}%`, background: info.barra }} />
                                   </div>
-                                  <span className="text-sm font-extrabold w-10 text-right" style={{ color: INK }}>{Math.round(pct * 100)}%</span>
+                                  <span className="text-[15px] font-extrabold w-11 text-right" style={{ color: info.fg }}>{Math.round(pct * 100)}%</span>
                                   <span className="text-[11px] w-20 whitespace-nowrap" style={{ color: MU }}>{n1(o.areaFeita)} / {n1(o.areaTalhao)} ha</span>
                                 </div>
                                 <span className="text-xs" style={{ color: '#4E5A60' }}>{o.quem || '—'}</span>
