@@ -347,6 +347,11 @@ export async function POST(request: NextRequest) {
         motivoFalta: body.motivoFalta || null,
         periodoFalta: body.periodoFalta || null,
         passouDiretoAlmoco: body.passouDiretoAlmoco || false,
+        // "Finalizei esta atividade neste talhão" → aguarda o gestor confirmar
+        finalizacaoStatus:
+          body.finalizou && !body.isFalta && !body.isAjusteHorimetro && body.talhaoId && !isCompensacaoBancoHoras && !isCompensacaoFeriado
+            ? 'PENDENTE'
+            : null,
         ehHoraExtra,
         statusAprovacao: ehHoraExtra ? 'pendente' : 'aprovado',
         ...(maquinasAdicionais.length > 0

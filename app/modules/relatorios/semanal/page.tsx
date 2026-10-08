@@ -23,6 +23,9 @@ const STATUS: Record<string, { rotulo: string; bg: string; fg: string; barra: st
   parada: { rotulo: 'Parada', bg: '#F8E8DC', fg: '#A5582A', barra: '#B0602B' },
 }
 
+// Linha com "Finalizei" aguardando confirmação: fundo amarelo (some ao confirmar/recusar)
+const DESTAQUE_PENDENTE = { background: '#FFF6D6', boxShadow: 'inset 4px 0 0 #E0A526' }
+
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const segundaDaSemana = (d: Date) => {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -116,6 +119,29 @@ export default function RelatorioSemanalPage() {
     }
   }
 
+  // Confirma ou recusa o "Finalizei" que o funcionário marcou no lançamento
+  const [respondendo, setRespondendo] = useState<string | null>(null)
+  const responderFinalizacao = async (o: any, acao: 'confirmar' | 'recusar') => {
+    const p = o.finalizacaoPendente
+    if (!p) return
+    if (acao === 'recusar' && !confirm(`Recusar a finalização de ${o.atividade} no talhão ${o.talhao}? A operação continua aberta.`)) return
+    setRespondendo(p.registroId)
+    try {
+      const r = await fetch(`/api/registros-atividade/${p.registroId}/finalizacao`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Erro ao salvar')
+      setVersao((v) => v + 1)
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setRespondendo(null)
+    }
+  }
+
   const reabrirOperacao = async (o: any) => {
     if (!o.encerramento) return
     if (!confirm(`Reabrir ${o.atividade} no talhão ${o.talhao}? Ela deixa de aparecer como concluída.`)) return
@@ -132,6 +158,30 @@ export default function RelatorioSemanalPage() {
   // Concluir / Reabrir à mão (só na tela, não sai no PDF)
   const acaoConclusao = (o: any) => {
     const k = `${o.safraId}|${o.atividade}|${o.talhaoId}`
+    if (o.finalizacaoPendente) {
+      const p = o.finalizacaoPendente
+      const ocupado = respondendo === p.registroId
+      return (
+        <span className="inline-flex flex-col items-end gap-1">
+          <span className="text-[11px] font-bold rounded-full px-2 py-0.5 whitespace-nowrap" style={{ background: '#FCEFD9', color: '#8A5A12' }}>
+            {p.quem || 'Funcionário'} finalizou em {brCurto(p.data)} · aguardando
+          </span>
+          <span className="flex items-center gap-1.5">
+            <button
+              onClick={() => responderFinalizacao(o, 'confirmar')}
+              disabled={ocupado}
+              className="text-xs font-bold px-2 py-0.5 rounded text-white disabled:opacity-50"
+              style={{ background: '#2E6B2A' }}
+            >
+              {ocupado ? '...' : 'Confirmar'}
+            </button>
+            <button onClick={() => responderFinalizacao(o, 'recusar')} disabled={ocupado} className="text-xs underline disabled:opacity-50" style={{ color: MU }}>
+              Recusar
+            </button>
+          </span>
+        </span>
+      )
+    }
     if (o.concluidaPor === 'area') {
       return <span className="text-[11px]" style={{ color: MU }}>pela área</span>
     }
@@ -399,6 +449,14 @@ export default function RelatorioSemanalPage() {
 
           {/* Operações (seções por status, cores do modelo I · topo grafite) */}
           <section className="space-y-3">
+            {(dados.operacoes || []).some((o: any) => o.finalizacaoPendente) && (
+              <div className="print:hidden flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold border" style={{ background: '#FCEFD9', borderColor: '#EBCF9E', color: '#8A5A12' }}>
+                {(() => {
+                  const n = (dados.operacoes || []).filter((o: any) => o.finalizacaoPendente).length
+                  return `${n} ${n === 1 ? 'finalização informada' : 'finalizações informadas'} pelos funcionários aguardando sua confirmação. Use Confirmar ou Recusar na linha da operação.`
+                })()}
+              </div>
+            )}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base font-bold" style={{ color: G }}>Andamento das operações</h2>
               {/* Filtros (só na tela; no PDF sai uma linha dizendo o filtro usado) */}
@@ -488,6 +546,7 @@ export default function RelatorioSemanalPage() {
                               <div
                                 key={`${o.safraId}|${o.atividade}|${o.talhaoId}`}
                                 className="rs-bloco grid items-center gap-3.5 px-4 py-2.5 border-t border-[#F2EDE5] first:border-t-0 grid-cols-[170px_150px_minmax(0,1fr)_190px_56px_minmax(120px,auto)] print:grid-cols-[150px_130px_minmax(0,1fr)_170px_50px]"
+                                style={o.finalizacaoPendente ? DESTAQUE_PENDENTE : undefined}
                               >
                                 <span className="text-sm font-bold" style={{ color: G }}>{o.talhao}</span>
                                 <span className="justify-self-start text-[11px] font-extrabold tracking-wide rounded-md px-2 py-0.5 bg-[#F4F1EC]" style={{ color: '#4E5A60' }}>{o.atividade}</span>
@@ -537,7 +596,7 @@ export default function RelatorioSemanalPage() {
                       {operacoesSemArea.map((o: any, i: number) => {
                         const st = STATUS[o.status]
                         return (
-                          <tr key={i} className="rs-bloco border-b border-[#EEE8DE]">
+                          <tr key={i} className="rs-bloco border-b border-[#EEE8DE]" style={o.finalizacaoPendente ? DESTAQUE_PENDENTE : undefined}>
                             <td className="px-3 py-2 font-semibold" style={{ color: INK }}>{o.atividade}</td>
                             <td className="px-3 py-2" style={{ color: '#4E5A60' }}>{o.talhao}</td>
                             <td className="px-3 py-2">

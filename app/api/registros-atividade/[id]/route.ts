@@ -307,6 +307,15 @@ export async function PUT(
         motivoFalta: body.motivoFalta ?? null,
         periodoFalta: body.periodoFalta ?? null,
         passouDiretoAlmoco: body.passouDiretoAlmoco !== undefined ? body.passouDiretoAlmoco : undefined,
+        // "Finalizei esta atividade neste talhão": marcar de novo volta a
+        // aguardar confirmação (mantém se já estava confirmada); desmarcar
+        // limpa (mantém o registro de que foi recusada).
+        finalizacaoStatus:
+          body.finalizou === undefined
+            ? undefined
+            : body.finalizou && !isFaltaFinal && !seraCompensacaoBancoHoras && !isCompensacaoFeriado
+              ? (registro.finalizacaoStatus === 'CONFIRMADA' ? 'CONFIRMADA' : 'PENDENTE')
+              : (registro.finalizacaoStatus === 'RECUSADA' ? 'RECUSADA' : null),
         ehHoraExtra,
         statusAprovacao: ehHoraExtra ? 'pendente' : 'aprovado',
         ...(maquinasAdicionaisRecebidas !== undefined

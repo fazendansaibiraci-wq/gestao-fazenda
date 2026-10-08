@@ -70,6 +70,8 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     motivoFalta: initialData?.motivoFalta || '',
     periodoFalta: initialData?.periodoFalta || 'DIA_INTEIRO',
     passouDiretoAlmoco: initialData?.passouDiretoAlmoco || false,
+    // "Finalizei esta atividade neste talhão" (aguarda o gestor confirmar)
+    finalizou: initialData?.finalizacaoStatus === 'PENDENTE' || initialData?.finalizacaoStatus === 'CONFIRMADA',
     observacao: initialData?.observacao || '',
     fotoEvidencia: initialData?.fotoEvidencia || '',
     funcionarioId: initialData?.funcionarioId || '',
@@ -227,6 +229,23 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     } catch (err) { console.error(err) }
   }
 
+  // Se a atividade já foi dada como concluída nesse talhão/safra, mostra a
+  // data em vez da pergunta "Finalizei"
+  const [concluidaEm, setConcluidaEm] = useState<string | null>(null)
+  useEffect(() => {
+    setConcluidaEm(null)
+    if (!form.tipoAtividade || !form.talhaoId || !form.safraId) return
+    const controle = new AbortController()
+    fetch(`/api/encerramentos-atividade?tipoAtividade=${encodeURIComponent(form.tipoAtividade)}&safraId=${form.safraId}`, { signal: controle.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const enc = (d?.data || []).find((e: any) => e.talhao?.id === form.talhaoId)
+        setConcluidaEm(enc ? String(enc.dataFim).slice(0, 10) : null)
+      })
+      .catch(() => {})
+    return () => controle.abort()
+  }, [form.tipoAtividade, form.talhaoId, form.safraId])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
     setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value }))
@@ -336,10 +355,12 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
         talhaoId: null,
         safraId: form.safraId || (safrasDaData[0] as any)?.id,
         tipoAtividade: 'GERAIS', status: 'CONCLUIDO', horaEntrada: '00:00',
+        finalizou: false,
       } : form.isAjusteHorimetro ? {
         data: new Date(form.data + 'T12:00:00'),
         funcionarioId: form.funcionarioId,
         isAjusteHorimetro: true,
+        finalizou: false,
         tipoAtividade: TIPO_ATIVIDADE_AJUSTE_HORIMETRO,
         status: 'CONCLUIDO',
         horaEntrada: '00:00',
@@ -578,6 +599,27 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   {tiposAtividade.map((t) => <option key={t.id} value={t.nome}>{t.nome}</option>)}
                 </select>
               </div>
+              {form.talhaoId && form.tipoAtividade && (
+                concluidaEm && !form.finalizou ? (
+                  <p className="text-sm px-3 py-2 rounded-lg border" style={{ background: '#EEF5EC', borderColor: '#C9DEC4', color: '#2E6B2A' }}>
+                    ✓ Esta atividade já foi concluída neste talhão em {concluidaEm.split('-').reverse().join('/')}.
+                  </p>
+                ) : (
+                  <div className="p-3 rounded-lg border" style={{ background: '#F2F7EF', borderColor: '#C9DEC4' }}>
+                    <div style={{display:'flex', flexDirection:'row', alignItems:'center', gap:'12px', width:'100%'}}>
+                      <input type="checkbox" id="finalizou" name="finalizou" checked={form.finalizou} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
+                      <label htmlFor="finalizou" style={{fontSize:'14px', fontWeight:600, color:'#2E6B2A', cursor:'pointer', margin:0}}>Finalizei esta atividade neste talhão</label>
+                    </div>
+                    <p className="text-xs mt-1.5" style={{ color: '#5E6A71', marginLeft: '28px' }}>
+                      {initialData?.finalizacaoStatus === 'CONFIRMADA' && form.finalizou
+                        ? 'Finalização já confirmada pelo gestor.'
+                        : initialData?.finalizacaoStatus === 'RECUSADA' && !form.finalizou
+                          ? 'A finalização informada antes foi recusada pelo gestor. Marque de novo se a atividade terminou.'
+                          : 'Marque só no dia em que terminar a atividade no talhão inteiro. Fica aguardando a confirmação do gestor.'}
+                    </p>
+                  </div>
+                )
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label htmlFor="horaEntrada">Hora Entrada *</label>

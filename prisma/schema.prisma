@@ -593,6 +593,12 @@ model RegistroAtividade {
   aprovadoAtividadeEm     DateTime?
   aprovadoAtividadePorId  String?
 
+  // "Finalizei esta atividade neste talhão", marcado por quem lança o
+  // registro. Fica aguardando o gestor confirmar no Relatório Semanal:
+  // null = não marcou | PENDENTE | CONFIRMADA (gera o
+  // EncerramentoAtividadeTalhao) | RECUSADA
+  finalizacaoStatus       String?
+
   aplicacoesInsumo AplicacaoInsumo[]
 
   dataCriacao       DateTime @default(now())

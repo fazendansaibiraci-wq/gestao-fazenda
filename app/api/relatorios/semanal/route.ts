@@ -148,6 +148,22 @@ export async function GET(request: NextRequest) {
     const encPorOp = new Map<string, { id: string; dataFim: Date }>(
       encerramentos.map((e) => [`${e.safraId}|${e.tipoAtividade}|${e.talhaoId}`, { id: e.id, dataFim: e.dataFim }])
     )
+    // "Finalizei" marcado pelo funcionário e ainda não confirmado/recusado
+    const pendentesFinalizacao = idsSafras.length
+      ? await prisma.registroAtividade.findMany({
+          where: { safraId: { in: idsSafras }, data: { lte: fim }, finalizacaoStatus: 'PENDENTE', talhaoId: { not: null } },
+          select: { id: true, safraId: true, tipoAtividade: true, talhaoId: true, data: true, funcionario: { select: { name: true } } },
+          orderBy: { data: 'desc' },
+        })
+      : []
+    const pendentePorOp = new Map<string, { registroId: string; data: string; quem: string }>()
+    for (const p of pendentesFinalizacao) {
+      const k = `${p.safraId}|${p.tipoAtividade}|${p.talhaoId}`
+      if (pendentePorOp.has(k)) continue // fica o mais recente
+      const nome = (p.funcionario?.name || '').split(' ')[0]
+      pendentePorOp.set(k, { registroId: p.id, data: chave(p.data), quem: nome ? nome.charAt(0) + nome.slice(1).toLowerCase() : '' })
+    }
+
     const operacoes: any[] = []
     for (const [k, o] of ops.entries()) {
       const total = areaTalhao.get(o.talhaoId) || 0
@@ -177,6 +193,7 @@ export async function GET(request: NextRequest) {
         status,
         concluidaPor: concluidaArea ? 'area' : concluidaManual ? 'manual' : null,
         encerramento: enc ? { id: enc.id, dataFim: chave(enc.dataFim) } : null,
+        finalizacaoPendente: concluida ? null : pendentePorOp.get(k) || null,
         ultimoLancamento: chave(o.ultimo > fim ? fim : o.ultimo),
         quem: Array.from(o.quem).join(' · '),
         horasSemana: Math.round(o.horasSemana * 10) / 10,
