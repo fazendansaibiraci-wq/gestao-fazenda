@@ -155,6 +155,29 @@ export default function RelatorioSemanalPage() {
     }
   }
 
+  // Nome do talhão abre (em outra aba) o Registro de Atividades filtrado
+  // nessa atividade + talhão, do primeiro lançamento até o fim do período
+  const linkTalhao = (o: any, classe: string) => {
+    const q = new URLSearchParams({
+      talhao: o.talhaoId,
+      tipoAtividade: o.atividade,
+      dataInicio: o.primeiroLancamento || dados?.semana?.inicio || '',
+      dataFim: dados?.semana?.fim || '',
+    })
+    return (
+      <a
+        href={`/modules/atividades?${q.toString()}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${classe} hover:underline print:no-underline`}
+        style={{ color: classe ? G : 'inherit' }}
+        title="Ver os lançamentos desta atividade neste talhão"
+      >
+        {o.talhao}
+      </a>
+    )
+  }
+
   // Concluir / Reabrir à mão (só na tela, não sai no PDF)
   const acaoConclusao = (o: any) => {
     const k = `${o.safraId}|${o.atividade}|${o.talhaoId}`
@@ -548,7 +571,7 @@ export default function RelatorioSemanalPage() {
                                 className="rs-bloco grid items-center gap-3.5 px-4 py-2.5 border-t border-[#F2EDE5] first:border-t-0 grid-cols-[170px_150px_minmax(0,1fr)_190px_56px_minmax(120px,auto)] print:grid-cols-[150px_130px_minmax(0,1fr)_170px_50px]"
                                 style={o.finalizacaoPendente ? DESTAQUE_PENDENTE : undefined}
                               >
-                                <span className="text-sm font-bold" style={{ color: G }}>{o.talhao}</span>
+                                {linkTalhao(o, "text-sm font-bold")}
                                 <span className="justify-self-start text-[11px] font-extrabold tracking-wide rounded-md px-2 py-0.5 bg-[#F4F1EC]" style={{ color: '#4E5A60' }}>{o.atividade}</span>
                                 <div className="flex items-center gap-2.5">
                                   <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: info.bg }}>
@@ -598,7 +621,7 @@ export default function RelatorioSemanalPage() {
                         return (
                           <tr key={i} className="rs-bloco border-b border-[#EEE8DE]" style={o.finalizacaoPendente ? DESTAQUE_PENDENTE : undefined}>
                             <td className="px-3 py-2 font-semibold" style={{ color: INK }}>{o.atividade}</td>
-                            <td className="px-3 py-2" style={{ color: '#4E5A60' }}>{o.talhao}</td>
+                            <td className="px-3 py-2" style={{ color: '#4E5A60' }}>{linkTalhao(o, "")}</td>
                             <td className="px-3 py-2">
                               <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: st.bg, color: st.fg }}>
                                 {st.rotulo}

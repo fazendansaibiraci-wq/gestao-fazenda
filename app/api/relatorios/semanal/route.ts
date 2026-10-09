@@ -195,6 +195,7 @@ export async function GET(request: NextRequest) {
         encerramento: enc ? { id: enc.id, dataFim: chave(enc.dataFim) } : null,
         finalizacaoPendente: concluida ? null : pendentePorOp.get(k) || null,
         ultimoLancamento: chave(o.ultimo > fim ? fim : o.ultimo),
+        primeiroLancamento: chave(o.primeiro),
         quem: Array.from(o.quem).join(' · '),
         horasSemana: Math.round(o.horasSemana * 10) / 10,
       })
