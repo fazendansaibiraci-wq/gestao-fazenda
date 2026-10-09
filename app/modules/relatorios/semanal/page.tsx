@@ -564,7 +564,9 @@ export default function RelatorioSemanalPage() {
                       <div className={`overflow-x-auto ${recolhida ? 'hidden print:block' : ''}`}>
                         <div className="min-w-[860px]">
                           {ops.map((o: any) => {
-                            const pct = Math.min(1, o.areaFeita / o.areaTalhao)
+                            // Concluída à mão (botão Concluir ou finalização confirmada):
+                            // barra cheia. Ao Reabrir volta a % pela área lançada.
+                            const pct = o.concluidaPor === 'manual' ? 1 : Math.min(1, o.areaFeita / o.areaTalhao)
                             return (
                               <div
                                 key={`${o.safraId}|${o.atividade}|${o.talhaoId}`}
