@@ -1,14 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { ArrowLeftRight } from 'lucide-react'
+import { ArrowLeftRight, CheckCircle2, X } from 'lucide-react'
 
 // Data de hoje no fuso do aparelho (toISOString usaria UTC e, depois das
 // 21h em Brasília, já mostraria o dia seguinte).
 function hojeLocal() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function fmt(n: number) {
+  return (n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
 }
 
 export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[]; onAtualizado: () => void }) {
@@ -19,6 +23,8 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
   const [carregandoHistorico, setCarregandoHistorico] = useState(true)
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [conferencia, setConferencia] = useState<any | null>(null)
+  const conferenciaRef = useRef<HTMLDivElement>(null)
   const [locais, setLocais] = useState<any[]>([])
   const [form, setForm] = useState({
     produtoId: '',
@@ -58,6 +64,7 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErro('')
+    setConferencia(null)
     setSalvando(true)
     try {
       const res = await fetch('/api/transferencias-estoque', {
@@ -77,6 +84,9 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
         setErro(data.error || 'Erro ao registrar transferência')
         return
       }
+      setConferencia(data.conferencia || null)
+      // No celular o quadro de conferência pode ficar fora da tela.
+      setTimeout(() => conferenciaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
       setForm({ produtoId: '', localOrigemId: '', localDestinoId: '', quantidade: '', data: hojeLocal(), observacao: '' })
       await carregarHistorico()
       onAtualizado()
@@ -102,6 +112,58 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
           {aberto ? 'Fechar' : 'Registrar Transferência'}
         </button>
       </div>
+
+      {conferencia && (
+        <div ref={conferenciaRef} className="border border-green-300 bg-green-50 rounded-lg p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="font-semibold text-green-800 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
+                Transferência registrada
+              </p>
+              <p className="text-sm text-gray-700 mt-1">
+                <span className="font-medium">{conferencia.produto}</span> · {fmt(conferencia.quantidade)} {conferencia.unidade} ·{' '}
+                {conferencia.localOrigem} → {conferencia.localDestino}
+              </p>
+            </div>
+            <button onClick={() => setConferencia(null)} className="text-green-700 hover:text-green-900" aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="bg-white rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-gray-500">
+                  <th className="text-left py-2 px-3 font-medium">Local</th>
+                  <th className="text-right py-2 px-3 font-medium">Antes</th>
+                  <th className="text-right py-2 px-3 font-medium">Movimento</th>
+                  <th className="text-right py-2 px-3 font-medium">Agora</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b">
+                  <td className="py-2 px-3 font-medium">{conferencia.localOrigem}</td>
+                  <td className="py-2 px-3 text-right text-gray-500">{fmt(conferencia.saldoOrigemAntes)}</td>
+                  <td className="py-2 px-3 text-right text-red-600">−{fmt(conferencia.quantidade)}</td>
+                  <td className="py-2 px-3 text-right font-bold">{fmt(conferencia.saldoOrigemDepois)} {conferencia.unidade}</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-2 px-3 font-medium">{conferencia.localDestino}</td>
+                  <td className="py-2 px-3 text-right text-gray-500">{fmt(conferencia.saldoDestinoAntes)}</td>
+                  <td className="py-2 px-3 text-right text-green-700">+{fmt(conferencia.quantidade)}</td>
+                  <td className="py-2 px-3 text-right font-bold">{fmt(conferencia.saldoDestinoDepois)} {conferencia.unidade}</td>
+                </tr>
+                <tr className="bg-gray-50 text-gray-600">
+                  <td className="py-2 px-3">Total (todos os locais)</td>
+                  <td className="py-2 px-3 text-right">{fmt(conferencia.totalProduto)}</td>
+                  <td className="py-2 px-3 text-right">sem alteração</td>
+                  <td className="py-2 px-3 text-right font-medium">{fmt(conferencia.totalProduto)} {conferencia.unidade}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {aberto && (
         <form onSubmit={handleSubmit} className="space-y-3 border-t pt-4">

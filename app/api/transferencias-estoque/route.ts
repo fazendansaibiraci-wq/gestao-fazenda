@@ -98,21 +98,38 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      await tx.estoqueLocal.update({
+      const origemAtualizada = await tx.estoqueLocal.update({
         where: { produtoId_localId: { produtoId: body.produtoId, localId: body.localOrigemId } },
         data: { quantidade: { decrement: body.quantidade } },
       })
 
-      await tx.estoqueLocal.upsert({
+      const destinoAtualizado = await tx.estoqueLocal.upsert({
         where: { produtoId_localId: { produtoId: body.produtoId, localId: body.localDestinoId } },
         create: { produtoId: body.produtoId, localId: body.localDestinoId, quantidade: body.quantidade },
         update: { quantidade: { increment: body.quantidade } },
       })
 
-      return registro
+      return { registro, saldoOrigemDepois: origemAtualizada.quantidade, saldoDestinoDepois: destinoAtualizado.quantidade }
     })
 
-    return NextResponse.json({ success: true, data: transferencia })
+    // Devolve os saldos de antes e depois nos dois locais, pra tela
+    // mostrar na hora e o usuário conferir a transferência.
+    return NextResponse.json({
+      success: true,
+      data: transferencia.registro,
+      conferencia: {
+        produto: produto.nomeComercial,
+        unidade: produto.unidadeMedida,
+        quantidade: body.quantidade,
+        localOrigem: localOrigem.nome,
+        localDestino: localDestino.nome,
+        saldoOrigemAntes: saldoOrigem,
+        saldoOrigemDepois: transferencia.saldoOrigemDepois,
+        saldoDestinoAntes: transferencia.saldoDestinoDepois - body.quantidade,
+        saldoDestinoDepois: transferencia.saldoDestinoDepois,
+        totalProduto: produto.quantidadeEstoque,
+      },
+    })
   } catch (error) {
     console.error('POST /api/transferencias-estoque:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
