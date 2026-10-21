@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { ArrowLeftRight } from 'lucide-react'
 
+// Data de hoje no fuso do aparelho (toISOString usaria UTC e, depois das
+// 21h em Brasília, já mostraria o dia seguinte).
+function hojeLocal() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[]; onAtualizado: () => void }) {
   const { data: session } = useSession()
   const isGestor = session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE'
@@ -18,7 +25,7 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
     localOrigemId: '',
     localDestinoId: '',
     quantidade: '',
-    data: new Date().toISOString().slice(0, 10),
+    data: hojeLocal(),
     observacao: '',
   })
 
@@ -70,7 +77,7 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
         setErro(data.error || 'Erro ao registrar transferência')
         return
       }
-      setForm({ produtoId: '', localOrigemId: '', localDestinoId: '', quantidade: '', data: new Date().toISOString().slice(0, 10), observacao: '' })
+      setForm({ produtoId: '', localOrigemId: '', localDestinoId: '', quantidade: '', data: hojeLocal(), observacao: '' })
       await carregarHistorico()
       onAtualizado()
     } catch (err) {
@@ -203,7 +210,7 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
               <tbody>
                 {transferencias.map((t) => (
                   <tr key={t.id} className="border-b hover:bg-gray-50">
-                    <td className="py-2 px-2">{new Date(t.data).toLocaleDateString('pt-BR')}</td>
+                    <td className="py-2 px-2">{new Date(t.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
                     <td className="py-2 px-2 font-medium">{t.produto?.nomeComercial}</td>
                     <td className="py-2 px-2">{t.localOrigem?.nome || '—'}</td>
                     <td className="py-2 px-2">{t.localDestino?.nome || '—'}</td>

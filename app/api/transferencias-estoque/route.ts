@@ -91,7 +91,8 @@ export async function POST(request: NextRequest) {
           localOrigemId: body.localOrigemId,
           localDestinoId: body.localDestinoId,
           quantidade: body.quantidade,
-          data: new Date(body.data),
+          // Meio-dia de Brasília, pra data não aparecer como o dia anterior.
+          data: new Date(`${String(body.data).slice(0, 10)}T12:00:00-03:00`),
           observacao: body.observacao?.trim() || null,
           registradoPorId: session.user.id as string,
         },
