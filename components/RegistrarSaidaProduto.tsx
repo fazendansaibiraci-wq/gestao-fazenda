@@ -326,7 +326,7 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
 
       <div className="border-t pt-3">
         <Link href="/modules/estoque/saidas" className="text-sm font-medium text-primary hover:underline">
-          Ver histórico de saídas e devoluções →
+          Ver histórico de saídas →
         </Link>
       </div>
     </div>

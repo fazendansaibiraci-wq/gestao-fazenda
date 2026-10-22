@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Trash2, Filter, Undo2, CornerDownRight } from 'lucide-react'
+import { Trash2, Filter, Undo2 } from 'lucide-react'
 import { FormDevolucao, ConferenciaDevolucao, descricaoSaida } from '@/components/RegistrarDevolucaoProduto'
 
 const ITENS_POR_PAGINA = 15
@@ -98,13 +98,6 @@ export default function HistoricoSaidasPage() {
       `Excluir a saída de ${fmt(s.quantidade)} ${s.produto?.unidadeMedida} de ${s.produto?.nomeComercial} (${dataBR(s.data)})?\n\nA quantidade volta para ${s.local?.nome || 'o estoque'}.`
     )
 
-  const excluirDevolucao = (s: any, d: any) =>
-    excluir(
-      `/api/devolucoes-produto/${d.id}`,
-      d.id,
-      `Excluir a devolução de ${fmt(d.quantidade)} ${s.produto?.unidadeMedida} de ${s.produto?.nomeComercial} (${dataBR(d.data)})?\n\nA quantidade sai de novo de ${d.local?.nome}.`
-    )
-
   const limparFiltros = () => {
     setFiltroDataInicio('')
     setFiltroDataFim('')
@@ -133,8 +126,11 @@ export default function HistoricoSaidasPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Histórico de Saídas e Devoluções</h1>
-          <p className="text-gray-600 mt-1">Saídas de estoque e o que voltou de cada uma</p>
+          <h1 className="text-3xl font-bold text-primary">Histórico de Saídas</h1>
+          <p className="text-gray-600 mt-1">
+            Saídas de estoque. As sobras que voltaram ficam em{' '}
+            <Link href="/modules/estoque/devolucoes" className="text-primary hover:underline">Histórico de Devoluções</Link>.
+          </p>
         </div>
         <Link href="/modules/estoque" className="text-sm font-medium text-primary hover:underline">
           Registrar nova saída no Estoque →
@@ -260,7 +256,7 @@ export default function HistoricoSaidasPage() {
                                   onClick={() => excluirSaida(s)}
                                   disabled={ocupadoId === s.id || s.devolucoes.length > 0}
                                   className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                                  title={s.devolucoes.length > 0 ? 'Exclua as devoluções primeiro' : 'Excluir (a quantidade volta ao estoque)'}
+                                  title={s.devolucoes.length > 0 ? 'Tem devolução: exclua a devolução primeiro, no Histórico de Devoluções' : 'Excluir (a quantidade volta ao estoque)'}
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -269,36 +265,6 @@ export default function HistoricoSaidasPage() {
                           </td>
                         )}
                       </tr>
-                      {s.devolucoes.map((d: any) => (
-                        <tr key={d.id} className="border-b bg-green-50/50 text-gray-700">
-                          <td className="px-3 py-1.5 whitespace-nowrap" colSpan={3}>
-                            <span className="inline-flex items-center gap-1.5 pl-2">
-                              <CornerDownRight className="w-3.5 h-3.5 text-green-700" />
-                              Devolução em {dataBR(d.data)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-1.5"></td>
-                          <td className="px-3 py-1.5 text-right whitespace-nowrap text-green-700">+{fmt(d.quantidade)} {u}</td>
-                          <td className="px-3 py-1.5"></td>
-                          <td className="px-3 py-1.5" colSpan={4}>voltou para {d.local?.nome}</td>
-                          <td className="px-3 py-1.5">
-                            {d.observacao && <p>{d.observacao}</p>}
-                            <p className="text-xs text-gray-500">{d.registradoPor?.name || '—'}</p>
-                          </td>
-                          {isGestor && (
-                            <td className="px-3 py-1.5">
-                              <button
-                                onClick={() => excluirDevolucao(s, d)}
-                                disabled={ocupadoId === d.id}
-                                className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
-                                title="Excluir devolução (a quantidade sai de novo do estoque)"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
                     </Fragment>
                   )
                 })}

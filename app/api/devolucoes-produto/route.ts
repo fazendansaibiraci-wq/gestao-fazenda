@@ -3,6 +3,54 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { searchParams } = new URL(request.url)
+    const produtoId = searchParams.get('produtoId')
+    const talhaoId = searchParams.get('talhaoId')
+    const dataInicio = searchParams.get('dataInicio')
+    const dataFim = searchParams.get('dataFim')
+
+    const where: any = {}
+    if (produtoId) where.produtoId = produtoId
+    // Talhão é o da saída de onde a sobra veio.
+    if (talhaoId) where.saida = { talhaoId }
+    if (dataInicio || dataFim) {
+      where.data = {}
+      if (dataInicio) where.data.gte = new Date(`${dataInicio}T00:00:00-03:00`)
+      if (dataFim) where.data.lte = new Date(`${dataFim}T23:59:59.999-03:00`)
+    }
+
+    const devolucoes = await prisma.devolucaoProduto.findMany({
+      where,
+      include: {
+        produto: { select: { nomeComercial: true, unidadeMedida: true } },
+        local: { select: { nome: true } },
+        registradoPor: { select: { name: true } },
+        saida: {
+          select: {
+            data: true,
+            quantidade: true,
+            tipoAtividade: true,
+            talhao: { select: { nome: true } },
+            safra: { select: { nome: true } },
+            local: { select: { nome: true } },
+          },
+        },
+      },
+      orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
+    })
+
+    return NextResponse.json({ success: true, data: devolucoes })
+  } catch (error) {
+    console.error('GET /api/devolucoes-produto:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 // Devolução ao estoque de parte de uma saída (sobrou produto).
 // A quantidade volta para o local escolhido (padrão: o local de onde saiu).
 export async function POST(request: NextRequest) {

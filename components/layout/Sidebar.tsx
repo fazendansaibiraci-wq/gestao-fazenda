@@ -30,6 +30,7 @@ import {
   UserCog,
   ArrowLeftRight,
   PackageMinus,
+  PackagePlus,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -83,7 +84,8 @@ export function Sidebar() {
   const estoqueItems = ([
     { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, exato: true },
     { label: 'Histórico de Transferências', href: '/modules/estoque/transferencias', icon: ArrowLeftRight, role: 'GESTOR|GERENTE' },
-    { label: 'Saídas e Devoluções', href: '/modules/estoque/saidas', icon: PackageMinus, role: 'GESTOR|GERENTE' },
+    { label: 'Histórico de Saídas', href: '/modules/estoque/saidas', icon: PackageMinus, role: 'GESTOR|GERENTE' },
+    { label: 'Histórico de Devoluções', href: '/modules/estoque/devolucoes', icon: PackagePlus, role: 'GESTOR|GERENTE' },
   ] as { label: string; href: string; icon: typeof Warehouse; role?: string; excludeRoles?: string; exato?: boolean }[]).filter(item => show(item.role, item.excludeRoles))
 
   const operacionalItems = [
