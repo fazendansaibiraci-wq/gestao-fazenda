@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { ClipboardCheck } from 'lucide-react'
 
-export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; onAtualizado: () => void }) {
+export function AjustarEstoque({ produtos, onAtualizado, naJanela }: { produtos: any[]; onAtualizado: () => void; naJanela?: boolean }) {
   const { data: session } = useSession()
   const isGestor = session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE'
-  const [aberto, setAberto] = useState(false)
+  // Dentro da janela da tela de Estoque o formulário já vem aberto.
+  const [aberto, setAberto] = useState(!!naJanela)
   const [ajustes, setAjustes] = useState<any[]>([])
   const [carregandoHistorico, setCarregandoHistorico] = useState(true)
   const [erro, setErro] = useState('')
@@ -87,7 +88,8 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
   }
 
   return (
-    <div className="card space-y-4">
+    <div className={naJanela ? 'space-y-4' : 'card space-y-4'}>
+      {!naJanela && (
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-lg flex items-center gap-2">
           <ClipboardCheck className="w-5 h-5 text-amber-600" />
@@ -97,6 +99,7 @@ export function AjustarEstoque({ produtos, onAtualizado }: { produtos: any[]; on
           {aberto ? 'Fechar' : 'Registrar Ajuste'}
         </button>
       </div>
+      )}
 
       {aberto && (
         <form onSubmit={handleSubmit} className="space-y-3 border-t pt-4">

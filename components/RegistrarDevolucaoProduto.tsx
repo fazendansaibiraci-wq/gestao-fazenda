@@ -184,12 +184,13 @@ export function FormDevolucao({
 }
 
 // Card da tela de Estoque: escolhe o produto, depois a saída, e devolve.
-export function RegistrarDevolucaoProduto({ onAtualizado }: { onAtualizado: () => void }) {
+export function RegistrarDevolucaoProduto({ onAtualizado, naJanela }: { onAtualizado: () => void; naJanela?: boolean }) {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
   const isGestor = role === 'GESTOR' || role === 'GERENTE'
 
-  const [aberto, setAberto] = useState(false)
+  // Dentro da janela da tela de Estoque o formulário já vem aberto.
+  const [aberto, setAberto] = useState(!!naJanela)
   const [saidas, setSaidas] = useState<any[]>([])
   const [carregando, setCarregando] = useState(false)
   const [locais, setLocais] = useState<any[]>([])
@@ -230,7 +231,8 @@ export function RegistrarDevolucaoProduto({ onAtualizado }: { onAtualizado: () =
   const saidaEscolhida = saidas.find((s) => s.id === saidaId)
 
   return (
-    <div className="card space-y-4">
+    <div className={naJanela ? 'space-y-4' : 'card space-y-4'}>
+      {!naJanela && (
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-lg flex items-center gap-2">
           <PackagePlus className="w-5 h-5 text-green-700" />
@@ -240,6 +242,7 @@ export function RegistrarDevolucaoProduto({ onAtualizado }: { onAtualizado: () =
           {aberto ? 'Fechar' : 'Registrar Devolução'}
         </button>
       </div>
+      )}
 
       {conferencia && (
         <div ref={conferenciaRef}>

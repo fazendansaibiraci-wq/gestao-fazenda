@@ -26,10 +26,11 @@ const CATEGORIAS = [
   { value: 'outro', label: 'Outro / A Classificar' },
 ]
 
-export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void }) {
+export function ImportarNFeEstoque({ onImportado, naJanela, onFechar }: { onImportado: () => void; naJanela?: boolean; onFechar?: () => void }) {
   const { data: session } = useSession()
   const isGestor = session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE'
-  const [aberto, setAberto] = useState(false)
+  // Dentro da janela da tela de Estoque o importador já vem aberto.
+  const [aberto, setAberto] = useState(!!naJanela)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
   const [nota, setNota] = useState<{ fornecedor: string; numeroNota: string; serieNota: string; dataEmissao: string; chaveAcesso: string } | null>(null)
@@ -135,6 +136,10 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
   }
 
   const fechar = () => {
+    if (naJanela) {
+      onFechar?.()
+      return
+    }
     setAberto(false)
     setItens([])
     setNota(null)
@@ -160,13 +165,15 @@ export function ImportarNFeEstoque({ onImportado }: { onImportado: () => void })
   }
 
   return (
-    <div className="card space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg">Entrada de Diesel via NF-e</h2>
-        <button onClick={fechar} className="text-gray-400 hover:text-gray-600">
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+    <div className={naJanela ? 'space-y-4' : 'card space-y-4'}>
+      {!naJanela && (
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-lg">Entrada de Diesel via NF-e</h2>
+          <button onClick={fechar} className="text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {itens.length === 0 && !resultado && (
         <div>

@@ -3,13 +3,48 @@
 import { Fragment, useEffect, useState } from 'react'
 import { redirect } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Search, AlertTriangle, FileSpreadsheet, FileText, ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  Search,
+  AlertTriangle,
+  FileSpreadsheet,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  PackageMinus,
+  PackagePlus,
+  ArrowLeftRight,
+  ClipboardCheck,
+  FileUp,
+  Upload,
+  X,
+} from 'lucide-react'
 import { AjustarEstoque } from '@/components/AjustarEstoque'
 import { TransferirEstoque } from '@/components/TransferirEstoque'
 import { RegistrarSaidaProduto } from '@/components/RegistrarSaidaProduto'
 import { RegistrarDevolucaoProduto } from '@/components/RegistrarDevolucaoProduto'
 import { ImportarNFeEstoque } from '@/components/ImportarNFeEstoque'
 import { ImportarEstoqueIdeagri } from '@/components/ImportarEstoqueIdeagri'
+
+type AcaoEstoque = 'saida' | 'devolucao' | 'transferencia' | 'ajuste' | 'nfe' | 'ideagri'
+
+// Botões de ação do topo da tela. Cada um abre o formulário numa janela.
+const ACOES: { id: AcaoEstoque; titulo: string; descricao: string; icon: any; cor: string }[] = [
+  { id: 'saida', titulo: 'Saída', descricao: 'Tirar do estoque', icon: PackageMinus, cor: 'text-red-600 bg-red-50' },
+  { id: 'devolucao', titulo: 'Devolução', descricao: 'Sobra que voltou', icon: PackagePlus, cor: 'text-green-700 bg-green-50' },
+  { id: 'transferencia', titulo: 'Transferência', descricao: 'Entre locais', icon: ArrowLeftRight, cor: 'text-sky-600 bg-sky-50' },
+  { id: 'ajuste', titulo: 'Ajuste', descricao: 'Contagem física', icon: ClipboardCheck, cor: 'text-amber-600 bg-amber-50' },
+  { id: 'nfe', titulo: 'Diesel NF-e', descricao: 'Entrada por XML', icon: FileUp, cor: 'text-gray-700 bg-gray-100' },
+  { id: 'ideagri', titulo: 'Importar CSV', descricao: 'Saldos do Ideagri', icon: Upload, cor: 'text-gray-700 bg-gray-100' },
+]
+
+const TITULO_JANELA: Record<AcaoEstoque, string> = {
+  saida: 'Saída de Estoque',
+  devolucao: 'Devolução ao Estoque (sobra de uma saída)',
+  transferencia: 'Transferência de Estoque (entre locais)',
+  ajuste: 'Ajuste de Estoque (contagem física)',
+  nfe: 'Entrada de Diesel via NF-e',
+  ideagri: 'Importar Estoque do Ideagri',
+}
 
 export default function EstoquePage() {
   const { data: session, status } = useSession()
@@ -27,6 +62,8 @@ export default function EstoquePage() {
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
   const [locais, setLocais] = useState<any[]>([])
   const [localIdFiltro, setLocalIdFiltro] = useState('')
+  // Qual ação está aberta na janela (null = nenhuma).
+  const [acaoAberta, setAcaoAberta] = useState<AcaoEstoque | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
@@ -38,6 +75,21 @@ export default function EstoquePage() {
         .catch(() => {})
     }
   }, [status])
+
+  // Esc fecha a janela; enquanto aberta, a página de trás não rola.
+  useEffect(() => {
+    if (!acaoAberta) return
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAcaoAberta(null)
+    }
+    window.addEventListener('keydown', aoTeclar)
+    const overflowAntes = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', aoTeclar)
+      document.body.style.overflow = overflowAntes
+    }
+  }, [acaoAberta])
 
   const load = async () => {
     try {
@@ -282,23 +334,70 @@ export default function EstoquePage() {
   if (loading) return <div className="flex justify-center py-12"><div className="spinner"></div></div>
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-primary">Estoque</h1>
-      <p className="text-gray-500">Quantidade atual de cada produto, atualizada manualmente ou por importação do Ideagri.</p>
-
-      <div className="card">
-        <p className="text-sm text-gray-500">Valor total em estoque</p>
-        <p className="text-2xl font-bold text-primary">
-          R$ {valorTotalEstoque.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-        </p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary">Estoque</h1>
+          <p className="text-sm text-gray-500 mt-1">Saldo de cada produto por local. Atualizado pelos lançamentos e pela importação do Ideagri.</p>
+        </div>
+        <div className="card !py-3 !px-4 sm:text-right shrink-0">
+          <p className="text-xs text-gray-500">
+            Valor total em estoque{localSelecionadoNome ? ` · ${localSelecionadoNome}` : ''}
+          </p>
+          <p className="text-xl sm:text-2xl font-bold text-primary whitespace-nowrap">
+            R$ {valorTotalEstoque.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+        </div>
       </div>
 
-      <AjustarEstoque produtos={produtos} onAtualizado={load} />
-      <TransferirEstoque produtos={produtos} onAtualizado={load} />
-      <RegistrarSaidaProduto produtos={produtos} onAtualizado={load} />
-      <RegistrarDevolucaoProduto onAtualizado={load} />
-      <ImportarNFeEstoque onImportado={load} />
-      {isGestor && <ImportarEstoqueIdeagri onImportado={load} />}
+      {isGestor && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+          {ACOES.map(({ id, titulo, descricao, icon: Icon, cor }) => (
+            <button
+              key={id}
+              onClick={() => setAcaoAberta(id)}
+              className="card !p-3 flex items-center gap-3 text-left hover:shadow-md hover:border-primary/40 transition"
+            >
+              <span className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${cor}`}>
+                <Icon className="w-5 h-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-semibold text-sm text-gray-800 truncate">{titulo}</span>
+                <span className="block text-xs text-gray-500 truncate">{descricao}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {acaoAberta && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
+          onClick={() => setAcaoAberta(null)}
+        >
+          <div
+            className="bg-white w-full sm:max-w-3xl sm:rounded-xl shadow-xl flex flex-col max-h-full sm:max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b flex items-center justify-between gap-3 shrink-0">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-800">{TITULO_JANELA[acaoAberta]}</h2>
+              <button onClick={() => setAcaoAberta(null)} className="p-1 text-gray-400 hover:text-gray-600" aria-label="Fechar">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="px-4 sm:px-6 py-4 overflow-y-auto">
+              {acaoAberta === 'saida' && <RegistrarSaidaProduto produtos={produtos} onAtualizado={load} naJanela />}
+              {acaoAberta === 'devolucao' && <RegistrarDevolucaoProduto onAtualizado={load} naJanela />}
+              {acaoAberta === 'transferencia' && <TransferirEstoque produtos={produtos} onAtualizado={load} naJanela />}
+              {acaoAberta === 'ajuste' && <AjustarEstoque produtos={produtos} onAtualizado={load} naJanela />}
+              {acaoAberta === 'nfe' && <ImportarNFeEstoque onImportado={load} naJanela onFechar={() => setAcaoAberta(null)} />}
+              {acaoAberta === 'ideagri' && <ImportarEstoqueIdeagri onImportado={load} naJanela onFechar={() => setAcaoAberta(null)} />}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="flex flex-col sm:flex-row gap-3">
@@ -328,11 +427,11 @@ export default function EstoquePage() {
             {produtosFiltrados.length} produto(s)
             {selecionados.size > 0 ? ` — ${selecionados.size} selecionado(s)` : ''}
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <button
               onClick={exportarExcel}
               disabled={exportando || produtosFiltrados.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-[#2C373C] disabled:opacity-50 transition-colors"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-[#2C373C] disabled:opacity-50 transition-colors"
             >
               <FileSpreadsheet className="w-4 h-4" />
               {exportando ? 'Exportando...' : 'Exportar Excel'}
@@ -340,7 +439,7 @@ export default function EstoquePage() {
             <button
               onClick={exportarPDF}
               disabled={exportando || produtosFiltrados.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
             >
               <FileText className="w-4 h-4" />
               {exportando ? 'Exportando...' : 'Exportar PDF'}
@@ -349,12 +448,12 @@ export default function EstoquePage() {
         </div>
       </div>
 
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto !px-2 sm:!px-4">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
-              <th className="px-4 py-3 text-left w-10"></th>
-              <th className="px-4 py-3 text-left w-10">
+              <th className="px-1 sm:px-4 py-3 text-left w-8 sm:w-10"></th>
+              <th className="px-1 sm:px-4 py-3 text-left w-8 sm:w-10">
                 <input
                   type="checkbox"
                   checked={todosSelecionados}
@@ -362,11 +461,11 @@ export default function EstoquePage() {
                   aria-label="Selecionar todos"
                 />
               </th>
-              <th className="px-4 py-3 text-left">Nome</th>
-              <th className="px-4 py-3 text-left">Categoria</th>
-              <th className="px-4 py-3 text-left">Quantidade</th>
-              <th className="px-4 py-3 text-left">Valor Unitário</th>
-              <th className="px-4 py-3 text-left">Valor em Estoque</th>
+              <th className="px-2 sm:px-4 py-3 text-left">Nome</th>
+              <th className="hidden md:table-cell px-4 py-3 text-left">Categoria</th>
+              <th className="px-2 sm:px-4 py-3 text-right sm:text-left">Quantidade</th>
+              <th className="hidden md:table-cell px-4 py-3 text-left">Valor Unitário</th>
+              <th className="hidden sm:table-cell px-4 py-3 text-left">Valor em Estoque</th>
             </tr>
           </thead>
           <tbody>
@@ -383,7 +482,7 @@ export default function EstoquePage() {
                   return (
                   <Fragment key={p.id}>
                   <tr className={`border-b hover:bg-gray-50 ${estoqueAbaixoMinimo(p) ? 'bg-amber-50' : ''}`}>
-                    <td className="px-4 py-3">
+                    <td className="px-1 sm:px-4 py-3">
                       <button
                         onClick={() => toggleExpandir(p.id)}
                         className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors"
@@ -392,7 +491,7 @@ export default function EstoquePage() {
                         {expandidos.has(p.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-1 sm:px-4 py-3">
                       <input
                         type="checkbox"
                         checked={selecionados.has(p.id)}
@@ -400,18 +499,22 @@ export default function EstoquePage() {
                         aria-label={`Selecionar ${p.nomeComercial}`}
                       />
                     </td>
-                    <td className="px-4 py-3 font-medium flex items-center gap-2">
-                      {p.nomeComercial}
-                      {estoqueAbaixoMinimo(p) && (
-                        <span title="Estoque no mínimo ou abaixo">
-                          <AlertTriangle className="w-4 h-4 text-amber-500" />
-                        </span>
-                      )}
+                    <td className="px-2 sm:px-4 py-3">
+                      <span className="font-medium flex items-center gap-2">
+                        {p.nomeComercial}
+                        {estoqueAbaixoMinimo(p) && (
+                          <span title="Estoque no mínimo ou abaixo">
+                            <AlertTriangle className="w-4 h-4 text-amber-500" />
+                          </span>
+                        )}
+                      </span>
+                      {/* No celular a categoria aparece embaixo do nome. */}
+                      <span className="md:hidden block text-xs text-gray-500">{p.categoria}</span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{p.categoria}</td>
-                    <td className="px-4 py-3">{quantidadeEfetiva.toLocaleString('pt-BR')} {p.unidadeMedida}</td>
-                    <td className="px-4 py-3">R$ {(p.valorUnitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-3">
+                    <td className="hidden md:table-cell px-4 py-3 text-gray-600">{p.categoria}</td>
+                    <td className="px-2 sm:px-4 py-3 text-right sm:text-left whitespace-nowrap">{quantidadeEfetiva.toLocaleString('pt-BR')} {p.unidadeMedida}</td>
+                    <td className="hidden md:table-cell px-4 py-3">R$ {(p.valorUnitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="hidden sm:table-cell px-4 py-3">
                       R$ {(quantidadeEfetiva * (p.valorUnitario || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
                   </tr>

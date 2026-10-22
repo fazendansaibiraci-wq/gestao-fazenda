@@ -30,12 +30,13 @@ const formVazio = () => ({
   observacao: '',
 })
 
-export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: any[]; onAtualizado: () => void }) {
+export function RegistrarSaidaProduto({ produtos, onAtualizado, naJanela }: { produtos: any[]; onAtualizado: () => void; naJanela?: boolean }) {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
   const isGestor = role === 'GESTOR' || role === 'GERENTE'
 
-  const [aberto, setAberto] = useState(false)
+  // Dentro da janela da tela de Estoque o formulário já vem aberto.
+  const [aberto, setAberto] = useState(!!naJanela)
   const [locais, setLocais] = useState<any[]>([])
   const [talhoes, setTalhoes] = useState<any[]>([])
   const [safras, setSafras] = useState<any[]>([])
@@ -122,7 +123,8 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
   }
 
   return (
-    <div className="card space-y-4">
+    <div className={naJanela ? 'space-y-4' : 'card space-y-4'}>
+      {!naJanela && (
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-lg flex items-center gap-2">
           <PackageMinus className="w-5 h-5 text-red-600" />
@@ -132,6 +134,7 @@ export function RegistrarSaidaProduto({ produtos, onAtualizado }: { produtos: an
           {aberto ? 'Fechar' : 'Registrar Saída'}
         </button>
       </div>
+      )}
 
       {conferencia && (
         <div ref={conferenciaRef} className="border border-green-300 bg-green-50 rounded-lg p-4 space-y-3">

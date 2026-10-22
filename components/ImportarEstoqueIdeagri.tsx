@@ -27,8 +27,9 @@ const CATEGORIAS = [
   { value: 'outro', label: 'Outro / A Classificar' },
 ]
 
-export function ImportarEstoqueIdeagri({ onImportado }: { onImportado: () => void }) {
-  const [aberto, setAberto] = useState(false)
+export function ImportarEstoqueIdeagri({ onImportado, naJanela, onFechar }: { onImportado: () => void; naJanela?: boolean; onFechar?: () => void }) {
+  // Dentro da janela da tela de Estoque o importador já vem aberto.
+  const [aberto, setAberto] = useState(!!naJanela)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
   const [itens, setItens] = useState<ItemPreview[]>([])
@@ -99,6 +100,10 @@ export function ImportarEstoqueIdeagri({ onImportado }: { onImportado: () => voi
   }
 
   const fechar = () => {
+    if (naJanela) {
+      onFechar?.()
+      return
+    }
     setAberto(false)
     setItens([])
     setErro('')
@@ -119,13 +124,15 @@ export function ImportarEstoqueIdeagri({ onImportado }: { onImportado: () => voi
   }
 
   return (
-    <div className="card space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg">Importar Estoque do Ideagri</h2>
-        <button onClick={fechar} className="text-gray-400 hover:text-gray-600">
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+    <div className={naJanela ? 'space-y-4' : 'card space-y-4'}>
+      {!naJanela && (
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-lg">Importar Estoque do Ideagri</h2>
+          <button onClick={fechar} className="text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {itens.length === 0 && !resultado && (
         <div>

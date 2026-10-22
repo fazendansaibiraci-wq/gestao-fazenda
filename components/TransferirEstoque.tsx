@@ -16,10 +16,11 @@ function fmt(n: number) {
   return (n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
 }
 
-export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[]; onAtualizado: () => void }) {
+export function TransferirEstoque({ produtos, onAtualizado, naJanela }: { produtos: any[]; onAtualizado: () => void; naJanela?: boolean }) {
   const { data: session } = useSession()
   const isGestor = session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE'
-  const [aberto, setAberto] = useState(false)
+  // Dentro da janela da tela de Estoque o formulário já vem aberto.
+  const [aberto, setAberto] = useState(!!naJanela)
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [conferencia, setConferencia] = useState<any | null>(null)
@@ -86,7 +87,8 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
   }
 
   return (
-    <div className="card space-y-4">
+    <div className={naJanela ? 'space-y-4' : 'card space-y-4'}>
+      {!naJanela && (
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-lg flex items-center gap-2">
           <ArrowLeftRight className="w-5 h-5 text-sky-600" />
@@ -96,6 +98,7 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
           {aberto ? 'Fechar' : 'Registrar Transferência'}
         </button>
       </div>
+      )}
 
       {conferencia && (
         <div ref={conferenciaRef} className="border border-green-300 bg-green-50 rounded-lg p-4 space-y-3">
