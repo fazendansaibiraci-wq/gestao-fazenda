@@ -28,6 +28,7 @@ import {
   ArrowLeft,
   CalendarDays,
   UserCog,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -37,6 +38,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(true)
   const [cadastrosAberto, setCadastrosAberto] = useState(false)
   const [combustivelAberto, setCombustivelAberto] = useState(false)
+  const [estoqueAberto, setEstoqueAberto] = useState(false)
   const [resumoMensalAberto, setResumoMensalAberto] = useState(false)
   const { data: session } = useSession()
   const userRole = (session?.user as any)?.role || ''
@@ -75,6 +77,13 @@ export function Sidebar() {
     { label: 'Histórico de Abastecimentos', href: '/modules/combustivel/historico', icon: Fuel },
   ] as { label: string; href: string; icon: typeof Fuel; role?: string; excludeRoles?: string }[]).filter(item => show(item.role, item.excludeRoles))
 
+  // Sub-itens de Estoque. O primeiro usa comparação exata, senão ficaria
+  // marcado também dentro do Histórico (/modules/estoque/transferencias).
+  const estoqueItems = ([
+    { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, exato: true },
+    { label: 'Histórico de Transferências', href: '/modules/estoque/transferencias', icon: ArrowLeftRight, role: 'GESTOR|GERENTE' },
+  ] as { label: string; href: string; icon: typeof Warehouse; role?: string; excludeRoles?: string; exato?: boolean }[]).filter(item => show(item.role, item.excludeRoles))
+
   const operacionalItems = [
     { label: 'Dashboard', href: '/dashboard', icon: Home, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
     { label: 'Registro de Atividades', href: '/modules/atividades', icon: ClipboardList, excludeRoles: 'AGRONOMO' },
@@ -97,6 +106,8 @@ export function Sidebar() {
 
   const cadastroAtivo = cadastroItems.some(i => isActive(i.href))
   const combustivelAtivo = combustivelItems.some(i => isActive(i.href))
+  const estoqueAtivo = isActive('/modules/estoque')
+  const estoqueComSubmenu = estoqueItems.length > 1
   const resumoMensalAtivo = resumoMensalItems.some(i => isActive(i.href))
 
   return (
@@ -121,12 +132,42 @@ export function Sidebar() {
 
           {/* Operacional */}
           {isOpen && <p className="text-xs text-white/40 uppercase font-semibold px-2 pt-2 pb-1">Operacional</p>}
-          {operacionalItems.map(({ label, href, icon: Icon }) => (
-            <Link key={href} href={href} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive(href) ? 'bg-grafite-claro text-white font-semibold shadow-[inset_3px_0_0_#C98B52] [&>svg]:text-cobre' : 'text-[#D6DDDF] hover:bg-white/10'}`}>
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              {isOpen && <span className="truncate">{label}</span>}
-            </Link>
-          ))}
+          {operacionalItems.map(({ label, href, icon: Icon }) =>
+            href === '/modules/estoque' && estoqueComSubmenu ? (
+              <div key={href} className="space-y-1">
+                <button
+                  onClick={() => setEstoqueAberto(o => !o)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${estoqueAtivo ? 'bg-white/10' : 'hover:bg-white/10'} text-[#D6DDDF]`}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {isOpen && (
+                    <>
+                      <span className="flex-1 text-left truncate">{label}</span>
+                      {(estoqueAberto || estoqueAtivo) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </>
+                  )}
+                </button>
+                {(estoqueAberto || estoqueAtivo) && isOpen && (
+                  <div className="ml-4 border-l border-white/20 pl-3 space-y-1">
+                    {estoqueItems.map(({ label: subLabel, href: subHref, icon: SubIcon, exato }) => {
+                      const ativo = exato ? pathname === subHref : isActive(subHref)
+                      return (
+                        <Link key={subHref} href={subHref} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${ativo ? 'bg-grafite-claro text-white font-semibold shadow-[inset_3px_0_0_#C98B52] [&>svg]:text-cobre' : 'text-[#D6DDDF] hover:bg-white/10'}`}>
+                          <SubIcon className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{subLabel}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link key={href} href={href} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive(href) ? 'bg-grafite-claro text-white font-semibold shadow-[inset_3px_0_0_#C98B52] [&>svg]:text-cobre' : 'text-[#D6DDDF] hover:bg-white/10'}`}>
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                {isOpen && <span className="truncate">{label}</span>}
+              </Link>
+            )
+          )}
 
           {show('', 'FUNCIONARIO|AGRONOMO') && (
             <>

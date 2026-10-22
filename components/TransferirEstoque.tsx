@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { ArrowLeftRight, CheckCircle2, X } from 'lucide-react'
 
@@ -19,8 +20,6 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
   const { data: session } = useSession()
   const isGestor = session?.user?.role === 'GESTOR' || session?.user?.role === 'GERENTE'
   const [aberto, setAberto] = useState(false)
-  const [transferencias, setTransferencias] = useState<any[]>([])
-  const [carregandoHistorico, setCarregandoHistorico] = useState(true)
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [conferencia, setConferencia] = useState<any | null>(null)
@@ -36,25 +35,11 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
   })
 
   useEffect(() => {
-    carregarHistorico()
     fetch('/api/locais')
       .then((r) => r.json())
       .then((d) => setLocais((d.data || []).filter((l: any) => l.status)))
       .catch(() => {})
   }, [])
-
-  const carregarHistorico = async () => {
-    setCarregandoHistorico(true)
-    try {
-      const res = await fetch('/api/transferencias-estoque')
-      const data = await res.json()
-      setTransferencias(data.data || [])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setCarregandoHistorico(false)
-    }
-  }
 
   const produtoSelecionado = produtos.find((p) => p.id === form.produtoId)
   const saldoNaOrigem = form.localOrigemId
@@ -88,7 +73,6 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
       // No celular o quadro de conferência pode ficar fora da tela.
       setTimeout(() => conferenciaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
       setForm({ produtoId: '', localOrigemId: '', localDestinoId: '', quantidade: '', data: hojeLocal(), observacao: '' })
-      await carregarHistorico()
       onAtualizado()
     } catch (err) {
       setErro('Erro ao registrar transferência')
@@ -248,45 +232,11 @@ export function TransferirEstoque({ produtos, onAtualizado }: { produtos: any[];
         </form>
       )}
 
-      {aberto && (
-      <div className="border-t pt-4">
-        <p className="text-sm font-medium text-gray-600 mb-2">Histórico de transferências</p>
-        {carregandoHistorico ? (
-          <p className="text-sm text-gray-400">Carregando...</p>
-        ) : transferencias.length === 0 ? (
-          <p className="text-sm text-gray-400">Nenhuma transferência registrada ainda.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-gray-500">
-                  <th className="text-left py-2 px-2">Data</th>
-                  <th className="text-left py-2 px-2">Produto</th>
-                  <th className="text-left py-2 px-2">De</th>
-                  <th className="text-left py-2 px-2">Para</th>
-                  <th className="text-left py-2 px-2">Quantidade</th>
-                  <th className="text-left py-2 px-2">Observação</th>
-                  <th className="text-left py-2 px-2">Registrado por</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transferencias.map((t) => (
-                  <tr key={t.id} className="border-b hover:bg-gray-50">
-                    <td className="py-2 px-2">{new Date(t.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
-                    <td className="py-2 px-2 font-medium">{t.produto?.nomeComercial}</td>
-                    <td className="py-2 px-2">{t.localOrigem?.nome || '—'}</td>
-                    <td className="py-2 px-2">{t.localDestino?.nome || '—'}</td>
-                    <td className="py-2 px-2">{t.quantidade.toLocaleString('pt-BR')} {t.produto?.unidadeMedida}</td>
-                    <td className="py-2 px-2">{t.observacao || '—'}</td>
-                    <td className="py-2 px-2">{t.registradoPor?.name || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="border-t pt-3">
+        <Link href="/modules/estoque/transferencias" className="text-sm font-medium text-primary hover:underline">
+          Ver histórico de transferências →
+        </Link>
       </div>
-      )}
     </div>
   )
 }

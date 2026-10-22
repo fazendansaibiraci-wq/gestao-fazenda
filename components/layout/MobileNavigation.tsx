@@ -20,6 +20,7 @@ import {
   LogOut,
   UserPlus,
   Warehouse,
+  ArrowLeftRight,
   Droplet,
   MapPin,
   ArrowLeft,
@@ -33,6 +34,7 @@ const menuItems = [
   { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Histórico Combustível', curto: 'Histórico', href: '/modules/combustivel/historico', icon: Fuel, role: 'GESTOR|GERENTE' },
   { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
+  { label: 'Histórico Transferências', curto: 'Transferências', href: '/modules/estoque/transferencias', icon: ArrowLeftRight, role: 'GESTOR|GERENTE' },
   { label: 'Turmas', href: '/modules/turmas', icon: UserPlus, role: 'GESTOR|GERENTE' },
   { label: 'Aplicação de Insumos', href: '/modules/aplicacao-insumos', icon: Droplet, role: 'GESTOR|GERENTE' },
   { label: 'Talhões', href: '/modules/talhoes', icon: Leaf, excludeRoles: 'FUNCIONARIO' },
@@ -63,8 +65,15 @@ export function MobileNavigation() {
     setMaisAberto(false)
   }, [pathname])
 
+  // Um item "pai" (ex: Estoque) não fica marcado quando a tela aberta é
+  // de um item "filho" que também está no menu (ex: Histórico de
+  // Transferências), senão os dois apareceriam selecionados.
   const isActive = (href: string) => {
-    return pathname === href || pathname.startsWith(href + '/')
+    if (pathname === href) return true
+    if (!pathname.startsWith(href + '/')) return false
+    return !menuItems.some(
+      (i) => i.href !== href && i.href.startsWith(href + '/') && (pathname === i.href || pathname.startsWith(i.href + '/'))
+    )
   }
 
   const itensFiltrados = menuItems.filter((item) => {

@@ -10,9 +10,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const produtoId = searchParams.get('produtoId')
+    const localId = searchParams.get('localId')
+    const dataInicio = searchParams.get('dataInicio')
+    const dataFim = searchParams.get('dataFim')
 
     const where: any = {}
     if (produtoId) where.produtoId = produtoId
+    // Local: transferências que saíram OU entraram nele.
+    if (localId) where.OR = [{ localOrigemId: localId }, { localDestinoId: localId }]
+    if (dataInicio || dataFim) {
+      where.data = {}
+      if (dataInicio) where.data.gte = new Date(`${dataInicio}T00:00:00-03:00`)
+      if (dataFim) where.data.lte = new Date(`${dataFim}T23:59:59.999-03:00`)
+    }
 
     const transferencias = await prisma.transferenciaEstoque.findMany({
       where,
@@ -22,7 +32,7 @@ export async function GET(request: NextRequest) {
         localDestino: { select: { nome: true } },
         registradoPor: { select: { name: true } },
       },
-      orderBy: { data: 'desc' },
+      orderBy: [{ data: 'desc' }, { dataCriacao: 'desc' }],
     })
 
     return NextResponse.json({ success: true, data: transferencias })
