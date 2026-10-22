@@ -462,7 +462,6 @@ export default function EstoquePage() {
                 />
               </th>
               <th className="px-2 sm:px-4 py-3 text-left">Nome</th>
-              <th className="hidden md:table-cell px-4 py-3 text-left">Categoria</th>
               <th className="px-2 sm:px-4 py-3 text-right sm:text-left">Quantidade</th>
               <th className="hidden md:table-cell px-4 py-3 text-left">Valor Unitário</th>
               <th className="hidden sm:table-cell px-4 py-3 text-left">Valor em Estoque</th>
@@ -471,7 +470,7 @@ export default function EstoquePage() {
           <tbody>
             {produtosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">Nenhum produto encontrado</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">Nenhum produto encontrado</td>
               </tr>
             ) : (
               produtosFiltrados
@@ -508,10 +507,7 @@ export default function EstoquePage() {
                           </span>
                         )}
                       </span>
-                      {/* No celular a categoria aparece embaixo do nome. */}
-                      <span className="md:hidden block text-xs text-gray-500">{p.categoria}</span>
                     </td>
-                    <td className="hidden md:table-cell px-4 py-3 text-gray-600">{p.categoria}</td>
                     <td className="px-2 sm:px-4 py-3 text-right sm:text-left whitespace-nowrap">{quantidadeEfetiva.toLocaleString('pt-BR')} {p.unidadeMedida}</td>
                     <td className="hidden md:table-cell px-4 py-3">R$ {(p.valorUnitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td className="hidden sm:table-cell px-4 py-3">
@@ -520,7 +516,7 @@ export default function EstoquePage() {
                   </tr>
                   {expandidos.has(p.id) && (
                     <tr className="border-b bg-gray-50">
-                      <td colSpan={7} className="px-4 py-4">
+                      <td colSpan={6} className="px-4 py-4">
                         {locaisComSaldo.length === 0 ? (
                           <p className="text-xs text-gray-500">Sem estoque em nenhum local</p>
                         ) : (
