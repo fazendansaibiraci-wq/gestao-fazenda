@@ -135,6 +135,7 @@ domingosPorMes        Int?   @default(2)
   entradasProdutoRegistradas EntradaProduto[]
   ajustesHorimetroRegistrados AjusteHorimetro[]
   transferenciasEstoqueRegistradas TransferenciaEstoque[]
+  devolucoesProdutoRegistradas DevolucaoProduto[]
 
   receitasCriadas  ReceitaBase[]     @relation("ReceitaBaseCriador")
   ajustesReceita   AjusteReceita[]
@@ -311,6 +312,7 @@ model Produto {
   produtosAtividade    ProdutoAtividade[]
   estoqueLocais EstoqueLocal[]
   transferencias TransferenciaEstoque[]
+  devolucoes     DevolucaoProduto[]
 
   @@map("produtos")
 }
@@ -325,6 +327,7 @@ model Local {
   ajustesEstoque AjusteEstoque[]
   transferenciasOrigem  TransferenciaEstoque[] @relation("TransferenciaOrigem")
   transferenciasDestino TransferenciaEstoque[] @relation("TransferenciaDestino")
+  devolucoes            DevolucaoProduto[]
 
   @@map("locais")
 }
@@ -378,14 +381,43 @@ model SaidaProduto {
   registradoPorId String
   local           Local?   @relation(fields: [localId], references: [id])
   localId         String?
+  // Tipo da saída (Consumo, Perda / descarte, Outros) e a atividade em que
+  // o produto foi usado (nome do Tipo de Atividade). Saídas antigas e as
+  // de abastecimento ficam em branco.
+  tipo            String?
+  tipoAtividade   String?
 
   dataCriacao DateTime @default(now())
 
   abastecimento AbastecimentoTrator?
+  devolucoes    DevolucaoProduto[]
 
   @@index([produtoId])
   @@index([talhaoId])
   @@map("saidas_produto")
+}
+
+// Devolução ao estoque de parte de uma saída (sobrou produto). Fica ligada
+// à saída, pra saber quanto foi realmente usado (saída − devoluções).
+model DevolucaoProduto {
+  id              String       @id @default(cuid())
+  saida           SaidaProduto @relation(fields: [saidaId], references: [id])
+  saidaId         String
+  produto         Produto      @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId       String
+  local           Local        @relation(fields: [localId], references: [id])
+  localId         String
+  quantidade      Float
+  data            DateTime
+  observacao      String?
+  registradoPor   User         @relation(fields: [registradoPorId], references: [id])
+  registradoPorId String
+
+  dataCriacao DateTime @default(now())
+
+  @@index([saidaId])
+  @@index([produtoId])
+  @@map("devolucoes_produto")
 }
 
 model AjusteEstoque {

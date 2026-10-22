@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       where: { nomeComercial: { contains: 'DIESEL', mode: 'insensitive' } },
     })
 
-    const [entradasAntigas, entradasNovas, saidas, ajustes, produtos] = await Promise.all([
+    const [entradasAntigas, entradasNovas, saidas, ajustes, produtos, devolucoes] = await Promise.all([
       prisma.entradaDiesel.findMany({
         where: temFiltroData ? { data: whereData } : undefined,
       }),
@@ -52,6 +52,15 @@ export async function GET(request: NextRequest) {
       prisma.produto.findMany({
         where: { status: true },
         orderBy: { nomeComercial: 'asc' },
+      }),
+      prisma.devolucaoProduto.findMany({
+        where: temFiltroData ? { data: whereData } : undefined,
+        include: {
+          produto: { select: { nomeComercial: true, unidadeMedida: true } },
+          registradoPor: { select: { name: true } },
+          local: { select: { nome: true } },
+          saida: { select: { data: true, talhao: { select: { nome: true } }, safra: { select: { nome: true } } } },
+        },
       }),
     ])
 
@@ -91,6 +100,19 @@ export async function GET(request: NextRequest) {
         registradoPor: s.registradoPor?.name || null,
         observacao: s.observacao || null,
         local: s.local?.nome || '—',
+      })),
+      // Devolução (sobra de uma saída que voltou) entra como entrada.
+      ...devolucoes.map((d) => ({
+        data: d.data,
+        tipo: 'entrada' as const,
+        produto: d.produto?.nomeComercial || '',
+        unidade: d.produto?.unidadeMedida || '',
+        quantidade: d.quantidade,
+        talhao: d.saida?.talhao?.nome || null,
+        safra: d.saida?.safra?.nome || null,
+        registradoPor: d.registradoPor?.name || null,
+        observacao: `Devolução da saída de ${d.saida.data.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}${d.observacao ? ` — ${d.observacao}` : ''}`,
+        local: d.local?.nome || '—',
       })),
       ...ajustes.map((a) => ({
         data: a.data,

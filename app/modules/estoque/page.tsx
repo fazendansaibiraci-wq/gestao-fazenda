@@ -6,6 +6,8 @@ import { useSession } from 'next-auth/react'
 import { Search, AlertTriangle, FileSpreadsheet, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { AjustarEstoque } from '@/components/AjustarEstoque'
 import { TransferirEstoque } from '@/components/TransferirEstoque'
+import { RegistrarSaidaProduto } from '@/components/RegistrarSaidaProduto'
+import { RegistrarDevolucaoProduto } from '@/components/RegistrarDevolucaoProduto'
 import { ImportarNFeEstoque } from '@/components/ImportarNFeEstoque'
 import { ImportarEstoqueIdeagri } from '@/components/ImportarEstoqueIdeagri'
 
@@ -293,6 +295,8 @@ export default function EstoquePage() {
 
       <AjustarEstoque produtos={produtos} onAtualizado={load} />
       <TransferirEstoque produtos={produtos} onAtualizado={load} />
+      <RegistrarSaidaProduto produtos={produtos} onAtualizado={load} />
+      <RegistrarDevolucaoProduto onAtualizado={load} />
       <ImportarNFeEstoque onImportado={load} />
       {isGestor && <ImportarEstoqueIdeagri onImportado={load} />}
 

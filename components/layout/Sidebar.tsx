@@ -29,6 +29,7 @@ import {
   CalendarDays,
   UserCog,
   ArrowLeftRight,
+  PackageMinus,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -82,6 +83,7 @@ export function Sidebar() {
   const estoqueItems = ([
     { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, exato: true },
     { label: 'Histórico de Transferências', href: '/modules/estoque/transferencias', icon: ArrowLeftRight, role: 'GESTOR|GERENTE' },
+    { label: 'Saídas e Devoluções', href: '/modules/estoque/saidas', icon: PackageMinus, role: 'GESTOR|GERENTE' },
   ] as { label: string; href: string; icon: typeof Warehouse; role?: string; excludeRoles?: string; exato?: boolean }[]).filter(item => show(item.role, item.excludeRoles))
 
   const operacionalItems = [

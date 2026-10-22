@@ -13,8 +13,26 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const saida = await prisma.saidaProduto.findUnique({ where: { id: params.id } })
+    const saida = await prisma.saidaProduto.findUnique({
+      where: { id: params.id },
+      include: { abastecimento: { select: { id: true } }, _count: { select: { devolucoes: true } } },
+    })
     if (!saida) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
+
+    // Saída de abastecimento é excluída pelo Histórico de Abastecimentos,
+    // senão o abastecimento ficaria sem a saída de diesel.
+    if (saida.abastecimento) {
+      return NextResponse.json(
+        { error: 'Essa saída é de um abastecimento de diesel. Exclua pelo Histórico de Abastecimentos.' },
+        { status: 400 }
+      )
+    }
+    if (saida._count.devolucoes > 0) {
+      return NextResponse.json(
+        { error: 'Essa saída tem devolução registrada. Exclua a devolução primeiro.' },
+        { status: 400 }
+      )
+    }
 
     // Excluir a saída credita a quantidade de volta pro estoque (desfazer).
     // Saídas antigas (antes do controle por local) têm localId nulo — nesse
