@@ -1,6 +1,6 @@
 'use client'
 
-import { Coffee } from 'lucide-react'
+import { Coffee, Pencil } from 'lucide-react'
 
 export interface RegistroDiario {
   data: string
@@ -19,11 +19,15 @@ export interface RegistroDiario {
   isSemPeriodo?: boolean
   motivoFalta: string | null
   passouDiretoAlmoco: boolean
+  // Id do registro de atividade (dias de folga/férias sem registro não têm)
+  registroId?: string | null
 }
 
 interface RegistroDiarioCardProps {
   dia: RegistroDiario
   pagamentoProporcionalDiario?: boolean
+  // Quando informado e o dia tem registro, o cartão vira um botão que abre a edição.
+  onEditar?: (registroId: string) => void
 }
 
 const fmtH = (h: number) => {
@@ -32,10 +36,25 @@ const fmtH = (h: number) => {
   return `${horas}h ${minutos.toString().padStart(2, '0')}min`
 }
 
-export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario }: RegistroDiarioCardProps) {
+export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario, onEditar }: RegistroDiarioCardProps) {
+  const editavel = !!(onEditar && dia.registroId)
   return (
     <div
-      className={`rounded-lg p-3 text-sm ${
+      {...(editavel
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            title: 'Clique para editar este registro',
+            onClick: () => onEditar!(dia.registroId!),
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onEditar!(dia.registroId!)
+              }
+            },
+          }
+        : {})}
+      className={`group rounded-lg p-3 text-sm ${editavel ? 'cursor-pointer hover:ring-2 hover:ring-[#C98B52]/40 focus:outline-none focus:ring-2 focus:ring-[#C98B52]/60 transition-shadow' : ''} ${
         dia.isSemPeriodo
           ? 'bg-amber-50 border border-amber-200'
           : dia.isFalta
@@ -50,10 +69,16 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario }:
       }`}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="font-medium">
+        <span className="font-medium flex items-center gap-1.5">
           {new Date(dia.data).toLocaleDateString('pt-BR', {
             weekday: 'short', day: '2-digit', month: '2-digit'
           })}
+          {editavel && (
+            <span className="inline-flex items-center gap-1 text-xs font-normal text-gray-400 group-hover:text-[#A86F3C]">
+              <Pencil className="w-3 h-3" />
+              <span className="hidden sm:inline opacity-0 group-hover:opacity-100 transition-opacity">editar</span>
+            </span>
+          )}
         </span>
         {dia.isSemPeriodo ? (
           <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">

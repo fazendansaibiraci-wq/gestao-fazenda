@@ -1,8 +1,8 @@
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { redirect, useRouter } from 'next/navigation'
 import {
   DollarSign, Clock, TrendingUp, TrendingDown,
   Calendar, ChevronDown, ChevronUp, FileDown
@@ -43,6 +43,8 @@ function BadgeRegime({ regime }: { regime: 'safra' | 'entressafra' | 'misto' }) 
   return <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">Misto</span>
 }
 
+const CHAVE_VOLTA_RESUMO = 'resumoMensal:volta'
+
 export default function ResumoMensalPage() {
   const { data: session, status } = useSession()
   const [resumo, setResumo] = useState<ResumoFuncionario[]>([])
@@ -75,6 +77,65 @@ export default function ResumoMensalPage() {
   const userRole = (session?.user as any)?.role
   const isFuncionario = userRole === 'FUNCIONARIO'
 
+  const router = useRouter()
+  // Só a resposta da busca mais recente vale (evita uma busca antiga
+  // chegar depois e sobrescrever o mês restaurado).
+  const ultimaBusca = useRef(0)
+  // Posição da tela pra restaurar quando voltar da edição de um registro.
+  const [scrollParaRestaurar, setScrollParaRestaurar] = useState<number | null>(null)
+
+  // Voltando da tela de edição: restaura mês/período, aba, busca e
+  // funcionários abertos que estavam na tela quando o dia foi clicado.
+  useEffect(() => {
+    try {
+      const salvo = sessionStorage.getItem(CHAVE_VOLTA_RESUMO)
+      if (!salvo) return
+      sessionStorage.removeItem(CHAVE_VOLTA_RESUMO)
+      const v = JSON.parse(salvo)
+      if (!v || Date.now() - (v.em || 0) > 2 * 60 * 60 * 1000) return
+      if (v.mes) setMes(v.mes)
+      if (v.ano) setAno(v.ano)
+      if (v.modoPeriodo) setModoPeriodo(v.modoPeriodo)
+      if (v.dataInicioCustom) setDataInicioCustom(v.dataInicioCustom)
+      if (v.dataFimCustom) setDataFimCustom(v.dataFimCustom)
+      if (v.periodoAplicado) setPeriodoAplicado(v.periodoAplicado)
+      if (v.abaTipoSalario) setAbaTipoSalario(v.abaTipoSalario)
+      if (typeof v.buscaFuncionario === 'string') setBuscaFuncionario(v.buscaFuncionario)
+      if (Array.isArray(v.expandidos)) setExpandidos(v.expandidos)
+      if (typeof v.scrollY === 'number') setScrollParaRestaurar(v.scrollY)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (!loading && scrollParaRestaurar !== null) {
+      const y = scrollParaRestaurar
+      setScrollParaRestaurar(null)
+      setTimeout(() => window.scrollTo(0, y), 50)
+    }
+  }, [loading, scrollParaRestaurar])
+
+  const abrirEdicaoRegistro = (registroId: string) => {
+    try {
+      sessionStorage.setItem(
+        CHAVE_VOLTA_RESUMO,
+        JSON.stringify({
+          em: Date.now(),
+          mes,
+          ano,
+          modoPeriodo,
+          dataInicioCustom,
+          dataFimCustom,
+          periodoAplicado,
+          abaTipoSalario,
+          buscaFuncionario,
+          expandidos,
+          scrollY: window.scrollY,
+        })
+      )
+    } catch {}
+    router.push(`/modules/atividades/${registroId}`)
+  }
+
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
     if (status === 'authenticated') {
@@ -84,6 +145,7 @@ export default function ResumoMensalPage() {
   }, [status, mes, ano, modoPeriodo, periodoAplicado])
 
   const load = async () => {
+    const minhaBusca = ++ultimaBusca.current
     try {
       setLoading(true)
       const query = periodoCustomizadoAtivo
@@ -91,6 +153,7 @@ export default function ResumoMensalPage() {
         : `mes=${mes}&ano=${ano}`
       const res = await fetch(`/api/resumo-mensal?${query}`)
       const data = await res.json()
+      if (minhaBusca !== ultimaBusca.current) return
       setResumo(data.data?.resumo || [])
       setDiasSemPeriodo(data.data?.diasSemPeriodo || [])
       setFuncionariosSemSalario(data.data?.funcionariosSemSalario || [])
@@ -100,7 +163,7 @@ export default function ResumoMensalPage() {
     } catch (err) {
       console.error(err)
     } finally {
-      setLoading(false)
+      if (minhaBusca === ultimaBusca.current) setLoading(false)
     }
   }
 
@@ -696,6 +759,7 @@ export default function ResumoMensalPage() {
                                       key={idx}
                                       dia={dia}
                                       pagamentoProporcionalDiario={r.funcionario.pagamentoProporcionalDiario}
+                                      onEditar={abrirEdicaoRegistro}
                                     />
                                   ))
                                 )}

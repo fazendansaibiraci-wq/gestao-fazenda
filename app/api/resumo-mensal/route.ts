@@ -527,6 +527,11 @@ export async function GET(request: NextRequest) {
       //   linha de aviso "Sem período/salário cadastrado" em vez de
       //   Folga — não dá pra saber se seria dia de trabalho ou folga sem
       //   saber o regime e a jornada.
+      // Cada dia com registro leva o id dele, pra tela poder abrir a edição.
+      registrosDiarios.forEach((d, i) => {
+        ;(d as any).registroId = registrosFuncionario[i].id
+      })
+
       const diasComRegistro = new Set(registrosFuncionario.map((r) => r.data.toISOString().split('T')[0]))
       const folgasSemRegistro: typeof registrosDiarios = []
       {
