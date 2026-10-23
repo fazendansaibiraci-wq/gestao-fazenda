@@ -95,7 +95,7 @@ export default function HistoricoSaidasPage() {
     excluir(
       `/api/saidas-produto/${s.id}`,
       s.id,
-      `Excluir a saída de ${fmt(s.quantidade)} ${s.produto?.unidadeMedida} de ${s.produto?.nomeComercial} (${dataBR(s.data)})?\n\nA quantidade volta para ${s.local?.nome || 'o estoque'}.`
+      `Excluir a saída de ${fmt(s.quantidade)} ${s.produto?.unidadeMedida} de ${s.produto?.nomeComercial} (${dataBR(s.data)})?\n\nA quantidade volta para ${s.local?.nome || 'o estoque'}.${s.lancadoIdeagriEm ? '\n\n⚠ Essa movimentação JÁ FOI LANÇADA NO IDEAGRI. Depois de excluir aqui, desfaça também no Ideagri.' : ''}`
     )
 
   const limparFiltros = () => {

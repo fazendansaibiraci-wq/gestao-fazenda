@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Upload, X, Check, AlertTriangle } from 'lucide-react'
 
 interface ItemPreview {
@@ -36,6 +37,22 @@ export function ImportarEstoqueIdeagri({ onImportado, naJanela, onFechar }: { on
   const [linhasNaoReconhecidas, setLinhasNaoReconhecidas] = useState<string[]>([])
   const [confirmando, setConfirmando] = useState(false)
   const [resultado, setResultado] = useState<{ criados: number; atualizados: number } | null>(null)
+  // Movimentações do app ainda não lançadas no Ideagri: o CSV apagaria.
+  const [pendencias, setPendencias] = useState<any[]>([])
+  const [confirmouPendencias, setConfirmouPendencias] = useState(false)
+
+  const carregarPendencias = () =>
+    fetch('/api/pendencias-ideagri')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setPendencias(d?.data || []))
+      .catch(() => {})
+
+  useEffect(() => {
+    if (aberto) {
+      carregarPendencias()
+      setConfirmouPendencias(false)
+    }
+  }, [aberto])
 
   const handleArquivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -80,7 +97,7 @@ export function ImportarEstoqueIdeagri({ onImportado, naJanela, onFechar }: { on
       const res = await fetch('/api/produtos/importar-estoque/confirmar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itens: itensIncluidos }),
+        body: JSON.stringify({ itens: itensIncluidos, confirmarPendencias: confirmouPendencias }),
       })
       const data = await res.json()
 
@@ -91,6 +108,10 @@ export function ImportarEstoqueIdeagri({ onImportado, naJanela, onFechar }: { on
 
       setResultado(data.data)
       setItens([])
+      setPendencias([])
+      try {
+        window.dispatchEvent(new Event('pendencias-ideagri'))
+      } catch {}
       onImportado()
     } catch (err) {
       setErro('Erro ao gravar os produtos')
@@ -152,6 +173,33 @@ export function ImportarEstoqueIdeagri({ onImportado, naJanela, onFechar }: { on
         <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg text-sm">
           <Check className="w-4 h-4 shrink-0" />
           Importação concluída: {resultado.criados} produto(s) criado(s), {resultado.atualizados} atualizado(s).
+        </div>
+      )}
+
+      {pendencias.length > 0 && !resultado && (
+        <div className="border border-[#E9C9A6] bg-[#FBF3EA] rounded-lg p-3 space-y-2 text-sm">
+          <p className="flex items-start gap-2 font-medium text-[#7A4A1E]">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            Atenção: {pendencias.length} {pendencias.length === 1 ? 'movimentação feita no app ainda não está marcada' : 'movimentações feitas no app ainda não estão marcadas'} como lançada no Ideagri.
+          </p>
+          <p className="text-gray-700">
+            O CSV substitui os saldos do app pelos do Ideagri. O que não estiver no Ideagri vai sumir do estoque do app.
+          </p>
+          <ul className="text-xs text-gray-700 space-y-0.5 pl-6 list-disc">
+            {pendencias.slice(0, 8).map((p: any) => (
+              <li key={p.chave}>
+                {p.titulo} — {p.detalhe} <span className="text-gray-500">({p.registradoPor || '—'})</span>
+              </li>
+            ))}
+            {pendencias.length > 8 && <li>e mais {pendencias.length - 8}…</li>}
+          </ul>
+          <Link href="/modules/estoque/ideagri" className="inline-block text-primary font-medium hover:underline">
+            Ver pendências no Ideagri →
+          </Link>
+          <label className="flex items-start gap-2 pt-1 cursor-pointer">
+            <input type="checkbox" checked={confirmouPendencias} onChange={(e) => setConfirmouPendencias(e.target.checked)} className="mt-0.5" />
+            <span>Confirmo que tudo isso já está lançado no Ideagri (vão ser marcadas como lançadas).</span>
+          </label>
         </div>
       )}
 
@@ -229,7 +277,7 @@ export function ImportarEstoqueIdeagri({ onImportado, naJanela, onFechar }: { on
             <button onClick={fechar} className="px-4 py-2 rounded-lg border">Cancelar</button>
             <button
               onClick={handleConfirmar}
-              disabled={confirmando}
+              disabled={confirmando || (pendencias.length > 0 && !confirmouPendencias)}
               className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-50"
             >
               {confirmando ? 'Gravando...' : `Confirmar importação (${itens.filter(i => i.incluir !== false).length} produtos)`}

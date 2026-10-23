@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { usePendenciasIdeagri } from '@/lib/usePendenciasIdeagri'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Home,
@@ -24,6 +25,7 @@ import {
   PackageMinus,
   PackagePlus,
   FileUp,
+  CheckCheck,
   Droplet,
   MapPin,
   ArrowLeft,
@@ -37,6 +39,7 @@ const menuItems = [
   { label: 'Combustível', href: '/modules/combustivel', icon: Fuel, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
   { label: 'Histórico Combustível', curto: 'Histórico', href: '/modules/combustivel/historico', icon: Fuel, role: 'GESTOR|GERENTE' },
   { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, excludeRoles: 'FUNCIONARIO|AGRONOMO' },
+  { label: 'Pendências no Ideagri', curto: 'Ideagri', href: '/modules/estoque/ideagri', icon: CheckCheck, role: 'GESTOR|GERENTE' },
   { label: 'Entradas de NF-e', curto: 'NF-e', href: '/modules/estoque/entradas', icon: FileUp, role: 'GESTOR|GERENTE' },
   { label: 'Histórico Transferências', curto: 'Transferências', href: '/modules/estoque/transferencias', icon: ArrowLeftRight, role: 'GESTOR|GERENTE' },
   { label: 'Histórico Saídas', curto: 'Saídas', href: '/modules/estoque/saidas', icon: PackageMinus, role: 'GESTOR|GERENTE' },
@@ -64,6 +67,7 @@ export function MobileNavigation() {
   const router = useRouter()
   const { data: session } = useSession()
   const userRole = (session?.user as any)?.role || ''
+  const pendenciasIdeagri = usePendenciasIdeagri(userRole === 'GESTOR' || userRole === 'GERENTE')
   // Menu "Mais" abre/fecha no toque (antes dependia de "hover", que no
   // celular é imprevisível) e fecha sozinho ao trocar de tela.
   const [maisAberto, setMaisAberto] = useState(false)
@@ -125,7 +129,14 @@ export function MobileNavigation() {
             maisAberto || itensMais.some((i) => isActive(i.href)) ? 'text-primary' : 'text-gray-500'
           }`}
         >
-          <MoreHorizontal className="w-6 h-6 flex-shrink-0" />
+          <span className="relative">
+            <MoreHorizontal className="w-6 h-6 flex-shrink-0" />
+            {pendenciasIdeagri > 0 && itensMais.some((i) => i.href === '/modules/estoque/ideagri') && (
+              <span className="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#C98B52] text-white text-[10px] font-bold flex items-center justify-center">
+                {pendenciasIdeagri}
+              </span>
+            )}
+          </span>
           <span className="text-xs">Mais</span>
         </button>
       </div>
@@ -147,7 +158,12 @@ export function MobileNavigation() {
                 }`}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm">{label}</span>
+                <span className="text-sm flex-1">{label}</span>
+                {href === '/modules/estoque/ideagri' && pendenciasIdeagri > 0 && (
+                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-[#C98B52] text-white text-xs font-bold flex items-center justify-center">
+                    {pendenciasIdeagri}
+                  </span>
+                )}
               </Link>
             ))}
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { contarPendenciasIdeagri, marcarTodasPendentesIdeagri } from '@/lib/pendenciasIdeagri'
 
 // Produtos que existem no sistema mas não aparecem mais no relatório
 // do Ideagri (confirmado com o usuário: não existem mais em lugar
@@ -40,6 +41,20 @@ export async function POST(request: NextRequest) {
 
     if (!Array.isArray(itens) || itens.length === 0) {
       return NextResponse.json({ error: 'Nenhum item para importar' }, { status: 400 })
+    }
+
+    // O CSV substitui os saldos do app. Se tem movimentação feita no app que
+    // não foi marcada como lançada no Ideagri, ela seria apagada: só segue
+    // com a confirmação de que já está no Ideagri (e aí marca como lançada).
+    const pendencias = await contarPendenciasIdeagri(prisma)
+    if (pendencias > 0) {
+      if (!body.confirmarPendencias) {
+        return NextResponse.json(
+          { error: `Existem ${pendencias} movimentação(ões) do app ainda não lançadas no Ideagri. Confira antes de importar.`, pendencias },
+          { status: 409 }
+        )
+      }
+      await marcarTodasPendentesIdeagri(prisma, (session.user as any)?.name || null)
     }
 
     // Lista completa dos locais cadastrados — usada pra zerar, em cada

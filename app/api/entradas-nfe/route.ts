@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
           local: e.local?.nome || null,
           valorTotal: 0,
           podeExcluir: true,
+          lancadoIdeagri: false,
           itens: [] as any[],
         })
       }
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest) {
       // Entradas antigas (sem local) foram depois recalculadas pela
       // importação do Ideagri: desfazer agora deixaria o saldo errado.
       if (!e.localId) nota.podeExcluir = false
+      if (e.lancadoIdeagriEm) nota.lancadoIdeagri = true
       nota.itens.push({
         id: e.id,
         produtoId: e.produtoId,

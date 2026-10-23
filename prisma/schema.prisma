@@ -348,6 +348,9 @@ model TransferenciaEstoque {
   registradoPor      User   @relation(fields: [registradoPorId], references: [id])
   registradoPorId    String
 
+  // Fila de conferência: quando foi lançado também no Ideagri e por quem.
+  lancadoIdeagriEm  DateTime?
+  lancadoIdeagriPor String?
   dataCriacao DateTime @default(now())
 
   @@index([produtoId])
@@ -389,6 +392,9 @@ model SaidaProduto {
   tipo            String?
   tipoAtividade   String?
 
+  // Fila de conferência: quando foi lançado também no Ideagri e por quem.
+  lancadoIdeagriEm  DateTime?
+  lancadoIdeagriPor String?
   dataCriacao DateTime @default(now())
 
   abastecimento AbastecimentoTrator?
@@ -415,6 +421,9 @@ model DevolucaoProduto {
   registradoPor   User         @relation(fields: [registradoPorId], references: [id])
   registradoPorId String
 
+  // Fila de conferência: quando foi lançado também no Ideagri e por quem.
+  lancadoIdeagriEm  DateTime?
+  lancadoIdeagriPor String?
   dataCriacao DateTime @default(now())
 
   @@index([saidaId])
@@ -436,6 +445,9 @@ model AjusteEstoque {
   local              Local?   @relation(fields: [localId], references: [id])
   localId            String?
 
+  // Fila de conferência: quando foi lançado também no Ideagri e por quem.
+  lancadoIdeagriEm  DateTime?
+  lancadoIdeagriPor String?
   dataCriacao DateTime @default(now())
 
   @@index([produtoId])
@@ -482,6 +494,9 @@ model EntradaProduto {
   unidadeNF       String?
   fatorConversao  Float?
 
+  // Fila de conferência: quando foi lançado também no Ideagri e por quem.
+  lancadoIdeagriEm  DateTime?
+  lancadoIdeagriPor String?
   dataCriacao DateTime @default(now())
 
   @@index([produtoId])

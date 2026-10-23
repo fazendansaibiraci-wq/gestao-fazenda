@@ -74,7 +74,7 @@ export default function EntradasNFePage() {
   const excluir = async (nota: any) => {
     if (
       !confirm(
-        `Excluir a entrada da nota ${nota.numeroNota || ''} de ${nota.fornecedor || ''}?\n\nOs ${nota.itens.length} produto(s) saem de novo do estoque de ${nota.local || 'o local'}.`
+        `Excluir a entrada da nota ${nota.numeroNota || ''} de ${nota.fornecedor || ''}?\n\nOs ${nota.itens.length} produto(s) saem de novo do estoque de ${nota.local || 'o local'}.${nota.lancadoIdeagri ? '\n\n⚠ Essa movimentação JÁ FOI LANÇADA NO IDEAGRI. Depois de excluir aqui, desfaça também no Ideagri.' : ''}`
       )
     )
       return

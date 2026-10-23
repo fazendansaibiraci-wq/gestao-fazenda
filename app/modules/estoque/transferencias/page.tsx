@@ -66,7 +66,7 @@ export default function HistoricoTransferenciasPage() {
   }
 
   const handleExcluir = async (t: any) => {
-    const texto = `Excluir a transferência de ${fmt(t.quantidade)} ${t.produto?.unidadeMedida} de ${t.produto?.nomeComercial} (${t.localOrigem?.nome} → ${t.localDestino?.nome})?\n\nA quantidade volta para ${t.localOrigem?.nome} e sai de ${t.localDestino?.nome}.`
+    const texto = `Excluir a transferência de ${fmt(t.quantidade)} ${t.produto?.unidadeMedida} de ${t.produto?.nomeComercial} (${t.localOrigem?.nome} → ${t.localDestino?.nome})?\n\nA quantidade volta para ${t.localOrigem?.nome} e sai de ${t.localDestino?.nome}.${t.lancadoIdeagriEm ? '\n\n⚠ Essa movimentação JÁ FOI LANÇADA NO IDEAGRI. Depois de excluir aqui, desfaça também no Ideagri.' : ''}`
     if (!confirm(texto)) return
     setExcluindoId(t.id)
     try {

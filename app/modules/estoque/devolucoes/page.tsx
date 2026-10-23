@@ -66,7 +66,7 @@ export default function HistoricoDevolucoesPage() {
 
   const excluir = async (d: any) => {
     const u = d.produto?.unidadeMedida || ''
-    if (!confirm(`Excluir a devolução de ${fmt(d.quantidade)} ${u} de ${d.produto?.nomeComercial} (${dataBR(d.data)})?\n\nA quantidade sai de novo de ${d.local?.nome}.`)) return
+    if (!confirm(`Excluir a devolução de ${fmt(d.quantidade)} ${u} de ${d.produto?.nomeComercial} (${dataBR(d.data)})?\n\nA quantidade sai de novo de ${d.local?.nome}.${d.lancadoIdeagriEm ? '\n\n⚠ Essa movimentação JÁ FOI LANÇADA NO IDEAGRI. Depois de excluir aqui, desfaça também no Ideagri.' : ''}`)) return
     setExcluindoId(d.id)
     try {
       const res = await fetch(`/api/devolucoes-produto/${d.id}`, { method: 'DELETE' })

@@ -24,6 +24,8 @@ import { RegistrarSaidaProduto } from '@/components/RegistrarSaidaProduto'
 import { RegistrarDevolucaoProduto } from '@/components/RegistrarDevolucaoProduto'
 import { ImportarNFeEstoque } from '@/components/ImportarNFeEstoque'
 import { ImportarEstoqueIdeagri } from '@/components/ImportarEstoqueIdeagri'
+import Link from 'next/link'
+import { usePendenciasIdeagri } from '@/lib/usePendenciasIdeagri'
 
 type AcaoEstoque = 'saida' | 'devolucao' | 'transferencia' | 'ajuste' | 'nfe' | 'ideagri'
 
@@ -64,6 +66,7 @@ export default function EstoquePage() {
   const [localIdFiltro, setLocalIdFiltro] = useState('')
   // Qual ação está aberta na janela (null = nenhuma).
   const [acaoAberta, setAcaoAberta] = useState<AcaoEstoque | null>(null)
+  const pendenciasIdeagri = usePendenciasIdeagri(isGestor)
 
   useEffect(() => {
     if (status === 'unauthenticated') redirect('/login')
@@ -349,6 +352,18 @@ export default function EstoquePage() {
           </p>
         </div>
       </div>
+
+      {isGestor && pendenciasIdeagri > 0 && (
+        <Link
+          href="/modules/estoque/ideagri"
+          className="flex items-center justify-between gap-3 rounded-xl border border-[#E9C9A6] bg-[#FBF3EA] px-4 py-3 text-sm hover:bg-[#F7EADB]"
+        >
+          <span>
+            <strong>{pendenciasIdeagri}</strong> {pendenciasIdeagri === 1 ? 'movimentação feita no app ainda não foi lançada' : 'movimentações feitas no app ainda não foram lançadas'} no Ideagri.
+          </span>
+          <span className="font-medium text-primary whitespace-nowrap">Ver pendências →</span>
+        </Link>
+      )}
 
       {isGestor && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">

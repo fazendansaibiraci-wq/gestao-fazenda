@@ -32,8 +32,10 @@ import {
   PackageMinus,
   PackagePlus,
   FileUp,
+  CheckCheck,
 } from 'lucide-react'
 import { useState } from 'react'
+import { usePendenciasIdeagri } from '@/lib/usePendenciasIdeagri'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -45,6 +47,7 @@ export function Sidebar() {
   const [resumoMensalAberto, setResumoMensalAberto] = useState(false)
   const { data: session } = useSession()
   const userRole = (session?.user as any)?.role || ''
+  const pendenciasIdeagri = usePendenciasIdeagri(userRole === 'GESTOR' || userRole === 'GERENTE')
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
@@ -84,6 +87,7 @@ export function Sidebar() {
   // marcado também dentro do Histórico (/modules/estoque/transferencias).
   const estoqueItems = ([
     { label: 'Estoque', href: '/modules/estoque', icon: Warehouse, exato: true },
+    { label: 'Pendências no Ideagri', href: '/modules/estoque/ideagri', icon: CheckCheck, role: 'GESTOR|GERENTE' },
     { label: 'Entradas de NF-e', href: '/modules/estoque/entradas', icon: FileUp, role: 'GESTOR|GERENTE' },
     { label: 'Histórico de Transferências', href: '/modules/estoque/transferencias', icon: ArrowLeftRight, role: 'GESTOR|GERENTE' },
     { label: 'Histórico de Saídas', href: '/modules/estoque/saidas', icon: PackageMinus, role: 'GESTOR|GERENTE' },
@@ -149,6 +153,11 @@ export function Sidebar() {
                   {isOpen && (
                     <>
                       <span className="flex-1 text-left truncate">{label}</span>
+                      {pendenciasIdeagri > 0 && (
+                        <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-[#C98B52] text-white text-xs font-bold flex items-center justify-center" title="Pendências no Ideagri">
+                          {pendenciasIdeagri}
+                        </span>
+                      )}
                       {(estoqueAberto || estoqueAtivo) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </>
                   )}
@@ -160,7 +169,12 @@ export function Sidebar() {
                       return (
                         <Link key={subHref} href={subHref} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${ativo ? 'bg-grafite-claro text-white font-semibold shadow-[inset_3px_0_0_#C98B52] [&>svg]:text-cobre' : 'text-[#D6DDDF] hover:bg-white/10'}`}>
                           <SubIcon className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate">{subLabel}</span>
+                          <span className="truncate flex-1">{subLabel}</span>
+                          {subHref === '/modules/estoque/ideagri' && pendenciasIdeagri > 0 && (
+                            <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-[#C98B52] text-white text-xs font-bold flex items-center justify-center">
+                              {pendenciasIdeagri}
+                            </span>
+                          )}
                         </Link>
                       )
                     })}
