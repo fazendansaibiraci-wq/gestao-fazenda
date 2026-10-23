@@ -114,6 +114,34 @@ export default function ResumoMensalPage() {
     }
   }, [loading, scrollParaRestaurar])
 
+  const [excluindoRegistro, setExcluindoRegistro] = useState<string | null>(null)
+
+  const excluirRegistro = async (nomeFuncionario: string, dia: RegistroDiario) => {
+    if (!dia.registroId) return
+    const data = new Date(dia.data).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
+    const horario = dia.isFalta
+      ? `Falta${dia.motivoFalta ? ` (${dia.motivoFalta})` : ''}`
+      : `${dia.horaEntrada || '—'} às ${dia.horaSaida || '—'}`
+    if (!confirm(`Excluir o lançamento de ${nomeFuncionario}?\n\n${data}\n${horario}\n\nEssa ação não pode ser desfeita.`)) return
+    setExcluindoRegistro(dia.registroId)
+    try {
+      const res = await fetch(`/api/registros-atividade/${dia.registroId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        alert(d.error || 'Erro ao excluir')
+        return
+      }
+      // Recarrega mantendo o mês e o funcionário abertos.
+      const y = window.scrollY
+      await load()
+      setTimeout(() => window.scrollTo(0, y), 50)
+    } catch (err) {
+      alert('Erro ao excluir')
+    } finally {
+      setExcluindoRegistro(null)
+    }
+  }
+
   const abrirEdicaoRegistro = (registroId: string) => {
     try {
       sessionStorage.setItem(
@@ -760,6 +788,8 @@ export default function ResumoMensalPage() {
                                       dia={dia}
                                       pagamentoProporcionalDiario={r.funcionario.pagamentoProporcionalDiario}
                                       onEditar={abrirEdicaoRegistro}
+                                      onExcluir={(d) => excluirRegistro(r.funcionario.name, d)}
+                                      excluindo={excluindoRegistro === dia.registroId}
                                     />
                                   ))
                                 )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { Coffee, Pencil } from 'lucide-react'
+import { Coffee, Pencil, Trash2 } from 'lucide-react'
 
 export interface RegistroDiario {
   data: string
@@ -28,6 +28,9 @@ interface RegistroDiarioCardProps {
   pagamentoProporcionalDiario?: boolean
   // Quando informado e o dia tem registro, o cartão vira um botão que abre a edição.
   onEditar?: (registroId: string) => void
+  // Quando informado e o dia tem registro, mostra a lixeira pra excluir o lançamento.
+  onExcluir?: (dia: RegistroDiario) => void
+  excluindo?: boolean
 }
 
 const fmtH = (h: number) => {
@@ -36,8 +39,9 @@ const fmtH = (h: number) => {
   return `${horas}h ${minutos.toString().padStart(2, '0')}min`
 }
 
-export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario, onEditar }: RegistroDiarioCardProps) {
+export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario, onEditar, onExcluir, excluindo }: RegistroDiarioCardProps) {
   const editavel = !!(onEditar && dia.registroId)
+  const excluivel = !!(onExcluir && dia.registroId)
   return (
     <div
       {...(editavel
@@ -80,43 +84,62 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario, o
             </span>
           )}
         </span>
-        {dia.isSemPeriodo ? (
-          <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-            ⚠️ Sem período cadastrado
-          </span>
-        ) : dia.isFalta ? (
-          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-            Falta {dia.motivoFalta ? `— ${dia.motivoFalta}` : ''}
-          </span>
-        ) : dia.isFerias ? (
-          <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
-            Férias
-          </span>
-        ) : dia.isFeriado ? (
-          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-            Feriado{dia.horasExtras > 0 ? ` · +${fmtH(dia.horasExtras)} extras` : ''}
-          </span>
-        ) : dia.isFolga ? (
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-            Folga
-          </span>
-        ) : dia.horasExtras > 0 ? (
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-            +{fmtH(dia.horasExtras)} extras
-          </span>
-        ) : dia.horasDevidas > 0 && !pagamentoProporcionalDiario ? (
-          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
-            -{fmtH(dia.horasDevidas)} devidas
-          </span>
-        ) : dia.horasDevidas > 0 && pagamentoProporcionalDiario ? (
-          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-            {fmtH(dia.horasTrabalhadas)} trabalhadas
-          </span>
-        ) : (
-          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-            Normal
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {dia.isSemPeriodo ? (
+            <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+              ⚠️ Sem período cadastrado
+            </span>
+          ) : dia.isFalta ? (
+            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+              Falta {dia.motivoFalta ? `— ${dia.motivoFalta}` : ''}
+            </span>
+          ) : dia.isFerias ? (
+            <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">
+              Férias
+            </span>
+          ) : dia.isFeriado ? (
+            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+              Feriado{dia.horasExtras > 0 ? ` · +${fmtH(dia.horasExtras)} extras` : ''}
+            </span>
+          ) : dia.isFolga ? (
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+              Folga
+            </span>
+          ) : dia.horasExtras > 0 ? (
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+              +{fmtH(dia.horasExtras)} extras
+            </span>
+          ) : dia.horasDevidas > 0 && !pagamentoProporcionalDiario ? (
+            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+              -{fmtH(dia.horasDevidas)} devidas
+            </span>
+          ) : dia.horasDevidas > 0 && pagamentoProporcionalDiario ? (
+            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+              {fmtH(dia.horasTrabalhadas)} trabalhadas
+            </span>
+          ) : (
+            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+              Normal
+            </span>
+          )}
+          {excluivel && (
+            <button
+              type="button"
+              onClick={(e) => {
+                // Não abre a edição ao clicar na lixeira.
+                e.stopPropagation()
+                onExcluir!(dia)
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+              disabled={excluindo}
+              className="p-1.5 -my-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40 transition-colors"
+              title="Excluir este lançamento"
+              aria-label="Excluir este lançamento"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {!dia.isFalta && !dia.isFolga && !(dia.isSemPeriodo && !dia.horaEntrada) && (
