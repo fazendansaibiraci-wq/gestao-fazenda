@@ -6,6 +6,7 @@ import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 import { buscarPeriodosRegimeSalarial, obterRegimeNaData, mensagemPeriodoNaoCadastrado } from '@/lib/regimeSalarial'
 import { buscarPeriodosComId, obterPeriodoNaData, buscarSalarioPeriodoFuncionario, mensagemSalarioNaoCadastrado, shimsParaCargaHoraria } from '@/lib/salarioPeriodo'
 import { validarMaquinasAdicionais, atualizarUltimoHorimetroMaquinasAdicionais, MaquinaAdicionalInput } from '@/lib/registroAtividadeMaquinas'
+import { descontoAlmocoHoras } from '@/lib/almoco'
 
 export async function GET(
   request: NextRequest,
@@ -219,7 +220,17 @@ export async function PUT(
       const horasBrutas = (saida - entrada) / 60
       const isAjusteHorimetroCalc = body.isAjusteHorimetro !== undefined ? body.isAjusteHorimetro : registro.isAjusteHorimetro
       if (!body.isFalta && !isAjusteHorimetroCalc) {
-        horasCalculadas = body.passouDiretoAlmoco ? horasBrutas : Math.max(0, horasBrutas - 1)
+        // Almoço fixo 11h–12h: desconta só o que o lançamento pega desse horário.
+        horasCalculadas = Math.max(
+          0,
+          horasBrutas -
+            descontoAlmocoHoras({
+              data: body.data ?? registro.data,
+              horaEntrada: body.horaEntrada,
+              horaSaida: body.horaSaida,
+              passouDiretoAlmoco: !!body.passouDiretoAlmoco,
+            })
+        )
       }
       ehHoraExtra = horasCalculadas !== null && horasCalculadas > cargaHorariaDia
     }

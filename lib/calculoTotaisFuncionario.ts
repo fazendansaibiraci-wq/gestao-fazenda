@@ -1,4 +1,5 @@
 import { calcularHorasBrutas } from './calculoHorasBrutas'
+import { horasLiquidasLancamento, usaRegraAlmocoFixo } from './almoco'
 
 interface RegistroParaCalculo {
   id: string
@@ -9,6 +10,7 @@ interface RegistroParaCalculo {
   horasprevistasdia: number | null
   isFalta: boolean
   passouDiretoAlmoco?: boolean
+  isAjusteHorimetro?: boolean
 }
 
 function chaveDataDoRegistro(data: Date | string): string {
@@ -58,7 +60,21 @@ export function calcularTotaisHoras(
     // Com um único registro no dia, horasCalculadas já reflete corretamente
     // o desconto de almoço (ou a regra de passouDiretoAlmoco) daquele turno.
     let somaHorasDia: number
-    if (regsDoDia.length === 1) {
+    if (usaRegraAlmocoFixo(chaveData)) {
+      // Almoço fixo 11h–12h (desde 01/10/2026): cada lançamento desconta só o
+      // que pega do horário de almoço, então o dia é a soma dos lançamentos,
+      // um ou vários, colados ou com intervalo.
+      somaHorasDia = regsDoDia.reduce((acc, r) => {
+        // Sem saída ou ajuste de horímetro: fica como foi salvo.
+        if (!r.horaSaida || r.isAjusteHorimetro) return acc + (r.horasCalculadas || 0)
+        return acc + horasLiquidasLancamento({
+          data: chaveData,
+          horaEntrada: r.horaEntrada,
+          horaSaida: r.horaSaida,
+          passouDiretoAlmoco: r.passouDiretoAlmoco,
+        })
+      }, 0)
+    } else if (regsDoDia.length === 1) {
       somaHorasDia = regsDoDia[0].horasCalculadas || 0
     } else {
       // Com múltiplos registros (turnos no mesmo dia), somamos as horas

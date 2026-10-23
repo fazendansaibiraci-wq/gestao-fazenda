@@ -7,6 +7,7 @@ import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 import { TIPO_ATIVIDADE_AJUSTE_HORIMETRO, NAO_IDENTIFICADO_EMAIL } from '@/lib/ajusteHorimetro'
 import { obterRegimeNaData, type PeriodoRegimeSalarialSimples } from '@/lib/regimeSalarialClient'
+import { ALMOCO_FIM, ALMOCO_INICIO, descontoAlmocoHoras, horasDentroDoAlmoco, usaRegraAlmocoFixo } from '@/lib/almoco'
 
 interface RegistroAtividadeFormProps {
   id?: string
@@ -412,6 +413,15 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
   // usada na criação do registro, em app/api/registros-atividade/route.ts). O
   // cálculo final do Resumo Mensal pode ajustar o resultado caso existam
   // múltiplos registros no mesmo dia para o mesmo funcionário (turnos separados).
+  // Lançamento que não pega o horário de almoço (11h–12h) não desconta nada,
+  // então nem mostra a opção "passou direto" (regra desde 01/10/2026).
+  const foraDoAlmoco =
+    !!form.horaEntrada &&
+    !!form.horaSaida &&
+    !!form.data &&
+    usaRegraAlmocoFixo(form.data) &&
+    horasDentroDoAlmoco(form.horaEntrada, form.horaSaida) === 0
+
   const previewHoras = useMemo(() => {
     if (!form.horaEntrada || !form.horaSaida) return null
 
@@ -422,9 +432,16 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
     if (!funcionarioReferencia) return null
 
     const horasBrutas = calcularHorasBrutas(form.horaEntrada, form.horaSaida)
-    const horasCalculadas = form.passouDiretoAlmoco
-      ? horasBrutas
-      : Math.max(0, horasBrutas - 1)
+    const horasCalculadas = Math.max(
+      0,
+      horasBrutas -
+        descontoAlmocoHoras({
+          data: form.data,
+          horaEntrada: form.horaEntrada,
+          horaSaida: form.horaSaida,
+          passouDiretoAlmoco: form.passouDiretoAlmoco,
+        })
+    )
 
     const cargaDia = calcularCargaHorariaDia(new Date(form.data + 'T12:00:00'), funcionarioReferencia, config)
 
@@ -630,11 +647,16 @@ export function RegistroAtividadeForm({ id, initialData }: RegistroAtividadeForm
                   <input type="time" id="horaSaida" name="horaSaida" value={form.horaSaida} onChange={handleChange} required disabled={loading} />
                 </div>
               </div>
-              {regimeDoDia && (
+              {regimeDoDia && foraDoAlmoco && (
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                  Fora do horário de almoço ({ALMOCO_INICIO} às {ALMOCO_FIM}): não desconta almoço.
+                </div>
+              )}
+              {regimeDoDia && !foraDoAlmoco && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <div style={{display:'flex', flexDirection:'row', alignItems:'center', gap:'12px', width:'100%'}}>
                     <input type="checkbox" id="passouDiretoAlmoco" name="passouDiretoAlmoco" checked={form.passouDiretoAlmoco} onChange={handleChange} disabled={loading} style={{width:'16px', height:'16px', flexShrink:0, margin:0}} />
-                    <label htmlFor="passouDiretoAlmoco" style={{fontSize:'14px', fontWeight:500, color:'#92400e', cursor:'pointer', margin:0}}>Passou direto no almoço (1h conta como hora extra)</label>
+                    <label htmlFor="passouDiretoAlmoco" style={{fontSize:'14px', fontWeight:500, color:'#92400e', cursor:'pointer', margin:0}}>Passou direto no almoço ({ALMOCO_INICIO} às {ALMOCO_FIM}): não desconta, conta como hora extra</label>
                   </div>
                 </div>
               )}

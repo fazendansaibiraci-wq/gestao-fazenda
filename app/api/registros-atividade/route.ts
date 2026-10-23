@@ -6,6 +6,7 @@ import { calcularCargaHorariaDia } from '@/lib/calculoCargaHoraria'
 import { mensagemPeriodoNaoCadastrado } from '@/lib/regimeSalarial'
 import { buscarPeriodosComId, obterPeriodoNaData, buscarSalarioPeriodoFuncionario, mensagemSalarioNaoCadastrado, shimsParaCargaHoraria } from '@/lib/salarioPeriodo'
 import { validarMaquinasAdicionais, atualizarUltimoHorimetroMaquinasAdicionais, MaquinaAdicionalInput } from '@/lib/registroAtividadeMaquinas'
+import { descontoAlmocoHoras } from '@/lib/almoco'
 
 export async function GET(request: NextRequest) {
   try {
@@ -234,7 +235,11 @@ export async function POST(request: NextRequest) {
         horasCalculadas = horasBrutas
         horaAlmocoComoExtra = true
       } else {
-        horasCalculadas = Math.max(0, horasBrutas - 1)
+        // Almoço fixo 11h–12h: desconta só o que o lançamento pega desse horário.
+        horasCalculadas = Math.max(
+          0,
+          horasBrutas - descontoAlmocoHoras({ data: body.data, horaEntrada: body.horaEntrada, horaSaida: body.horaSaida })
+        )
       }
     }
 

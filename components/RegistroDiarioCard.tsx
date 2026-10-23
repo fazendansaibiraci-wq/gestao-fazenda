@@ -19,6 +19,8 @@ export interface RegistroDiario {
   isSemPeriodo?: boolean
   motivoFalta: string | null
   passouDiretoAlmoco: boolean
+  // Horas do lançamento dentro do almoço (11h–12h); sem o campo = regra antiga (1h).
+  almocoNoHorario?: number
   // Id do registro de atividade (dias de folga/férias sem registro não têm)
   registroId?: string | null
 }
@@ -31,6 +33,21 @@ interface RegistroDiarioCardProps {
   // Quando informado e o dia tem registro, mostra a lixeira pra excluir o lançamento.
   onExcluir?: (dia: RegistroDiario) => void
   excluindo?: boolean
+}
+
+// "1h", "30min", "1h 15min"
+const fmtCurto = (h: number) => {
+  const total = Math.round(h * 60)
+  const horas = Math.floor(total / 60)
+  const minutos = total % 60
+  if (horas && minutos) return `${horas}h ${minutos}min`
+  return horas ? `${horas}h` : `${minutos}min`
+}
+
+const textoAlmoco = (dia: RegistroDiario) => {
+  const noHorario = dia.almocoNoHorario ?? 1
+  if (dia.passouDiretoAlmoco) return noHorario > 0 ? `+ ${fmtCurto(noHorario)} extra` : 'fora do almoço'
+  return dia.descontoAlmoco > 0 ? `- ${fmtCurto(dia.descontoAlmoco)}` : 'sem desconto'
 }
 
 const fmtH = (h: number) => {
@@ -160,8 +177,11 @@ export default function RegistroDiarioCard({ dia, pagamentoProporcionalDiario, o
             <span className="block text-gray-400 flex items-center gap-1">
               <Coffee className="w-3 h-3" /> Almoço
             </span>
-            <span className={`font-medium ${dia.passouDiretoAlmoco ? 'text-green-600' : 'text-gray-600'}`}>
-              {dia.passouDiretoAlmoco ? '+ 1h extra' : '- 1h'}
+            <span
+              className={`font-medium ${dia.passouDiretoAlmoco && (dia.almocoNoHorario ?? 1) > 0 ? 'text-green-600' : 'text-gray-600'}`}
+              title="Almoço: 11:00 às 12:00"
+            >
+              {textoAlmoco(dia)}
             </span>
           </div>
           <div>

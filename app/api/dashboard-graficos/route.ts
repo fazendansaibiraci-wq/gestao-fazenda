@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
         data: { gte: inicioMes, lte: fimMes },
       },
       select: {
+        isAjusteHorimetro: true,
         id: true,
         funcionarioId: true,
         data: true,

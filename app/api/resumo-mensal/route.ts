@@ -10,6 +10,8 @@ import {
   PeriodoComId,
   DadosSalarioPeriodo,
 } from '@/lib/salarioPeriodo'
+import { horasDentroDoAlmoco, usaRegraAlmocoFixo } from '@/lib/almoco'
+import { calcularHorasBrutas } from '@/lib/calculoHorasBrutas'
 
 export async function GET(request: NextRequest) {
   try {
@@ -115,6 +117,7 @@ export async function GET(request: NextRequest) {
         ...(isFuncionario ? { funcionarioId: userId } : {}),
       },
       select: {
+        isAjusteHorimetro: true,
         id: true,
         funcionarioId: true,
         data: true,
@@ -471,8 +474,16 @@ export async function GET(request: NextRequest) {
 
         let horasBrutas = horas
         let descontoAlmoco = 0
+        // Quanto do lançamento caiu no horário de almoço (11h–12h).
+        let almocoNoHorario = 1
+        let horasDoLancamento = horas
 
-        if (!reg.passouDiretoAlmoco) {
+        if (usaRegraAlmocoFixo(chaveData) && reg.horaEntrada && reg.horaSaida && !reg.isAjusteHorimetro) {
+          horasBrutas = calcularHorasBrutas(reg.horaEntrada, reg.horaSaida)
+          almocoNoHorario = horasDentroDoAlmoco(reg.horaEntrada, reg.horaSaida)
+          descontoAlmoco = reg.passouDiretoAlmoco ? 0 : almocoNoHorario
+          horasDoLancamento = Math.max(0, horasBrutas - descontoAlmoco)
+        } else if (!reg.passouDiretoAlmoco) {
           horasBrutas = horas + 1
           descontoAlmoco = 1
         }
@@ -496,8 +507,9 @@ export async function GET(request: NextRequest) {
           horaEntrada: reg.horaEntrada,
           horaSaida: reg.horaSaida,
           horasBrutas: Math.round(horasBrutas * 100) / 100,
-          descontoAlmoco,
-          horasTrabalhadas: Math.round(horas * 100) / 100,
+          descontoAlmoco: Math.round(descontoAlmoco * 100) / 100,
+          almocoNoHorario: Math.round(almocoNoHorario * 100) / 100,
+          horasTrabalhadas: Math.round(horasDoLancamento * 100) / 100,
           cargaContratual: agregado.cargaDia,
           horasExtras: Math.round(horasExtras * 100) / 100,
           horasDevidas: Math.round(horasDevidas * 100) / 100,
