@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.entradaProduto.findMany({
         where: temFiltroData ? { data: whereData } : undefined,
-        include: { produto: { select: { nomeComercial: true, unidadeMedida: true } } },
+        include: { produto: { select: { nomeComercial: true, unidadeMedida: true } }, local: { select: { nome: true } } },
       }),
       prisma.saidaProduto.findMany({
         where: temFiltroData ? { data: whereData } : undefined,
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
         safra: null as string | null,
         registradoPor: e.fornecedor || null,
         observacao: e.numeroNota ? `NF ${e.numeroNota}` : null,
-        local: '—',
+        local: e.local?.nome || '—',
       })),
       ...saidas.map((s) => ({
         data: s.data,

@@ -33,7 +33,7 @@ const ACOES: { id: AcaoEstoque; titulo: string; descricao: string; icon: any; co
   { id: 'devolucao', titulo: 'Devolução', descricao: 'Sobra que voltou', icon: PackagePlus, cor: 'text-green-700 bg-green-50' },
   { id: 'transferencia', titulo: 'Transferência', descricao: 'Entre locais', icon: ArrowLeftRight, cor: 'text-sky-600 bg-sky-50' },
   { id: 'ajuste', titulo: 'Ajuste', descricao: 'Contagem física', icon: ClipboardCheck, cor: 'text-amber-600 bg-amber-50' },
-  { id: 'nfe', titulo: 'Diesel NF-e', descricao: 'Entrada por XML', icon: FileUp, cor: 'text-gray-700 bg-gray-100' },
+  { id: 'nfe', titulo: 'Entrada NF-e', descricao: 'Pelo XML da nota', icon: FileUp, cor: 'text-gray-700 bg-gray-100' },
   { id: 'ideagri', titulo: 'Importar CSV', descricao: 'Saldos do Ideagri', icon: Upload, cor: 'text-gray-700 bg-gray-100' },
 ]
 
@@ -42,7 +42,7 @@ const TITULO_JANELA: Record<AcaoEstoque, string> = {
   devolucao: 'Devolução ao Estoque (sobra de uma saída)',
   transferencia: 'Transferência de Estoque (entre locais)',
   ajuste: 'Ajuste de Estoque (contagem física)',
-  nfe: 'Entrada de Diesel via NF-e',
+  nfe: 'Entrada de NF-e',
   ideagri: 'Importar Estoque do Ideagri',
 }
 

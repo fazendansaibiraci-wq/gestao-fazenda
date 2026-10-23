@@ -1,6 +1,7 @@
 import { XMLParser } from 'fast-xml-parser'
 
 export interface ItemNFe {
+  codigo: string
   nome: string
   unidade: string
   quantidade: number
@@ -10,6 +11,7 @@ export interface ItemNFe {
 
 export interface ResultadoParseNFe {
   fornecedor: string
+  cnpjFornecedor: string
   numeroNota: string
   serieNota: string
   dataEmissao: string
@@ -45,6 +47,7 @@ export function parseNFeXML(xmlTexto: string): ResultadoParseNFe {
   const itens: ItemNFe[] = dets.map((det: any) => {
     const prod = det.prod
     return {
+      codigo: String(prod.cProd ?? '').trim(),
       nome: String(prod.xProd).trim(),
       unidade: String(prod.uCom).trim(),
       quantidade: parseFloat(prod.qCom),
@@ -55,6 +58,7 @@ export function parseNFeXML(xmlTexto: string): ResultadoParseNFe {
 
   return {
     fornecedor: emit?.xNome || '',
+    cnpjFornecedor: String(emit?.CNPJ || emit?.CPF || '').replace(/\D/g, ''),
     numeroNota: String(ide?.nNF || ''),
     serieNota: String(ide?.serie || ''),
     dataEmissao: ide?.dhEmi || new Date().toISOString(),

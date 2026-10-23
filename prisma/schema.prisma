@@ -313,6 +313,7 @@ model Produto {
   estoqueLocais EstoqueLocal[]
   transferencias TransferenciaEstoque[]
   devolucoes     DevolucaoProduto[]
+  vinculosNFe    VinculoProdutoNFe[]
 
   @@map("produtos")
 }
@@ -328,6 +329,7 @@ model Local {
   transferenciasOrigem  TransferenciaEstoque[] @relation("TransferenciaOrigem")
   transferenciasDestino TransferenciaEstoque[] @relation("TransferenciaDestino")
   devolucoes            DevolucaoProduto[]
+  entradasProduto       EntradaProduto[]
 
   @@map("locais")
 }
@@ -470,11 +472,38 @@ model EntradaProduto {
   chaveAcesso     String?
   registradoPor   User     @relation(fields: [registradoPorId], references: [id])
   registradoPorId String
+  // Local onde entrou e como o item veio na nota (nome, quantidade e
+  // unidade da NF, e quantas unidades do estoque vale 1 unidade da NF).
+  // Entradas antigas ficam em branco.
+  local           Local?   @relation(fields: [localId], references: [id])
+  localId         String?
+  nomeNF          String?
+  quantidadeNF    Float?
+  unidadeNF       String?
+  fatorConversao  Float?
 
   dataCriacao DateTime @default(now())
 
   @@index([produtoId])
+  @@index([chaveAcesso])
   @@map("entradas_produto")
+}
+
+// Lembra qual produto do estoque corresponde a um produto de um fornecedor
+// (CNPJ + código do produto na NF-e) e a conversão de unidade, pra próxima
+// nota já vir ligada.
+model VinculoProdutoNFe {
+  id             String   @id @default(cuid())
+  cnpjFornecedor String
+  codigoProduto  String
+  nomeNF         String
+  produto        Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produtoId      String
+  fatorConversao Float    @default(1)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([cnpjFornecedor, codigoProduto])
+  @@map("vinculos_produto_nfe")
 }
 
 
